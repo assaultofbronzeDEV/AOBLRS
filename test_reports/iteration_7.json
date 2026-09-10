@@ -1,0 +1,32 @@
+{
+  "summary": "Tested new Armour compact input and MeleeDmgCell roll/edit flows. Armour input (input-armour): digits-only, max 3 chars, no roll on type — PASS. Layout: Armour cell right edge=178, Melee cell left edge=212 — no overlap, each fits inside its bordered cell — PASS. Default 'MELEE DMG' bronze button shows '1d6' with sword icon — PASS. Tapping melee-dmg-roll opens dice modal with label='Melee Damage', verdict-text='DAMAGE', dice-result-number = total, and 'Rolls: [...]' breakdown (effect-only branch, no d20 target) — PASS. 5 rolls with notation '3d4+1' all returned totals within [4,13] and verdict='DAMAGE' — PASS. Empty notation displays 'Set roll' and tapping is a silent no-op (no modal) — PASS. Regressions: stat-main-STR roll shows verdict (SUCCESS), HP hearts count = 20, character list shows '20 / 20', add-heroAbilities present — PASS. One bug found: tapping melee-dmg-edit (check icon) while TextInput is focused does NOT commit — the TextInput onBlur fires setEditing(false) and then Pressable onPress toggles it back to true (race condition). Blur commit (tapping elsewhere) DOES commit correctly, so users can still commit by tapping outside. Ratio of failing UI paths: 1 minor (check-icon commit).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "MeleeDmgCell",
+        "issue": "Tapping the check-icon (testID melee-dmg-edit) while input-melee-dmg has focus does NOT toggle editing off. Root cause: TextInput onBlur runs setEditing(false), then Pressable onPress runs setEditing(prev => !prev) with pending state false → sets back to true. Users can still commit by tapping outside (blur path works), but the intended check-icon commit is broken. Reference: /app/frontend/src/components/MeleeDmgCell.tsx:27,44. Suggested fix: remove the onBlur={() => setEditing(false)} handler (rely on the pencil/check toggle only), OR use onPressIn on the toggle to preventDefault focus loss, OR gate the toggle: on the pencil press, if currently editing, always force setEditing(false) (non-functional update).",
+        "testID": "melee-dmg-edit",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix MeleeDmgCell check-icon commit race: remove onBlur handler or replace toggle with explicit setEditing(false) on the check-icon press when editing=true. See /app/frontend/src/components/MeleeDmgCell.tsx lines 27 and 44."
+  ],
+  "critical_code_review_comments": [
+    "MeleeDmgCell: Pressable onPress toggle combined with TextInput onBlur creates a race — prefer a single source of truth for commit (either onBlur or check-icon, not both, or use a non-toggling explicit setter).",
+    "DiceRollModal effect-only branch works as intended; verdict text is 'DAMAGE' and result number displays effect.total once the animation ticks finish."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not requested)", "frontend": "~93% (7/8 flows pass; check-icon commit fails)"},
+  "seed_data_creation": "Created one hero via create-character-fab for testing; no cleanup performed.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Reproduce the check-icon commit bug: on character screen, tap melee-dmg-edit → type in input-melee-dmg → tap melee-dmg-edit again; input remains visible and roll button doesn't reappear. Blur commit works: tap input-armour after typing to commit. All other flows verified.",
+  "rca_of_issue": "In MeleeDmgCell.tsx the TextInput has onBlur={() => setEditing(false)} while the toggle Pressable does setEditing(prev => !prev). When the user taps the Pressable, the TextInput first blurs (setting editing=false), then the Pressable's onPress uses the functional updater with the already-pending false state and toggles it back to true. Net result: editing stays true. Mitigation: change the Pressable onPress to setEditing(false) when currently editing, OR remove the input's onBlur handler."
+}

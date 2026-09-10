@@ -164,9 +164,27 @@ export default function AbilityCard({ ability, stats, onChange, onDelete, onUse,
           },
         ]}
       >
-        <Icon name="dice-d20" size={18} color={colors.onBrandPrimary} />
+        <Icon
+          name={
+            ability.linkedStat
+              ? "dice-d20"
+              : ability.effectType === "healing"
+                ? "heart-plus"
+                : ability.effectType === "damage"
+                  ? "sword-cross"
+                  : "dice-d20"
+          }
+          size={18}
+          color={colors.onBrandPrimary}
+        />
         <Text style={[styles.useText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
-          {ability.linkedStat ? "Use Ability" : "Roll Effect"}
+          {ability.linkedStat
+            ? "Use Ability"
+            : ability.effectType === "healing" && ability.effectRoll.trim()
+              ? "Roll Healing"
+              : ability.effectType === "damage" && ability.effectRoll.trim()
+                ? "Roll Damage"
+                : "Use Ability"}
         </Text>
       </Pressable>
 

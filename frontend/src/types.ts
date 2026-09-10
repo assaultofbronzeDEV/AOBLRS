@@ -37,6 +37,15 @@ export type CustomSection = {
   content: string;
 };
 
+export type AttackKind = "melee" | "ranged";
+
+export type Weapon = {
+  id: string;
+  name: string;
+  attackKind: AttackKind;
+  damageRoll: string;
+};
+
 export const HP_MAX = 20;
 
 export type Character = {
@@ -57,6 +66,7 @@ export type Character = {
   inventory: string;
   notes: string;
   customSections: CustomSection[];
+  weapons: Weapon[];
   createdAt: string;
   updatedAt: string;
 };
@@ -111,6 +121,15 @@ export const defaultStats = (): StatBlock[] => [
 export const genId = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+// Normalize dice-notation shorthand: "1xD6" / "2*d8+3" -> "1d6" / "2d8+3".
+export const normalizeDice = (raw: unknown): string | undefined => {
+  if (typeof raw !== "string") return undefined;
+  const m = raw.match(/^\s*(\d+)\s*[xX*]?\s*[dD]\s*(\d+)\s*([+\-]\s*\d+)?\s*$/);
+  if (!m) return raw;
+  const mod = m[3] ? m[3].replace(/\s+/g, "") : "";
+  return `${m[1]}d${m[2]}${mod}`;
+};
+
 export const createEmptyAbility = (): Ability => ({
   id: genId(),
   title: "",
@@ -118,6 +137,13 @@ export const createEmptyAbility = (): Ability => ({
   linkedStat: undefined,
   effectRoll: "",
   effectType: "none",
+});
+
+export const createEmptyWeapon = (): Weapon => ({
+  id: genId(),
+  name: "",
+  attackKind: "melee",
+  damageRoll: "1d6",
 });
 
 export const createEmptyCharacter = (): Character => {
@@ -140,6 +166,7 @@ export const createEmptyCharacter = (): Character => {
     inventory: "",
     notes: "",
     customSections: [],
+    weapons: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -157,7 +184,7 @@ export const migrateCharacter = (raw: any): Character => {
     portraitUri: raw.portraitUri,
     hp: typeof raw.hp === "number" ? Math.max(0, Math.min(HP_MAX, raw.hp)) : HP_MAX,
     armour: raw.armour ?? "10",
-    meleeDmg: raw.meleeDmg ?? "1d6",
+    meleeDmg: normalizeDice(raw.meleeDmg) ?? "1d6",
     stats: Array.isArray(raw.stats) && raw.stats.length === 4 ? raw.stats : defaultStats(),
     oncePerTurn: Array.isArray(raw.oncePerTurn)
       ? raw.oncePerTurn
@@ -179,6 +206,7 @@ export const migrateCharacter = (raw: any): Character => {
     inventory: raw.inventory ?? "",
     notes: raw.notes ?? "",
     customSections: asArr(raw.customSections),
+    weapons: asArr(raw.weapons),
     createdAt: raw.createdAt ?? now,
     updatedAt: raw.updatedAt ?? now,
   };

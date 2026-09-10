@@ -10,9 +10,15 @@ type Props = {
   onChange: (hp: number) => void;
 };
 
+const HEARTS_PER_ROW = 10;
+
 export default function HpTracker({ hp, onChange }: Props) {
   const { colors } = useTheme();
   const cells = Array.from({ length: HP_MAX }, (_, i) => i);
+  const rows: number[][] = [];
+  for (let i = 0; i < cells.length; i += HEARTS_PER_ROW) {
+    rows.push(cells.slice(i, i + HEARTS_PER_ROW));
+  }
 
   const step = (delta: number) => {
     const next = Math.max(0, Math.min(HP_MAX, hp + delta));
@@ -23,7 +29,6 @@ export default function HpTracker({ hp, onChange }: Props) {
   };
 
   const tapHeart = (idx: number) => {
-    // Tap a filled heart to deplete to that index; tap an empty heart to fill up to it.
     Haptics.selectionAsync();
     const filled = idx < hp;
     const next = filled ? idx : idx + 1;
@@ -79,21 +84,25 @@ export default function HpTracker({ hp, onChange }: Props) {
         </View>
       </View>
 
-      <View style={styles.hearts}>
-        {cells.map((i) => (
-          <Pressable
-            key={i}
-            testID={`hp-heart-${i}`}
-            onPress={() => tapHeart(i)}
-            hitSlop={2}
-            style={styles.heartBtn}
-          >
-            <Icon
-              name={i < hp ? "cards-heart" : "cards-heart-outline"}
-              size={26}
-              color={i < hp ? colors.brandSecondary : colors.onSurface}
-            />
-          </Pressable>
+      <View style={styles.heartsWrap}>
+        {rows.map((row, rIdx) => (
+          <View key={rIdx} style={styles.heartRow}>
+            {row.map((i) => (
+              <Pressable
+                key={i}
+                testID={`hp-heart-${i}`}
+                onPress={() => tapHeart(i)}
+                hitSlop={2}
+                style={styles.heartBtn}
+              >
+                <Icon
+                  name={i < hp ? "cards-heart" : "cards-heart-outline"}
+                  size={24}
+                  color={i < hp ? colors.brandSecondary : colors.onSurface}
+                />
+              </Pressable>
+            ))}
+          </View>
         ))}
       </View>
     </View>
@@ -122,12 +131,18 @@ const styles = StyleSheet.create({
   hpValues: { flexDirection: "row", alignItems: "baseline", minWidth: 76, justifyContent: "center" },
   hpNum: { fontSize: 26, fontWeight: "700" },
   hpSlash: { fontSize: 18 },
-  hearts: {
+  heartsWrap: {
+    gap: 4,
+  },
+  heartRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 2,
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   heartBtn: {
-    padding: 2,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 2,
   },
 });

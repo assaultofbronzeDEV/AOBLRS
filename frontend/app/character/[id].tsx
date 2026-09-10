@@ -22,7 +22,9 @@ import {
   Character,
   CustomSection,
   StatBlock,
+  Weapon,
   createEmptyAbility,
+  createEmptyWeapon,
   genId,
 } from "@/src/types";
 import { getCharacter, upsertCharacter } from "@/src/storage/characters";
@@ -32,6 +34,8 @@ import LabeledField from "@/src/components/LabeledField";
 import AbilityCard from "@/src/components/AbilityCard";
 import CustomSectionCard from "@/src/components/CustomSectionCard";
 import DiceRollModal, { RollRequest } from "@/src/components/DiceRollModal";
+import MeleeDmgCell from "@/src/components/MeleeDmgCell";
+import WeaponCard, { getAttackTarget } from "@/src/components/WeaponCard";
 import { valueForRef, labelForRef } from "@/src/components/StatPickerModal";
 
 type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
@@ -77,10 +81,16 @@ export default function CharacterSheetScreen() {
       mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.7,
+      quality: 0.6,
+      base64: true,
     });
     if (!result.canceled && result.assets?.[0]) {
-      update({ portraitUri: result.assets[0].uri });
+      const asset = result.assets[0];
+      // Persist as a data URI so it survives beyond the picker's temp file lifetime.
+      const uri = asset.base64
+        ? `data:image/jpeg;base64,${asset.base64}`
+        : asset.uri;
+      update({ portraitUri: uri });
     }
   };
 
@@ -127,21 +137,25 @@ export default function CharacterSheetScreen() {
 
   const useAbility = (ability: Ability) => {
     if (!char) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const target = valueForRef(char.stats, ability.linkedStat) ?? undefined;
     const label = ability.title || "Ability";
     const effect =
       ability.effectType !== "none" && ability.effectRoll.trim()
         ? { notation: ability.effectRoll.trim(), type: ability.effectType as "damage" | "healing" }
         : undefined;
+
+    // Nothing to roll: silently ignore (button becomes a no-op).
+    if (target == null && !effect) return;
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // No linked stat: just roll the effect dice (damage/healing) directly.
     if (target == null) {
-      if (effect) {
-        setRoll({ label, effect });
-      } else {
-        setRoll({ label: `${label} — no linked stat or effect`, target: 0 });
-      }
+      setRoll({ label, effect });
       return;
     }
+
+    // Linked stat: d20 vs target, and effect on success.
     const linkedLabel = labelForRef(char.stats, ability.linkedStat);
     setRoll({
       label: `${label} · ${linkedLabel}`,
@@ -155,6 +169,33 @@ export default function CharacterSheetScreen() {
     const newSection: CustomSection = { id: genId(), title: "", content: "" };
     update({ customSections: [...char.customSections, newSection] });
     Haptics.selectionAsync();
+  };
+
+  const addWeapon = () => {
+    if (!char) return;
+    update({ weapons: [...char.weapons, createEmptyWeapon()] });
+    Haptics.selectionAsync();
+  };
+
+  const updateWeapon = (idx: number, next: Weapon) => {
+    if (!char) return;
+    update({ weapons: char.weapons.map((w, i) => (i === idx ? next : w)) });
+  };
+
+  const deleteWeapon = (idx: number) => {
+    if (!char) return;
+    update({ weapons: char.weapons.filter((_, i) => i !== idx) });
+    Haptics.selectionAsync();
+  };
+
+  const useWeapon = (weapon: Weapon) => {
+    if (!char) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const { label, target } = getAttackTarget(char.stats, weapon.attackKind);
+    const notation = weapon.damageRoll.trim();
+    const effect = notation ? { notation, type: "damage" as const } : undefined;
+    const weaponName = weapon.name.trim() || (weapon.attackKind === "melee" ? "Melee weapon" : "Ranged weapon");
+    setRoll({ label: `${weaponName} · ${label}`, target, effect });
   };
 
   const updateCustomSection = (idx: number, next: CustomSection) => {
@@ -278,33 +319,27 @@ export default function CharacterSheetScreen() {
             <HpTracker hp={char.hp} onChange={(hp) => update({ hp })} />
             <View style={[styles.divider, { backgroundColor: colors.borderStrong }]} />
             <View style={styles.combatRow}>
-              <View style={[styles.combatCell, { borderColor: colors.borderStrong }]}>
+              <View style={[styles.combatCell, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
                 <Text style={[styles.combatLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>
                   ARMOUR
                 </Text>
                 <TextInput
                   testID="input-armour"
                   value={char.armour}
-                  onChangeText={(t) => update({ armour: t })}
-                  style={[styles.combatValue, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
+                  onChangeText={(t) => update({ armour: t.replace(/\D/g, "").slice(0, 3) })}
+                  style={[styles.combatValue, { color: colors.onSurface, borderColor: colors.border, fontFamily: fonts.displayBold }]}
                   keyboardType="number-pad"
                   maxLength={3}
                 />
               </View>
-              <View style={[styles.combatCell, { borderColor: colors.borderStrong }]}>
-                <Text style={[styles.combatLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>
-                  MELEE DMG
-                </Text>
-                <TextInput
-                  testID="input-melee-dmg"
-                  value={char.meleeDmg}
-                  onChangeText={(t) => update({ meleeDmg: t })}
-                  style={[styles.combatValue, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
-                  maxLength={12}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
+              <MeleeDmgCell
+                value={char.meleeDmg}
+                onChange={(t) => update({ meleeDmg: t })}
+                onRoll={(notation) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setRoll({ label: "Melee Damage", effect: { notation, type: "damage" } });
+                }}
+              />
             </View>
           </View>
 
@@ -328,6 +363,45 @@ export default function CharacterSheetScreen() {
           <Text style={[styles.tapHint, { color: colors.muted, fontFamily: fonts.display }]}>
             Tap the stat or skill name to roll a d20 against it.
           </Text>
+
+          <View>
+            <View
+              style={[
+                styles.sectionHeader,
+                { backgroundColor: colors.surfaceTertiary, borderColor: colors.borderStrong },
+              ]}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+                Weapons
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.sectionBody,
+                { borderColor: colors.borderStrong, backgroundColor: colors.surface },
+              ]}
+            >
+              {char.weapons.length === 0 && (
+                <Text style={[styles.emptyLine, { color: colors.muted, fontFamily: fonts.display }]}>
+                  No weapons yet.
+                </Text>
+              )}
+              <View style={{ gap: 10 }}>
+                {char.weapons.map((w, i) => (
+                  <WeaponCard
+                    key={w.id}
+                    testID={`weapon-${i}`}
+                    weapon={w}
+                    stats={char.stats}
+                    onChange={(next) => updateWeapon(i, next)}
+                    onDelete={() => deleteWeapon(i)}
+                    onUse={useWeapon}
+                  />
+                ))}
+              </View>
+              <AddButton testID="add-weapon" onPress={addWeapon} label="Add Weapon" />
+            </View>
+          </View>
 
           <AbilitySection
             title="Once Per Turn"
@@ -610,18 +684,20 @@ const styles = StyleSheet.create({
   combatRow: { flexDirection: "row", gap: 10 },
   combatCell: {
     flex: 1,
+    minWidth: 0,
     borderWidth: 2,
     padding: 10,
-    alignItems: "center",
-    gap: 4,
+    alignItems: "stretch",
+    gap: 6,
   },
-  combatLabel: { fontSize: 11, letterSpacing: 1.5, fontWeight: "700" },
+  combatLabel: { fontSize: 11, letterSpacing: 1.5, fontWeight: "700", textAlign: "center" },
   combatValue: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
-    minWidth: 60,
+    borderWidth: 1.5,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
     textAlign: "center",
-    paddingVertical: 0,
   },
 
   statRow: { flexDirection: "row", gap: 10 },

@@ -37,6 +37,7 @@ export default function DiceRollModal({ request, onClose }: Props) {
   const [tickValue, setTickValue] = useState<number>(0);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [effect, setEffect] = useState<DiceRollResult | null>(null);
+  const [invalidNotation, setInvalidNotation] = useState<string | null>(null);
   const scale = useSharedValue(0.4);
   const rotate = useSharedValue(0);
 
@@ -45,11 +46,13 @@ export default function DiceRollModal({ request, onClose }: Props) {
       setRolled(null);
       setVerdict(null);
       setEffect(null);
+      setInvalidNotation(null);
       return;
     }
     setRolled(null);
     setVerdict(null);
     setEffect(null);
+    setInvalidNotation(null);
     scale.value = 0.4;
     rotate.value = 0;
     scale.value = withSequence(
@@ -72,7 +75,8 @@ export default function DiceRollModal({ request, onClose }: Props) {
             setEffect(r);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           } else {
-            setEffect(null);
+            setInvalidNotation(request.effect!.notation);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           }
         }
       }, 60);
@@ -121,9 +125,12 @@ export default function DiceRollModal({ request, onClose }: Props) {
     ? effect?.total ?? tickValue ?? "?"
     : rolled ?? tickValue ?? "?";
 
-  const isDone = onlyEffect ? effect != null || request.effect == null : rolled != null;
+  const isDone = onlyEffect
+    ? effect != null || invalidNotation != null || request.effect == null
+    : rolled != null;
 
   const resultColor = (() => {
+    if (invalidNotation) return colors.error;
     if (onlyEffect) {
       if (!effect) return colors.onSurface;
       return request.effect?.type === "healing" ? colors.success : colors.brandSecondary;
@@ -136,6 +143,7 @@ export default function DiceRollModal({ request, onClose }: Props) {
   })();
 
   const verdictText = (() => {
+    if (invalidNotation) return "INVALID DICE NOTATION";
     if (onlyEffect) {
       if (!effect) return "Rolling…";
       return request.effect?.type === "healing" ? "HEALING" : "DAMAGE";
@@ -192,6 +200,22 @@ export default function DiceRollModal({ request, onClose }: Props) {
             >
               {verdictText}
             </Text>
+
+            {invalidNotation && (
+              <Text
+                testID="invalid-notation-hint"
+                style={{
+                  color: colors.muted,
+                  fontFamily: fonts.body,
+                  textAlign: "center",
+                  fontSize: 13,
+                  fontStyle: "italic",
+                  marginTop: -6,
+                }}
+              >
+                Could not roll "{invalidNotation}". Try a format like "1d6" or "2d8+3".
+              </Text>
+            )}
 
             {/* Effect result on success */}
             {effect && !onlyEffect && (

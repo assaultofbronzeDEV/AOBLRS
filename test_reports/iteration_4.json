@@ -1,0 +1,23 @@
+{
+  "summary": "Frontend-only verification of StatCard fix. All 7 requested behaviors verified on mobile viewport (375x667). Main stat headers now render 3-letter abbreviations (STR/DEX/INT/CHA) without truncation, with full-word subtitles below (STRENGTH/DEXTERITY/INTELLIGENCE/CHARISMA). Tapping the abbreviation opens the DiceRollModal (verified: 'STRENGTH / Target >= 15'). Tapping the main-stat NumberField does NOT open the roll modal. Sub-skill NumberFields are right-aligned in a consistent column per card (STR/INT column x=122.5, DEX/CHA column x=303) across all 4 rows even when the skill name wraps (verified 'Sleight of Hand' and 'Creature Handling'). Tapping a sub-skill name (e.g., 'Sleight of Hand') opens the roll modal; tapping the sub-skill NumberField does NOT. Regression checks: HP +/- buttons and heart row render, character list/create flow works, no red-screen or console errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_4.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "StatCard.tsx (149-152): sub-skill numberOfLines={2} + fixed row minHeight=42 works, but note lineHeight:16 with fontSize:13 leaves slightly tight vertical rhythm — acceptable, no change needed.",
+    "NumberField has no onPress conflict — TextInput correctly consumes taps without bubbling to parent onPress. Behavior verified in browser."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend-only request)", "frontend": "100% (7/7 behaviors verified)"},
+  "seed_data_creation": "Used the default 'New Hero' character auto-created via the '+ New Hero' FAB on the home screen.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "StatCard fix fully verified. testIDs used: stat-main-{STR|DEX|INT|CHA} (abbreviation, triggers roll), stat-main-value-{key} (number input, no roll), sub-skill-{key}-{0..3} (name, triggers roll), sub-skill-value-{key}-{0..3} (number input, no roll). Dice modal testIDs: dice-roll-backdrop, dice-result-number, dice-verdict-text, dice-roll-close.",
+  "rca_of_issue": "N/A — verification only; original truncation caused by rendering full 'STRENGTH' inside a flex header cell alongside a number field. Fix substitutes short abbreviation (block.key) as primary label and adds full-word subtitle. Sub-skill alignment achieved via fixed-width NumberField (width:46, flexShrink:0) + flex:1 name cell with minWidth:0 permitting text wrap without pushing the number column."
+}

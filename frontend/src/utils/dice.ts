@@ -1,5 +1,5 @@
-// Minimal dice-notation roller. Supports patterns like "1d6", "2d8+3", "1d20-1".
-// Returns null when the notation cannot be parsed.
+// Minimal dice-notation roller. Accepts "1d6", "2d8+3", "1d20-1" and the
+// tabletop shorthand "1xD6" / "1*d6".
 export type DiceRollResult = {
   total: number;
   rolls: number[];
@@ -9,7 +9,7 @@ export type DiceRollResult = {
   notation: string;
 };
 
-const RE = /^\s*(\d+)\s*[dD]\s*(\d+)\s*([+\-]\s*\d+)?\s*$/;
+const RE = /^\s*(\d+)\s*[xX*]?\s*[dD]\s*(\d+)\s*([+\-]\s*\d+)?\s*$/;
 
 export function rollDice(notation: string): DiceRollResult | null {
   if (!notation || typeof notation !== "string") return null;

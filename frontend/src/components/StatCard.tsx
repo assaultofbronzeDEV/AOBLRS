@@ -55,14 +55,19 @@ export default function StatCard({ block, onChange, onRoll }: Props) {
       ]}
     >
       <View style={[styles.header, { borderBottomColor: colors.borderStrong }]}>
-        {/* Only the name is the roll button */}
+        {/* Only the abbreviation label triggers a roll */}
         <View style={styles.headerNameCell}>
           <Text
             testID={`stat-main-${block.key}`}
             onPress={() => onRoll(block.name, block.value)}
             numberOfLines={1}
-            adjustsFontSizeToFit
             style={[styles.headerName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
+          >
+            {block.key}
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={[styles.headerFull, { color: colors.muted, fontFamily: fonts.display }]}
           >
             {block.name}
           </Text>
@@ -73,14 +78,16 @@ export default function StatCard({ block, onChange, onRoll }: Props) {
       <View style={styles.subs}>
         {block.subs.map((s, i) => (
           <View key={s.name} style={[styles.subRow, { borderBottomColor: colors.divider }]}>
-            <Text
-              testID={`sub-skill-${block.key}-${i}`}
-              onPress={() => onRoll(s.name, s.value)}
-              numberOfLines={2}
-              style={[styles.subName, { color: colors.onSurface, fontFamily: fonts.display }]}
-            >
-              {s.name}
-            </Text>
+            <View style={styles.subNameCell}>
+              <Text
+                testID={`sub-skill-${block.key}-${i}`}
+                onPress={() => onRoll(s.name, s.value)}
+                numberOfLines={2}
+                style={[styles.subName, { color: colors.onSurface, fontFamily: fonts.display }]}
+              >
+                {s.name}
+              </Text>
+            </View>
             <NumberField
               value={s.value}
               onChange={(n) => setSub(i, n)}
@@ -102,21 +109,25 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: 10,
     paddingVertical: 10,
     borderBottomWidth: 2,
     gap: 8,
   },
-  headerName: {
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    paddingVertical: 4,
-  },
   headerNameCell: {
     flex: 1,
     minWidth: 0,
+  },
+  headerName: {
+    fontSize: 22,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  headerFull: {
+    fontSize: 10,
+    letterSpacing: 1.5,
+    marginTop: -2,
+    textTransform: "uppercase",
   },
   subs: {
     paddingHorizontal: 8,
@@ -125,23 +136,27 @@ const styles = StyleSheet.create({
   subRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingVertical: 8,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
     gap: 8,
+    minHeight: 42,
+  },
+  subNameCell: {
+    flex: 1,
+    minWidth: 0,
   },
   subName: {
-    flex: 1,
-    fontSize: 14,
-    paddingVertical: 4,
+    fontSize: 13,
+    lineHeight: 16,
   },
   numInput: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     borderWidth: 1.5,
-    width: 52,
-    paddingHorizontal: 6,
+    width: 46,
+    flexShrink: 0,
+    paddingHorizontal: 4,
     paddingVertical: 4,
     textAlign: "center",
   },
