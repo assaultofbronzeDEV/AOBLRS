@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, Modal } from "react-native";
+import { View, Text, StyleSheet, Pressable, Modal, ScrollView } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -7,18 +7,19 @@ import Animated, {
   withSequence,
   withSpring,
   Easing,
-  runOnJS,
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { fonts, useTheme } from "@/src/theme";
+import { rollDice, DiceRollResult } from "@/src/utils/dice";
 
-export type RollPayload = {
+export type RollRequest = {
   label: string;
-  target: number;
+  target?: number; // if omitted, only rolls effect (no d20 check)
+  effect?: { notation: string; type: "damage" | "healing" };
 };
 
 type Props = {
-  roll: RollPayload | null;
+  request: RollRequest | null;
   onClose: () => void;
 };
 
@@ -30,23 +31,25 @@ function verdictFor(rolled: number, target: number): Verdict {
   return rolled >= target ? "success" : "fail";
 }
 
-export default function DiceRollModal({ roll, onClose }: Props) {
+export default function DiceRollModal({ request, onClose }: Props) {
   const { colors } = useTheme();
   const [rolled, setRolled] = useState<number | null>(null);
   const [tickValue, setTickValue] = useState<number>(0);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
+  const [effect, setEffect] = useState<DiceRollResult | null>(null);
   const scale = useSharedValue(0.4);
   const rotate = useSharedValue(0);
 
   useEffect(() => {
-    if (!roll) {
+    if (!request) {
       setRolled(null);
       setVerdict(null);
+      setEffect(null);
       return;
     }
-    // Rolling animation: ticker + spin
     setRolled(null);
     setVerdict(null);
+    setEffect(null);
     scale.value = 0.4;
     rotate.value = 0;
     scale.value = withSequence(
@@ -55,6 +58,28 @@ export default function DiceRollModal({ roll, onClose }: Props) {
     );
     rotate.value = withTiming(720, { duration: 900, easing: Easing.out(Easing.cubic) });
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // If no target, we're only rolling an effect
+    if (request.target == null && request.effect) {
+      const start = Date.now();
+      const interval = setInterval(() => {
+        setTickValue(1 + Math.floor(Math.random() * (request.effect?.notation ? 10 : 20)));
+        if (Date.now() - start > 700) {
+          clearInterval(interval);
+          const r = rollDice(request.effect!.notation);
+          if (r) {
+            setEffect(r);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          } else {
+            setEffect(null);
+          }
+        }
+      }, 60);
+      return () => clearInterval(interval);
+    }
+
+    // d20 vs target flow
     const start = Date.now();
     const interval = setInterval(() => {
       setTickValue(1 + Math.floor(Math.random() * 20));
@@ -62,7 +87,8 @@ export default function DiceRollModal({ roll, onClose }: Props) {
         clearInterval(interval);
         const final = 1 + Math.floor(Math.random() * 20);
         setRolled(final);
-        const v = verdictFor(final, roll.target);
+        const target = request.target ?? 0;
+        const v = verdictFor(final, target);
         setVerdict(v);
         if (v === "crit-success" || v === "crit-fail") {
           Haptics.notificationAsync(
@@ -73,30 +99,47 @@ export default function DiceRollModal({ roll, onClose }: Props) {
         } else {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
+        // Roll effect on success/crit-success only
+        if (request.effect && (v === "success" || v === "crit-success")) {
+          const eff = rollDice(request.effect.notation);
+          setEffect(eff);
+        }
       }
     }, 60);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     return () => clearInterval(interval);
-  }, [roll]);
+  }, [request]);
 
   const diceStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }, { rotate: `${rotate.value}deg` }],
   }));
 
-  if (!roll) return null;
+  if (!request) return null;
 
-  const display = rolled ?? tickValue ?? "?";
+  const onlyEffect = request.target == null;
+  const display = onlyEffect
+    ? effect?.total ?? tickValue ?? "?"
+    : rolled ?? tickValue ?? "?";
+
+  const isDone = onlyEffect ? effect != null || request.effect == null : rolled != null;
 
   const resultColor = (() => {
-    if (verdict === "crit-success") return colors.warning; // gold
-    if (verdict === "crit-fail") return colors.brandSecondary; // dark red
+    if (onlyEffect) {
+      if (!effect) return colors.onSurface;
+      return request.effect?.type === "healing" ? colors.success : colors.brandSecondary;
+    }
+    if (verdict === "crit-success") return colors.warning;
+    if (verdict === "crit-fail") return colors.brandSecondary;
     if (verdict === "success") return colors.success;
     if (verdict === "fail") return colors.error;
     return colors.onSurface;
   })();
 
-  const resultText = (() => {
+  const verdictText = (() => {
+    if (onlyEffect) {
+      if (!effect) return "Rolling…";
+      return request.effect?.type === "healing" ? "HEALING" : "DAMAGE";
+    }
     if (!verdict) return "Rolling…";
     if (verdict === "crit-success") return "CRITICAL SUCCESS!";
     if (verdict === "crit-fail") return "CRITICAL FAILURE!";
@@ -109,61 +152,117 @@ export default function DiceRollModal({ roll, onClose }: Props) {
       <Pressable
         testID="dice-roll-backdrop"
         style={styles.backdrop}
-        onPress={rolled != null ? onClose : undefined}
+        onPress={isDone ? onClose : undefined}
       >
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: colors.surface, borderColor: colors.borderStrong },
-          ]}
+        <ScrollView
+          contentContainerStyle={styles.center}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={[styles.label, { color: colors.muted, fontFamily: fonts.display }]}>
-            {roll.label}
-          </Text>
-          <Text style={[styles.target, { color: colors.onSurface, fontFamily: fonts.display }]}>
-            Target ≥ {roll.target}
-          </Text>
-
-          <Animated.View
-            style={[
-              styles.diceBox,
-              diceStyle,
-              { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary },
-            ]}
+          <Pressable
+            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}
+            onPress={(e) => e.stopPropagation()}
           >
-            <Text
-              testID="dice-result-number"
-              style={[styles.diceNumber, { color: resultColor, fontFamily: fonts.displayBold }]}
-            >
-              {display}
+            <Text style={[styles.label, { color: colors.muted, fontFamily: fonts.display }]}>
+              {request.label}
             </Text>
-          </Animated.View>
+            {request.target != null && (
+              <Text style={[styles.target, { color: colors.onSurface, fontFamily: fonts.display }]}>
+                Target ≥ {request.target}
+              </Text>
+            )}
 
-          <Text
-            testID="dice-verdict-text"
-            style={[styles.verdict, { color: resultColor, fontFamily: fonts.displayBold }]}
-          >
-            {resultText}
-          </Text>
-
-          {rolled != null && (
-            <Pressable
-              testID="dice-roll-close"
-              onPress={onClose}
-              style={({ pressed }) => [
-                styles.closeBtn,
-                {
-                  backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary,
-                  borderColor: colors.borderStrong,
-                },
+            <Animated.View
+              style={[
+                styles.diceBox,
+                diceStyle,
+                { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary },
               ]}
             >
-              <Text style={[styles.closeText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
-                Close
+              <Text
+                testID="dice-result-number"
+                style={[styles.diceNumber, { color: resultColor, fontFamily: fonts.displayBold }]}
+              >
+                {display}
               </Text>
-            </Pressable>
-          )}
-        </View>
+            </Animated.View>
+
+            <Text
+              testID="dice-verdict-text"
+              style={[styles.verdict, { color: resultColor, fontFamily: fonts.displayBold }]}
+            >
+              {verdictText}
+            </Text>
+
+            {/* Effect result on success */}
+            {effect && !onlyEffect && (
+              <View
+                style={[
+                  styles.effectBox,
+                  {
+                    borderColor: colors.borderStrong,
+                    backgroundColor:
+                      request.effect?.type === "healing"
+                        ? "rgba(46,111,64,0.12)"
+                        : "rgba(138,42,43,0.12)",
+                  },
+                ]}
+              >
+                <Text style={[styles.effectLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>
+                  {request.effect?.type === "healing" ? "HEALING" : "DAMAGE"} ({effect.notation})
+                </Text>
+                <Text
+                  testID="effect-total"
+                  style={[
+                    styles.effectTotal,
+                    {
+                      color:
+                        request.effect?.type === "healing" ? colors.success : colors.brandSecondary,
+                      fontFamily: fonts.displayBold,
+                    },
+                  ]}
+                >
+                  {effect.total}
+                </Text>
+                <Text style={[styles.effectRolls, { color: colors.muted, fontFamily: fonts.body }]}>
+                  Rolls: [{effect.rolls.join(", ")}]
+                  {effect.modifier
+                    ? ` ${effect.modifier > 0 ? "+" : ""}${effect.modifier}`
+                    : ""}
+                </Text>
+              </View>
+            )}
+
+            {/* Effect-only result */}
+            {effect && onlyEffect && (
+              <View style={styles.effectRolls2}>
+                <Text style={[styles.effectRolls, { color: colors.muted, fontFamily: fonts.body }]}>
+                  Rolls: [{effect.rolls.join(", ")}]
+                  {effect.modifier
+                    ? ` ${effect.modifier > 0 ? "+" : ""}${effect.modifier}`
+                    : ""}
+                </Text>
+              </View>
+            )}
+
+            {isDone && (
+              <Pressable
+                testID="dice-roll-close"
+                onPress={onClose}
+                style={({ pressed }) => [
+                  styles.closeBtn,
+                  {
+                    backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary,
+                    borderColor: colors.borderStrong,
+                  },
+                ]}
+              >
+                <Text style={[styles.closeText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
+                  Close
+                </Text>
+              </Pressable>
+            )}
+          </Pressable>
+        </ScrollView>
       </Pressable>
     </Modal>
   );
@@ -173,6 +272,9 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(20, 14, 8, 0.85)",
+  },
+  center: {
+    flexGrow: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
@@ -183,44 +285,59 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     padding: 24,
     alignItems: "center",
-    gap: 16,
+    gap: 12,
   },
   label: {
     fontSize: 18,
     letterSpacing: 1,
     textTransform: "uppercase",
+    textAlign: "center",
   },
   target: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "600",
   },
   diceBox: {
-    width: 160,
-    height: 160,
+    width: 140,
+    height: 140,
     borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",
     transform: [{ rotate: "45deg" }],
+    marginTop: 8,
   },
   diceNumber: {
-    fontSize: 72,
+    fontSize: 60,
     fontWeight: "700",
     transform: [{ rotate: "-45deg" }],
   },
   verdict: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "700",
     letterSpacing: 1.5,
     marginTop: 8,
+    textAlign: "center",
   },
+  effectBox: {
+    width: "100%",
+    borderWidth: 2,
+    padding: 10,
+    alignItems: "center",
+    marginTop: 4,
+    gap: 2,
+  },
+  effectLabel: { fontSize: 11, letterSpacing: 1.5 },
+  effectTotal: { fontSize: 36, fontWeight: "700" },
+  effectRolls: { fontSize: 12 },
+  effectRolls2: { marginTop: 4 },
   closeBtn: {
     marginTop: 8,
     paddingHorizontal: 32,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderWidth: 2,
   },
   closeText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     letterSpacing: 1,
   },

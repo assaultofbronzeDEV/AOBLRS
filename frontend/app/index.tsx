@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/material-design-icons";
 import { fonts, useTheme } from "@/src/theme";
 import { Character, createEmptyCharacter } from "@/src/types";
+import { HP_MAX } from "@/src/types";
 import { deleteCharacter, loadAllCharacters, upsertCharacter } from "@/src/storage/characters";
 
 export default function CharacterListScreen() {
@@ -120,7 +121,7 @@ export default function CharacterListScreen() {
               <View style={styles.hpRow}>
                 <Icon name="cards-heart" size={14} color={colors.brandSecondary} />
                 <Text style={[styles.hpText, { color: colors.onSurface, fontFamily: fonts.display }]}>
-                  {item.hp} / {item.hpMax}
+                  {item.hp} / {HP_MAX}
                 </Text>
               </View>
             </View>

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, TextInput } from "react-native";
+import { View, Text, StyleSheet, TextInput } from "react-native";
 import { fonts, useTheme } from "@/src/theme";
 import { StatBlock as StatBlockType } from "@/src/types";
 
@@ -54,29 +54,31 @@ export default function StatCard({ block, onChange, onRoll }: Props) {
         { borderColor: colors.borderStrong, backgroundColor: colors.surface },
       ]}
     >
-      <Pressable
-        testID={`stat-main-${block.key}`}
-        onPress={() => onRoll(block.name, block.value)}
-        style={[styles.header, { borderBottomColor: colors.borderStrong }]}
-      >
-        <Text style={[styles.headerName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-          {block.name}
-        </Text>
+      <View style={[styles.header, { borderBottomColor: colors.borderStrong }]}>
+        {/* Only the name is the roll button */}
+        <View style={styles.headerNameCell}>
+          <Text
+            testID={`stat-main-${block.key}`}
+            onPress={() => onRoll(block.name, block.value)}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={[styles.headerName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
+          >
+            {block.name}
+          </Text>
+        </View>
         <NumberField value={block.value} onChange={setMain} testID={`stat-main-value-${block.key}`} />
-      </Pressable>
+      </View>
 
       <View style={styles.subs}>
         {block.subs.map((s, i) => (
-          <Pressable
-            key={s.name}
-            testID={`sub-skill-${block.key}-${i}`}
-            onPress={() => onRoll(s.name, s.value)}
-            style={({ pressed }) => [
-              styles.subRow,
-              { borderBottomColor: colors.divider, backgroundColor: pressed ? colors.brandTertiary : "transparent" },
-            ]}
-          >
-            <Text style={[styles.subName, { color: colors.onSurface, fontFamily: fonts.display }]}>
+          <View key={s.name} style={[styles.subRow, { borderBottomColor: colors.divider }]}>
+            <Text
+              testID={`sub-skill-${block.key}-${i}`}
+              onPress={() => onRoll(s.name, s.value)}
+              numberOfLines={2}
+              style={[styles.subName, { color: colors.onSurface, fontFamily: fonts.display }]}
+            >
               {s.name}
             </Text>
             <NumberField
@@ -84,7 +86,7 @@ export default function StatCard({ block, onChange, onRoll }: Props) {
               onChange={(n) => setSub(i, n)}
               testID={`sub-skill-value-${block.key}-${i}`}
             />
-          </Pressable>
+          </View>
         ))}
       </View>
     </View>
@@ -102,14 +104,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 2,
+    gap: 8,
   },
   headerName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     letterSpacing: 0.8,
-    flexShrink: 1,
+    paddingVertical: 4,
+  },
+  headerNameCell: {
+    flex: 1,
+    minWidth: 0,
   },
   subs: {
     paddingHorizontal: 8,
@@ -125,16 +132,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   subName: {
-    fontSize: 15,
-    flexShrink: 1,
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 4,
   },
   numInput: {
     fontSize: 16,
     fontWeight: "700",
     borderWidth: 1.5,
-    minWidth: 40,
+    width: 52,
     paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingVertical: 4,
     textAlign: "center",
   },
 });

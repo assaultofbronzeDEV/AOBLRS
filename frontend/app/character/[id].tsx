@@ -17,12 +17,24 @@ import Icon from "@react-native-vector-icons/material-design-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { fonts, useTheme } from "@/src/theme";
-import { Character, StatBlock } from "@/src/types";
+import {
+  Ability,
+  Character,
+  CustomSection,
+  StatBlock,
+  createEmptyAbility,
+  genId,
+} from "@/src/types";
 import { getCharacter, upsertCharacter } from "@/src/storage/characters";
 import HpTracker from "@/src/components/HpTracker";
 import StatCard from "@/src/components/StatCard";
 import LabeledField from "@/src/components/LabeledField";
-import DiceRollModal, { RollPayload } from "@/src/components/DiceRollModal";
+import AbilityCard from "@/src/components/AbilityCard";
+import CustomSectionCard from "@/src/components/CustomSectionCard";
+import DiceRollModal, { RollRequest } from "@/src/components/DiceRollModal";
+import { valueForRef, labelForRef } from "@/src/components/StatPickerModal";
+
+type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
 
 export default function CharacterSheetScreen() {
   const { colors } = useTheme();
@@ -30,7 +42,7 @@ export default function CharacterSheetScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [char, setChar] = useState<Character | null>(null);
-  const [roll, setRoll] = useState<RollPayload | null>(null);
+  const [roll, setRoll] = useState<RollRequest | null>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -53,7 +65,7 @@ export default function CharacterSheetScreen() {
     });
   };
 
-  const triggerRoll = (label: string, target: number) => {
+  const triggerStatRoll = (label: string, target: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setRoll({ label, target });
   };
@@ -62,7 +74,7 @@ export default function CharacterSheetScreen() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) return;
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
@@ -85,6 +97,79 @@ export default function CharacterSheetScreen() {
     Haptics.selectionAsync();
   };
 
+  const setAbilities = (key: AbilityKey, list: Ability[]) => update({ [key]: list } as any);
+
+  const addAbility = (key: AbilityKey) => {
+    if (!char) return;
+    const cur = char[key] as Ability[];
+    setAbilities(key, [...cur, createEmptyAbility()]);
+    Haptics.selectionAsync();
+  };
+
+  const updateAbility = (key: AbilityKey, idx: number, next: Ability) => {
+    if (!char) return;
+    const cur = char[key] as Ability[];
+    setAbilities(
+      key,
+      cur.map((a, i) => (i === idx ? next : a)),
+    );
+  };
+
+  const deleteAbility = (key: AbilityKey, idx: number) => {
+    if (!char) return;
+    const cur = char[key] as Ability[];
+    setAbilities(
+      key,
+      cur.filter((_, i) => i !== idx),
+    );
+    Haptics.selectionAsync();
+  };
+
+  const useAbility = (ability: Ability) => {
+    if (!char) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const target = valueForRef(char.stats, ability.linkedStat) ?? undefined;
+    const label = ability.title || "Ability";
+    const effect =
+      ability.effectType !== "none" && ability.effectRoll.trim()
+        ? { notation: ability.effectRoll.trim(), type: ability.effectType as "damage" | "healing" }
+        : undefined;
+    if (target == null) {
+      if (effect) {
+        setRoll({ label, effect });
+      } else {
+        setRoll({ label: `${label} — no linked stat or effect`, target: 0 });
+      }
+      return;
+    }
+    const linkedLabel = labelForRef(char.stats, ability.linkedStat);
+    setRoll({
+      label: `${label} · ${linkedLabel}`,
+      target,
+      effect,
+    });
+  };
+
+  const addCustomSection = () => {
+    if (!char) return;
+    const newSection: CustomSection = { id: genId(), title: "", content: "" };
+    update({ customSections: [...char.customSections, newSection] });
+    Haptics.selectionAsync();
+  };
+
+  const updateCustomSection = (idx: number, next: CustomSection) => {
+    if (!char) return;
+    update({
+      customSections: char.customSections.map((s, i) => (i === idx ? next : s)),
+    });
+  };
+
+  const deleteCustomSection = (idx: number) => {
+    if (!char) return;
+    update({ customSections: char.customSections.filter((_, i) => i !== idx) });
+    Haptics.selectionAsync();
+  };
+
   const statPairs = useMemo(() => {
     if (!char) return [];
     const pairs: [StatBlock, StatBlock][] = [];
@@ -104,7 +189,6 @@ export default function CharacterSheetScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
-      {/* Sticky header */}
       <View
         style={[
           styles.headerBar,
@@ -143,7 +227,6 @@ export default function CharacterSheetScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: 12, paddingBottom: 40 + insets.bottom, gap: 12 }}
         >
-          {/* Portrait + Name/Class/Level */}
           <View style={styles.topRow}>
             <Pressable
               testID="portrait-picker"
@@ -191,13 +274,8 @@ export default function CharacterSheetScreen() {
             </View>
           </View>
 
-          {/* HP + Armour + Melee DMG */}
           <View style={[styles.combatBox, { borderColor: colors.borderStrong }]}>
-            <HpTracker
-              hp={char.hp}
-              hpMax={char.hpMax}
-              onChange={(hp, hpMax) => update({ hp, hpMax })}
-            />
+            <HpTracker hp={char.hp} onChange={(hp) => update({ hp })} />
             <View style={[styles.divider, { backgroundColor: colors.borderStrong }]} />
             <View style={styles.combatRow}>
               <View style={[styles.combatCell, { borderColor: colors.borderStrong }]}>
@@ -222,14 +300,14 @@ export default function CharacterSheetScreen() {
                   value={char.meleeDmg}
                   onChangeText={(t) => update({ meleeDmg: t })}
                   style={[styles.combatValue, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
-                  maxLength={10}
-                  autoCapitalize="characters"
+                  maxLength={12}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
               </View>
             </View>
           </View>
 
-          {/* Stat grid */}
           {statPairs.map((pair, rowIdx) => (
             <View key={rowIdx} style={styles.statRow}>
               {pair.map((block, colIdx) =>
@@ -238,7 +316,7 @@ export default function CharacterSheetScreen() {
                     key={block.key}
                     block={block}
                     onChange={(next) => updateStat(rowIdx * 2 + colIdx, next)}
-                    onRoll={triggerRoll}
+                    onRoll={triggerStatRoll}
                   />
                 ) : (
                   <View key={`empty-${colIdx}`} style={{ flex: 1 }} />
@@ -248,36 +326,35 @@ export default function CharacterSheetScreen() {
           ))}
 
           <Text style={[styles.tapHint, { color: colors.muted, fontFamily: fonts.display }]}>
-            Tap any stat or skill to roll a d20 against it.
+            Tap the stat or skill name to roll a d20 against it.
           </Text>
 
-          {/* Once Per Turn */}
-          <LabeledField
-            label="Once Per Turn"
-            testID="input-once-per-turn"
-            value={char.oncePerTurn}
-            onChangeText={(t) => update({ oncePerTurn: t })}
-            multiline
-            minHeight={100}
-            placeholder="Abilities you can use once per turn…"
+          <AbilitySection
+            title="Once Per Turn"
+            keyName="oncePerTurn"
+            abilities={char.oncePerTurn}
+            stats={char.stats}
+            onAdd={() => addAbility("oncePerTurn")}
+            onChange={(i, a) => updateAbility("oncePerTurn", i, a)}
+            onDelete={(i) => deleteAbility("oncePerTurn", i)}
+            onUse={useAbility}
           />
 
-          {/* Once Per Rest */}
-          <LabeledField
-            label="Once Per Rest"
-            testID="input-once-per-rest"
-            value={char.oncePerRest}
-            onChangeText={(t) => update({ oncePerRest: t })}
-            multiline
-            minHeight={100}
-            placeholder="Abilities that recharge on rest…"
+          <AbilitySection
+            title="Once Per Rest"
+            keyName="oncePerRest"
+            abilities={char.oncePerRest}
+            stats={char.stats}
+            onAdd={() => addAbility("oncePerRest")}
+            onChange={(i, a) => updateAbility("oncePerRest", i, a)}
+            onDelete={(i) => deleteAbility("oncePerRest", i)}
+            onUse={useAbility}
           />
 
-          {/* Hero Ability + Hero Points */}
           <View>
             <View style={[styles.heroHeader, { backgroundColor: colors.surfaceTertiary, borderColor: colors.borderStrong }]}>
               <Text style={[styles.heroTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-                Hero Ability
+                Hero Abilities
               </Text>
               <View style={styles.heroPoints}>
                 <Pressable
@@ -305,31 +382,38 @@ export default function CharacterSheetScreen() {
                   <Icon name="plus" size={16} color={colors.onSurface} />
                 </Pressable>
                 <Text style={[styles.hpLabel, { color: colors.muted, fontFamily: fonts.display }]}>
-                  Hero Points
+                  Hero Pts
                 </Text>
               </View>
             </View>
-            <TextInput
-              testID="input-hero-ability"
-              value={char.heroAbility}
-              onChangeText={(t) => update({ heroAbility: t })}
-              multiline
-              placeholder="Your signature hero ability…"
-              placeholderTextColor={colors.muted}
+            <View
               style={[
-                styles.heroInput,
-                {
-                  color: colors.onSurface,
-                  borderColor: colors.borderStrong,
-                  backgroundColor: colors.surface,
-                  fontFamily: fonts.body,
-                },
+                styles.heroBody,
+                { borderColor: colors.borderStrong, backgroundColor: colors.surface },
               ]}
-              textAlignVertical="top"
-            />
+            >
+              {char.heroAbilities.length === 0 && (
+                <Text style={[styles.emptyLine, { color: colors.muted, fontFamily: fonts.display }]}>
+                  No hero abilities yet.
+                </Text>
+              )}
+              <View style={{ gap: 10 }}>
+                {char.heroAbilities.map((ab, i) => (
+                  <AbilityCard
+                    key={ab.id}
+                    testID={`ability-heroAbilities-${i}`}
+                    ability={ab}
+                    stats={char.stats}
+                    onChange={(next) => updateAbility("heroAbilities", i, next)}
+                    onDelete={() => deleteAbility("heroAbilities", i)}
+                    onUse={useAbility}
+                  />
+                ))}
+              </View>
+              <AddButton testID="add-heroAbilities" onPress={() => addAbility("heroAbilities")} label="Add Hero Ability" />
+            </View>
           </View>
 
-          {/* Backstory */}
           <LabeledField
             label="Backstory"
             testID="input-backstory"
@@ -339,8 +423,6 @@ export default function CharacterSheetScreen() {
             minHeight={140}
             placeholder="Where your hero comes from…"
           />
-
-          {/* Inventory */}
           <LabeledField
             label="Inventory"
             testID="input-inventory"
@@ -350,8 +432,6 @@ export default function CharacterSheetScreen() {
             minHeight={140}
             placeholder="Items, gold, gear…"
           />
-
-          {/* Notes */}
           <LabeledField
             label="Notes"
             testID="input-notes"
@@ -361,11 +441,129 @@ export default function CharacterSheetScreen() {
             minHeight={140}
             placeholder="Session notes, quests…"
           />
+
+          {char.customSections.map((s, i) => (
+            <CustomSectionCard
+              key={s.id}
+              section={s}
+              onChange={(next) => updateCustomSection(i, next)}
+              onDelete={() => deleteCustomSection(i)}
+            />
+          ))}
+
+          <Pressable
+            testID="add-custom-section"
+            onPress={addCustomSection}
+            style={({ pressed }) => [
+              styles.addSectionBtn,
+              {
+                borderColor: colors.borderStrong,
+                backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
+              },
+            ]}
+          >
+            <Icon name="plus-box-outline" size={20} color={colors.brandPrimary} />
+            <Text style={[styles.addSectionText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+              Add Custom Section
+            </Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <DiceRollModal roll={roll} onClose={() => setRoll(null)} />
+      <DiceRollModal request={roll} onClose={() => setRoll(null)} />
     </View>
+  );
+}
+
+function AbilitySection({
+  title,
+  keyName,
+  abilities,
+  stats,
+  onAdd,
+  onChange,
+  onDelete,
+  onUse,
+}: {
+  title: string;
+  keyName: AbilityKey;
+  abilities: Ability[];
+  stats: StatBlock[];
+  onAdd: () => void;
+  onChange: (i: number, a: Ability) => void;
+  onDelete: (i: number) => void;
+  onUse: (a: Ability) => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <View>
+      <View
+        style={[
+          styles.sectionHeader,
+          { backgroundColor: colors.surfaceTertiary, borderColor: colors.borderStrong },
+        ]}
+      >
+        <Text style={[styles.sectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+          {title}
+        </Text>
+      </View>
+      <View
+        style={[
+          styles.sectionBody,
+          { borderColor: colors.borderStrong, backgroundColor: colors.surface },
+        ]}
+      >
+        {abilities.length === 0 && (
+          <Text style={[styles.emptyLine, { color: colors.muted, fontFamily: fonts.display }]}>
+            No abilities yet.
+          </Text>
+        )}
+        <View style={{ gap: 10 }}>
+          {abilities.map((ab, i) => (
+            <AbilityCard
+              key={ab.id}
+              testID={`ability-${keyName}-${i}`}
+              ability={ab}
+              stats={stats}
+              onChange={(next) => onChange(i, next)}
+              onDelete={() => onDelete(i)}
+              onUse={onUse}
+            />
+          ))}
+        </View>
+        <AddButton testID={`add-${keyName}`} onPress={onAdd} label="Add Ability" />
+      </View>
+    </View>
+  );
+}
+
+function AddButton({
+  testID,
+  onPress,
+  label,
+}: {
+  testID: string;
+  onPress: () => void;
+  label: string;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.addBtn,
+        {
+          borderColor: colors.borderStrong,
+          backgroundColor: pressed ? colors.brandTertiary : "transparent",
+        },
+      ]}
+    >
+      <Icon name="plus" size={18} color={colors.brandPrimary} />
+      <Text style={[styles.addText, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -419,7 +617,7 @@ const styles = StyleSheet.create({
   },
   combatLabel: { fontSize: 11, letterSpacing: 1.5, fontWeight: "700" },
   combatValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
     minWidth: 60,
     textAlign: "center",
@@ -429,6 +627,20 @@ const styles = StyleSheet.create({
   statRow: { flexDirection: "row", gap: 10 },
   tapHint: { fontSize: 12, fontStyle: "italic", textAlign: "center", marginTop: -4 },
 
+  sectionHeader: {
+    borderWidth: 2,
+    borderBottomWidth: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  sectionTitle: { fontSize: 18, fontWeight: "700", letterSpacing: 1 },
+  sectionBody: {
+    borderWidth: 2,
+    padding: 10,
+    gap: 10,
+  },
+  emptyLine: { fontSize: 14, fontStyle: "italic" },
+
   heroHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -437,6 +649,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderWidth: 2,
     borderBottomWidth: 0,
+    gap: 8,
+    flexWrap: "wrap",
   },
   heroTitle: { fontSize: 18, fontWeight: "700", letterSpacing: 1 },
   heroPoints: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -457,10 +671,33 @@ const styles = StyleSheet.create({
   },
   hpBoxText: { fontSize: 16, fontWeight: "700" },
   hpLabel: { fontSize: 11, marginLeft: 4 },
-  heroInput: {
+  heroBody: {
     borderWidth: 2,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 120,
+    padding: 10,
+    gap: 10,
   },
+
+  addBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    paddingVertical: 10,
+    marginTop: 2,
+  },
+  addText: { fontSize: 14, fontWeight: "700", letterSpacing: 0.5 },
+
+  addSectionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    paddingVertical: 14,
+    marginTop: 4,
+  },
+  addSectionText: { fontSize: 15, fontWeight: "700", letterSpacing: 1 },
 });

@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Character } from "@/src/types";
+import { Character, migrateCharacter } from "@/src/types";
 
 const KEY = "aob:characters:v1";
 
@@ -7,8 +7,9 @@ export async function loadAllCharacters(): Promise<Character[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as Character[];
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(migrateCharacter);
   } catch {
     return [];
   }
