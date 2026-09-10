@@ -11,19 +11,22 @@ import Animated, {
 import * as Haptics from "expo-haptics";
 import { fonts, useTheme } from "@/src/theme";
 import { rollDice, DiceRollResult } from "@/src/utils/dice";
+import { RollHistoryEntry, RollMode, RollVerdict, genId } from "@/src/types";
 
 export type RollRequest = {
   label: string;
   target?: number; // if omitted, only rolls effect (no d20 check)
   effect?: { notation: string; type: "damage" | "healing" };
+  mode?: RollMode; // advantage / disadvantage on the d20 check
 };
 
 type Props = {
   request: RollRequest | null;
   onClose: () => void;
+  onLog?: (entry: RollHistoryEntry) => void;
 };
 
-type Verdict = "crit-success" | "crit-fail" | "success" | "fail";
+type Verdict = RollVerdict;
 
 function verdictFor(rolled: number, target: number): Verdict {
   if (rolled === 20) return "crit-success";
@@ -31,13 +34,14 @@ function verdictFor(rolled: number, target: number): Verdict {
   return rolled >= target ? "success" : "fail";
 }
 
-export default function DiceRollModal({ request, onClose }: Props) {
+export default function DiceRollModal({ request, onClose, onLog }: Props) {
   const { colors } = useTheme();
   const [rolled, setRolled] = useState<number | null>(null);
   const [tickValue, setTickValue] = useState<number>(0);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [effect, setEffect] = useState<DiceRollResult | null>(null);
   const [invalidNotation, setInvalidNotation] = useState<string | null>(null);
+  const [d20Pair, setD20Pair] = useState<number[] | null>(null);
   const scale = useSharedValue(0.4);
   const rotate = useSharedValue(0);
 
@@ -47,12 +51,14 @@ export default function DiceRollModal({ request, onClose }: Props) {
       setVerdict(null);
       setEffect(null);
       setInvalidNotation(null);
+      setD20Pair(null);
       return;
     }
     setRolled(null);
     setVerdict(null);
     setEffect(null);
     setInvalidNotation(null);
+    setD20Pair(null);
     scale.value = 0.4;
     rotate.value = 0;
     scale.value = withSequence(
@@ -74,6 +80,18 @@ export default function DiceRollModal({ request, onClose }: Props) {
           if (r) {
             setEffect(r);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            onLog?.({
+              id: genId(),
+              at: new Date().toISOString(),
+              label: request.label,
+              effect: {
+                notation: r.notation,
+                type: request.effect!.type,
+                total: r.total,
+                rolls: r.rolls,
+                modifier: r.modifier,
+              },
+            });
           } else {
             setInvalidNotation(request.effect!.notation);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -83,14 +101,28 @@ export default function DiceRollModal({ request, onClose }: Props) {
       return () => clearInterval(interval);
     }
 
-    // d20 vs target flow
+    // d20 vs target flow (with optional advantage / disadvantage)
+    const mode: RollMode = request.mode ?? "normal";
     const start = Date.now();
     const interval = setInterval(() => {
       setTickValue(1 + Math.floor(Math.random() * 20));
       if (Date.now() - start > 750) {
         clearInterval(interval);
-        const final = 1 + Math.floor(Math.random() * 20);
+        const d1 = 1 + Math.floor(Math.random() * 20);
+        const d2 = 1 + Math.floor(Math.random() * 20);
+        let final: number;
+        let pair: number[] | null = null;
+        if (mode === "advantage") {
+          pair = [d1, d2];
+          final = Math.max(d1, d2);
+        } else if (mode === "disadvantage") {
+          pair = [d1, d2];
+          final = Math.min(d1, d2);
+        } else {
+          final = d1;
+        }
         setRolled(final);
+        setD20Pair(pair);
         const target = request.target ?? 0;
         const v = verdictFor(final, target);
         setVerdict(v);
@@ -104,10 +136,30 @@ export default function DiceRollModal({ request, onClose }: Props) {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
         // Roll effect on success/crit-success only
+        let eff: DiceRollResult | null = null;
         if (request.effect && (v === "success" || v === "crit-success")) {
-          const eff = rollDice(request.effect.notation);
+          eff = rollDice(request.effect.notation);
           setEffect(eff);
         }
+        onLog?.({
+          id: genId(),
+          at: new Date().toISOString(),
+          label: request.label,
+          target,
+          rolled: final,
+          d20All: pair ?? undefined,
+          mode: mode !== "normal" ? mode : undefined,
+          verdict: v,
+          effect: eff && request.effect
+            ? {
+                notation: eff.notation,
+                type: request.effect.type,
+                total: eff.total,
+                rolls: eff.rolls,
+                modifier: eff.modifier,
+              }
+            : undefined,
+        });
       }
     }, 60);
 
@@ -176,6 +228,11 @@ export default function DiceRollModal({ request, onClose }: Props) {
             {request.target != null && (
               <Text style={[styles.target, { color: colors.onSurface, fontFamily: fonts.display }]}>
                 Target ≥ {request.target}
+                {request.mode && request.mode !== "normal" && (
+                  <Text style={{ color: colors.brandPrimary, fontFamily: fonts.displayBold }}>
+                    {"  · " + (request.mode === "advantage" ? "ADV" : "DIS")}
+                  </Text>
+                )}
               </Text>
             )}
 
@@ -193,6 +250,20 @@ export default function DiceRollModal({ request, onClose }: Props) {
                 {display}
               </Text>
             </Animated.View>
+
+            {d20Pair && (
+              <Text
+                testID="dice-pair"
+                style={{
+                  color: colors.muted,
+                  fontFamily: fonts.body,
+                  fontSize: 13,
+                  marginTop: -6,
+                }}
+              >
+                Rolled [{d20Pair.join(", ")}] — kept {rolled}
+              </Text>
+            )}
 
             <Text
               testID="dice-verdict-text"

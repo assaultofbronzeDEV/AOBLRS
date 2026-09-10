@@ -21,9 +21,15 @@ import {
   Ability,
   Character,
   CustomSection,
+  InventoryItem,
+  RollHistoryEntry,
+  RollMode,
   StatBlock,
   Weapon,
+  ROLL_HISTORY_MAX,
+  HP_MAX,
   createEmptyAbility,
+  createEmptyInventoryItem,
   createEmptyWeapon,
   genId,
 } from "@/src/types";
@@ -36,6 +42,8 @@ import CustomSectionCard from "@/src/components/CustomSectionCard";
 import DiceRollModal, { RollRequest } from "@/src/components/DiceRollModal";
 import MeleeDmgCell from "@/src/components/MeleeDmgCell";
 import WeaponCard, { getAttackTarget } from "@/src/components/WeaponCard";
+import InventoryList from "@/src/components/InventoryList";
+import RollHistoryList from "@/src/components/RollHistoryList";
 import { valueForRef, labelForRef } from "@/src/components/StatPickerModal";
 
 type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
@@ -47,6 +55,7 @@ export default function CharacterSheetScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [char, setChar] = useState<Character | null>(null);
   const [roll, setRoll] = useState<RollRequest | null>(null);
+  const [rollMode, setRollMode] = useState<RollMode>("normal");
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -71,7 +80,8 @@ export default function CharacterSheetScreen() {
 
   const triggerStatRoll = (label: string, target: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setRoll({ label, target });
+    setRoll({ label, target, mode: rollMode });
+    if (rollMode !== "normal") setRollMode("normal");
   };
 
   const pickPortrait = async () => {
@@ -161,7 +171,9 @@ export default function CharacterSheetScreen() {
       label: `${label} · ${linkedLabel}`,
       target,
       effect,
+      mode: rollMode,
     });
+    if (rollMode !== "normal") setRollMode("normal");
   };
 
   const addCustomSection = () => {
@@ -195,7 +207,56 @@ export default function CharacterSheetScreen() {
     const notation = weapon.damageRoll.trim();
     const effect = notation ? { notation, type: "damage" as const } : undefined;
     const weaponName = weapon.name.trim() || (weapon.attackKind === "melee" ? "Melee weapon" : "Ranged weapon");
-    setRoll({ label: `${weaponName} · ${label}`, target, effect });
+    setRoll({ label: `${weaponName} · ${label}`, target, effect, mode: rollMode });
+    if (rollMode !== "normal") setRollMode("normal");
+  };
+
+  const logRoll = (entry: RollHistoryEntry) => {
+    setChar((prev) => {
+      if (!prev) return prev;
+      const next: Character = {
+        ...prev,
+        rollHistory: [entry, ...prev.rollHistory].slice(0, ROLL_HISTORY_MAX),
+      };
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      saveTimeout.current = setTimeout(() => upsertCharacter(next), 400);
+      return next;
+    });
+  };
+
+  const clearHistory = () => {
+    if (!char) return;
+    update({ rollHistory: [] });
+    Haptics.selectionAsync();
+  };
+
+  const longRest = () => {
+    if (!char) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const clearUsed = (list: Ability[]) => list.map((a) => ({ ...a, used: false }));
+    update({
+      hp: HP_MAX,
+      oncePerTurn: clearUsed(char.oncePerTurn),
+      oncePerRest: clearUsed(char.oncePerRest),
+      heroAbilities: clearUsed(char.heroAbilities),
+    });
+  };
+
+  const cycleRollMode = () => {
+    const order: RollMode[] = ["normal", "advantage", "disadvantage"];
+    const idx = order.indexOf(rollMode);
+    setRollMode(order[(idx + 1) % order.length]);
+    Haptics.selectionAsync();
+  };
+
+  const addInventoryItem = () => {
+    if (!char) return;
+    update({ inventoryItems: [...char.inventoryItems, createEmptyInventoryItem()] });
+    Haptics.selectionAsync();
+  };
+
+  const setInventoryItems = (items: InventoryItem[]) => {
+    update({ inventoryItems: items });
   };
 
   const updateCustomSection = (idx: number, next: CustomSection) => {
@@ -343,6 +404,70 @@ export default function CharacterSheetScreen() {
             </View>
           </View>
 
+          <View style={styles.actionRow}>
+            <Pressable
+              testID="roll-mode-toggle"
+              onPress={cycleRollMode}
+              style={({ pressed }) => [
+                styles.actionChip,
+                {
+                  borderColor: colors.borderStrong,
+                  backgroundColor:
+                    rollMode === "advantage"
+                      ? "rgba(46,111,64,0.15)"
+                      : rollMode === "disadvantage"
+                        ? "rgba(138,42,43,0.15)"
+                        : pressed
+                          ? colors.brandTertiary
+                          : colors.surfaceSecondary,
+                },
+              ]}
+            >
+              <Icon
+                name={
+                  rollMode === "advantage"
+                    ? "arrow-up-bold-circle-outline"
+                    : rollMode === "disadvantage"
+                      ? "arrow-down-bold-circle-outline"
+                      : "dice-multiple-outline"
+                }
+                size={16}
+                color={
+                  rollMode === "advantage"
+                    ? colors.success
+                    : rollMode === "disadvantage"
+                      ? colors.error
+                      : colors.onSurface
+                }
+              />
+              <Text style={[styles.actionText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+                {rollMode === "advantage"
+                  ? "Advantage"
+                  : rollMode === "disadvantage"
+                    ? "Disadvantage"
+                    : "Normal roll"}
+              </Text>
+            </Pressable>
+            <Pressable
+              testID="long-rest-btn"
+              onPress={longRest}
+              style={({ pressed }) => [
+                styles.actionChip,
+                {
+                  borderColor: colors.borderStrong,
+                  backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary,
+                },
+              ]}
+            >
+              <Icon name="campfire" size={16} color={colors.onBrandPrimary} />
+              <Text
+                style={[styles.actionText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}
+              >
+                Long Rest
+              </Text>
+            </Pressable>
+          </View>
+
           {statPairs.map((pair, rowIdx) => (
             <View key={rowIdx} style={styles.statRow}>
               {pair.map((block, colIdx) =>
@@ -364,44 +489,27 @@ export default function CharacterSheetScreen() {
             Tap the stat or skill name to roll a d20 against it.
           </Text>
 
-          <View>
-            <View
-              style={[
-                styles.sectionHeader,
-                { backgroundColor: colors.surfaceTertiary, borderColor: colors.borderStrong },
-              ]}
-            >
-              <Text style={[styles.sectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-                Weapons
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.sectionBody,
-                { borderColor: colors.borderStrong, backgroundColor: colors.surface },
-              ]}
-            >
-              {char.weapons.length === 0 && (
-                <Text style={[styles.emptyLine, { color: colors.muted, fontFamily: fonts.display }]}>
-                  No weapons yet.
-                </Text>
-              )}
-              <View style={{ gap: 10 }}>
-                {char.weapons.map((w, i) => (
-                  <WeaponCard
-                    key={w.id}
-                    testID={`weapon-${i}`}
-                    weapon={w}
-                    stats={char.stats}
-                    onChange={(next) => updateWeapon(i, next)}
-                    onDelete={() => deleteWeapon(i)}
-                    onUse={useWeapon}
-                  />
-                ))}
-              </View>
-              <AddButton testID="add-weapon" onPress={addWeapon} label="Add Weapon" />
-            </View>
-          </View>
+          <CollapsibleSection
+            title="Weapons"
+            keyName="weapons"
+            count={char.weapons.length}
+            emptyLabel="No weapons yet."
+            addTestID="add-weapon"
+            addLabel="Add Weapon"
+            onAdd={addWeapon}
+          >
+            {char.weapons.map((w, i) => (
+              <WeaponCard
+                key={w.id}
+                testID={`weapon-${i}`}
+                weapon={w}
+                stats={char.stats}
+                onChange={(next) => updateWeapon(i, next)}
+                onDelete={() => deleteWeapon(i)}
+                onUse={useWeapon}
+              />
+            ))}
+          </CollapsibleSection>
 
           <AbilitySection
             title="Once Per Turn"
@@ -425,68 +533,16 @@ export default function CharacterSheetScreen() {
             onUse={useAbility}
           />
 
-          <View>
-            <View style={[styles.heroHeader, { backgroundColor: colors.surfaceTertiary, borderColor: colors.borderStrong }]}>
-              <Text style={[styles.heroTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-                Hero Abilities
-              </Text>
-              <View style={styles.heroPoints}>
-                <Pressable
-                  testID="hero-points-minus"
-                  onPress={() => changeHeroPoints(-1)}
-                  hitSlop={8}
-                  style={[styles.hpStep, { borderColor: colors.borderStrong }]}
-                >
-                  <Icon name="minus" size={16} color={colors.onSurface} />
-                </Pressable>
-                <View style={[styles.hpBox, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
-                  <Text
-                    testID="hero-points-value"
-                    style={[styles.hpBoxText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
-                  >
-                    {char.heroPoints}
-                  </Text>
-                </View>
-                <Pressable
-                  testID="hero-points-plus"
-                  onPress={() => changeHeroPoints(1)}
-                  hitSlop={8}
-                  style={[styles.hpStep, { borderColor: colors.borderStrong }]}
-                >
-                  <Icon name="plus" size={16} color={colors.onSurface} />
-                </Pressable>
-                <Text style={[styles.hpLabel, { color: colors.muted, fontFamily: fonts.display }]}>
-                  Hero Pts
-                </Text>
-              </View>
-            </View>
-            <View
-              style={[
-                styles.heroBody,
-                { borderColor: colors.borderStrong, backgroundColor: colors.surface },
-              ]}
-            >
-              {char.heroAbilities.length === 0 && (
-                <Text style={[styles.emptyLine, { color: colors.muted, fontFamily: fonts.display }]}>
-                  No hero abilities yet.
-                </Text>
-              )}
-              <View style={{ gap: 10 }}>
-                {char.heroAbilities.map((ab, i) => (
-                  <AbilityCard
-                    key={ab.id}
-                    testID={`ability-heroAbilities-${i}`}
-                    ability={ab}
-                    stats={char.stats}
-                    onChange={(next) => updateAbility("heroAbilities", i, next)}
-                    onDelete={() => deleteAbility("heroAbilities", i)}
-                    onUse={useAbility}
-                  />
-                ))}
-              </View>
-              <AddButton testID="add-heroAbilities" onPress={() => addAbility("heroAbilities")} label="Add Hero Ability" />
-            </View>
-          </View>
+          <HeroSection
+            heroPoints={char.heroPoints}
+            onHeroPointsChange={changeHeroPoints}
+            abilities={char.heroAbilities}
+            stats={char.stats}
+            onAdd={() => addAbility("heroAbilities")}
+            onChange={(i, a) => updateAbility("heroAbilities", i, a)}
+            onDelete={(i) => deleteAbility("heroAbilities", i)}
+            onUse={useAbility}
+          />
 
           <LabeledField
             label="Backstory"
@@ -495,17 +551,25 @@ export default function CharacterSheetScreen() {
             onChangeText={(t) => update({ backstory: t })}
             multiline
             minHeight={140}
+            collapsible
             placeholder="Where your hero comes from…"
           />
-          <LabeledField
-            label="Inventory"
-            testID="input-inventory"
-            value={char.inventory}
-            onChangeText={(t) => update({ inventory: t })}
-            multiline
-            minHeight={140}
-            placeholder="Items, gold, gear…"
-          />
+          <CollapsibleSection
+            title="Inventory"
+            keyName="inventory"
+            count={char.inventoryItems.length}
+            emptyLabel="No items yet."
+            addTestID="add-inv-item"
+            addLabel="Add Item"
+            onAdd={addInventoryItem}
+            hideAdd
+          >
+            <InventoryList
+              items={char.inventoryItems}
+              onChange={setInventoryItems}
+              onAdd={addInventoryItem}
+            />
+          </CollapsibleSection>
           <LabeledField
             label="Notes"
             testID="input-notes"
@@ -513,8 +577,22 @@ export default function CharacterSheetScreen() {
             onChangeText={(t) => update({ notes: t })}
             multiline
             minHeight={140}
+            collapsible
             placeholder="Session notes, quests…"
           />
+
+          <CollapsibleSection
+            title="Roll History"
+            keyName="rollHistory"
+            count={char.rollHistory.length}
+            emptyLabel="No rolls yet."
+            addTestID="roll-history-clear-hidden"
+            addLabel=""
+            onAdd={() => {}}
+            hideAdd
+          >
+            <RollHistoryList history={char.rollHistory} onClear={clearHistory} />
+          </CollapsibleSection>
 
           {char.customSections.map((s, i) => (
             <CustomSectionCard
@@ -544,7 +622,7 @@ export default function CharacterSheetScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <DiceRollModal request={roll} onClose={() => setRoll(null)} />
+      <DiceRollModal request={roll} onClose={() => setRoll(null)} onLog={logRoll} />
     </View>
   );
 }
@@ -569,44 +647,67 @@ function AbilitySection({
   onUse: (a: Ability) => void;
 }) {
   const { colors } = useTheme();
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <View>
-      <View
-        style={[
+      <Pressable
+        testID={`section-${keyName}-toggle`}
+        onPress={() => setCollapsed((c) => !c)}
+        style={({ pressed }) => [
           styles.sectionHeader,
-          { backgroundColor: colors.surfaceTertiary, borderColor: colors.borderStrong },
+          {
+            backgroundColor: pressed ? colors.brandTertiary : colors.surfaceTertiary,
+            borderColor: colors.borderStrong,
+            borderBottomWidth: collapsed ? 2 : 0,
+          },
         ]}
       >
-        <Text style={[styles.sectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-          {title}
-        </Text>
-      </View>
-      <View
-        style={[
-          styles.sectionBody,
-          { borderColor: colors.borderStrong, backgroundColor: colors.surface },
-        ]}
-      >
-        {abilities.length === 0 && (
-          <Text style={[styles.emptyLine, { color: colors.muted, fontFamily: fonts.display }]}>
-            No abilities yet.
+        <View style={styles.sectionHeaderInner}>
+          <Text style={[styles.sectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+            {title}
           </Text>
-        )}
-        <View style={{ gap: 10 }}>
-          {abilities.map((ab, i) => (
-            <AbilityCard
-              key={ab.id}
-              testID={`ability-${keyName}-${i}`}
-              ability={ab}
-              stats={stats}
-              onChange={(next) => onChange(i, next)}
-              onDelete={() => onDelete(i)}
-              onUse={onUse}
+          <View style={styles.sectionHeaderRight}>
+            {abilities.length > 0 && (
+              <Text style={[styles.sectionCount, { color: colors.muted, fontFamily: fonts.displayBold }]}>
+                {abilities.length}
+              </Text>
+            )}
+            <Icon
+              name={collapsed ? "chevron-down" : "chevron-up"}
+              size={22}
+              color={colors.onSurface}
             />
-          ))}
+          </View>
         </View>
-        <AddButton testID={`add-${keyName}`} onPress={onAdd} label="Add Ability" />
-      </View>
+      </Pressable>
+      {!collapsed && (
+        <View
+          style={[
+            styles.sectionBody,
+            { borderColor: colors.borderStrong, backgroundColor: colors.surface },
+          ]}
+        >
+          {abilities.length === 0 && (
+            <Text style={[styles.emptyLine, { color: colors.muted, fontFamily: fonts.display }]}>
+              No abilities yet.
+            </Text>
+          )}
+          <View style={{ gap: 10 }}>
+            {abilities.map((ab, i) => (
+              <AbilityCard
+                key={ab.id}
+                testID={`ability-${keyName}-${i}`}
+                ability={ab}
+                stats={stats}
+                onChange={(next) => onChange(i, next)}
+                onDelete={() => onDelete(i)}
+                onUse={onUse}
+              />
+            ))}
+          </View>
+          <AddButton testID={`add-${keyName}`} onPress={onAdd} label="Add Ability" />
+        </View>
+      )}
     </View>
   );
 }
@@ -638,6 +739,191 @@ function AddButton({
         {label}
       </Text>
     </Pressable>
+  );
+}
+
+function CollapsibleSection({
+  title,
+  keyName,
+  count,
+  emptyLabel,
+  addTestID,
+  addLabel,
+  onAdd,
+  hideAdd,
+  children,
+}: {
+  title: string;
+  keyName: string;
+  count: number;
+  emptyLabel: string;
+  addTestID: string;
+  addLabel: string;
+  onAdd: () => void;
+  hideAdd?: boolean;
+  children: React.ReactNode;
+}) {
+  const { colors } = useTheme();
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <View>
+      <Pressable
+        testID={`section-${keyName}-toggle`}
+        onPress={() => setCollapsed((c) => !c)}
+        style={({ pressed }) => [
+          styles.sectionHeader,
+          {
+            backgroundColor: pressed ? colors.brandTertiary : colors.surfaceTertiary,
+            borderColor: colors.borderStrong,
+            borderBottomWidth: collapsed ? 2 : 0,
+          },
+        ]}
+      >
+        <View style={styles.sectionHeaderInner}>
+          <Text style={[styles.sectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+            {title}
+          </Text>
+          <View style={styles.sectionHeaderRight}>
+            {count > 0 && (
+              <Text style={[styles.sectionCount, { color: colors.muted, fontFamily: fonts.displayBold }]}>
+                {count}
+              </Text>
+            )}
+            <Icon
+              name={collapsed ? "chevron-down" : "chevron-up"}
+              size={22}
+              color={colors.onSurface}
+            />
+          </View>
+        </View>
+      </Pressable>
+      {!collapsed && (
+        <View
+          style={[
+            styles.sectionBody,
+            { borderColor: colors.borderStrong, backgroundColor: colors.surface },
+          ]}
+        >
+          {count === 0 && !hideAdd && (
+            <Text style={[styles.emptyLine, { color: colors.muted, fontFamily: fonts.display }]}>
+              {emptyLabel}
+            </Text>
+          )}
+          <View style={{ gap: 10 }}>{children}</View>
+          {!hideAdd && <AddButton testID={addTestID} onPress={onAdd} label={addLabel} />}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function HeroSection({
+  heroPoints,
+  onHeroPointsChange,
+  abilities,
+  stats,
+  onAdd,
+  onChange,
+  onDelete,
+  onUse,
+}: {
+  heroPoints: number;
+  onHeroPointsChange: (delta: number) => void;
+  abilities: Ability[];
+  stats: StatBlock[];
+  onAdd: () => void;
+  onChange: (i: number, a: Ability) => void;
+  onDelete: (i: number) => void;
+  onUse: (a: Ability) => void;
+}) {
+  const { colors } = useTheme();
+  const [collapsed, setCollapsed] = useState(false);
+  return (
+    <View>
+      <View
+        style={[
+          styles.heroHeader,
+          {
+            backgroundColor: colors.surfaceTertiary,
+            borderColor: colors.borderStrong,
+            borderBottomWidth: collapsed ? 2 : 0,
+          },
+        ]}
+      >
+        <Pressable
+          testID="section-heroAbilities-toggle"
+          onPress={() => setCollapsed((c) => !c)}
+          hitSlop={6}
+          style={styles.heroTitleWrap}
+        >
+          <Text style={[styles.heroTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+            Hero Abilities
+          </Text>
+          <Icon
+            name={collapsed ? "chevron-down" : "chevron-up"}
+            size={22}
+            color={colors.onSurface}
+          />
+        </Pressable>
+        <View style={styles.heroPoints}>
+          <Pressable
+            testID="hero-points-minus"
+            onPress={() => onHeroPointsChange(-1)}
+            hitSlop={8}
+            style={[styles.hpStep, { borderColor: colors.borderStrong }]}
+          >
+            <Icon name="minus" size={16} color={colors.onSurface} />
+          </Pressable>
+          <View style={[styles.hpBox, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
+            <Text
+              testID="hero-points-value"
+              style={[styles.hpBoxText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
+            >
+              {heroPoints}
+            </Text>
+          </View>
+          <Pressable
+            testID="hero-points-plus"
+            onPress={() => onHeroPointsChange(1)}
+            hitSlop={8}
+            style={[styles.hpStep, { borderColor: colors.borderStrong }]}
+          >
+            <Icon name="plus" size={16} color={colors.onSurface} />
+          </Pressable>
+          <Text style={[styles.hpLabel, { color: colors.muted, fontFamily: fonts.display }]}>
+            Hero Pts
+          </Text>
+        </View>
+      </View>
+      {!collapsed && (
+        <View
+          style={[
+            styles.heroBody,
+            { borderColor: colors.borderStrong, backgroundColor: colors.surface },
+          ]}
+        >
+          {abilities.length === 0 && (
+            <Text style={[styles.emptyLine, { color: colors.muted, fontFamily: fonts.display }]}>
+              No hero abilities yet.
+            </Text>
+          )}
+          <View style={{ gap: 10 }}>
+            {abilities.map((ab, i) => (
+              <AbilityCard
+                key={ab.id}
+                testID={`ability-heroAbilities-${i}`}
+                ability={ab}
+                stats={stats}
+                onChange={(next) => onChange(i, next)}
+                onDelete={() => onDelete(i)}
+                onUse={onUse}
+              />
+            ))}
+          </View>
+          <AddButton testID="add-heroAbilities" onPress={onAdd} label="Add Hero Ability" />
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -703,11 +989,43 @@ const styles = StyleSheet.create({
   statRow: { flexDirection: "row", gap: 10 },
   tapHint: { fontSize: 12, fontStyle: "italic", textAlign: "center", marginTop: -4 },
 
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  actionChip: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderWidth: 2,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+  },
+  actionText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
+
   sectionHeader: {
     borderWidth: 2,
     borderBottomWidth: 0,
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  sectionHeaderInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  sectionHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sectionCount: {
+    fontSize: 14,
+    minWidth: 20,
+    textAlign: "right",
   },
   sectionTitle: { fontSize: 18, fontWeight: "700", letterSpacing: 1 },
   sectionBody: {
@@ -729,6 +1047,12 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   heroTitle: { fontSize: 18, fontWeight: "700", letterSpacing: 1 },
+  heroTitleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 1,
+  },
   heroPoints: { flexDirection: "row", alignItems: "center", gap: 6 },
   hpStep: {
     width: 28,

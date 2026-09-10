@@ -14,21 +14,20 @@ export type StatBlock = {
 
 export type EffectType = "none" | "damage" | "healing";
 
-// A stat reference lets an ability point at either a main stat or a sub-skill
-// on the same character sheet.
 export type StatRef = {
   kind: "main" | "sub";
   statKey: StatKey;
-  subIndex?: number; // when kind === "sub"
+  subIndex?: number;
 };
 
 export type Ability = {
   id: string;
   title: string;
   description: string;
-  linkedStat?: StatRef; // when set, "Use" rolls d20 vs that stat
-  effectRoll: string; // dice notation like "1d6+2"; empty means no effect roll
+  linkedStat?: StatRef;
+  effectRoll: string;
   effectType: EffectType;
+  used?: boolean; // marked when Use is pressed; Long Rest clears it
 };
 
 export type CustomSection = {
@@ -46,7 +45,37 @@ export type Weapon = {
   damageRoll: string;
 };
 
+export type InventoryItem = {
+  id: string;
+  name: string;
+  qty: number;
+  used: boolean;
+};
+
+export type RollMode = "normal" | "advantage" | "disadvantage";
+
+export type RollVerdict = "crit-success" | "crit-fail" | "success" | "fail";
+
+export type RollHistoryEntry = {
+  id: string;
+  at: string; // ISO
+  label: string;
+  target?: number;
+  rolled?: number;
+  d20All?: number[]; // both d20s when advantage/disadvantage
+  mode?: RollMode;
+  verdict?: RollVerdict;
+  effect?: {
+    notation: string;
+    type: "damage" | "healing";
+    total: number;
+    rolls: number[];
+    modifier: number;
+  };
+};
+
 export const HP_MAX = 20;
+export const ROLL_HISTORY_MAX = 20;
 
 export type Character = {
   id: string;
@@ -54,19 +83,21 @@ export type Character = {
   className: string;
   level: string;
   portraitUri?: string;
-  hp: number; // 0..HP_MAX
+  hp: number;
   armour: string;
   meleeDmg: string;
   stats: StatBlock[];
   oncePerTurn: Ability[];
   oncePerRest: Ability[];
-  heroAbilities: Ability[]; // usually 1 but allow multiple
+  heroAbilities: Ability[];
   heroPoints: number;
   backstory: string;
-  inventory: string;
+  inventory: string; // legacy freeform text kept for backward compat
+  inventoryItems: InventoryItem[];
   notes: string;
   customSections: CustomSection[];
   weapons: Weapon[];
+  rollHistory: RollHistoryEntry[];
   createdAt: string;
   updatedAt: string;
 };
@@ -121,7 +152,6 @@ export const defaultStats = (): StatBlock[] => [
 export const genId = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-// Normalize dice-notation shorthand: "1xD6" / "2*d8+3" -> "1d6" / "2d8+3".
 export const normalizeDice = (raw: unknown): string | undefined => {
   if (typeof raw !== "string") return undefined;
   const m = raw.match(/^\s*(\d+)\s*[xX*]?\s*[dD]\s*(\d+)\s*([+\-]\s*\d+)?\s*$/);
@@ -137,6 +167,7 @@ export const createEmptyAbility = (): Ability => ({
   linkedStat: undefined,
   effectRoll: "",
   effectType: "none",
+  used: false,
 });
 
 export const createEmptyWeapon = (): Weapon => ({
@@ -144,6 +175,13 @@ export const createEmptyWeapon = (): Weapon => ({
   name: "",
   attackKind: "melee",
   damageRoll: "1d6",
+});
+
+export const createEmptyInventoryItem = (name = ""): InventoryItem => ({
+  id: genId(),
+  name,
+  qty: 1,
+  used: false,
 });
 
 export const createEmptyCharacter = (): Character => {
@@ -164,18 +202,55 @@ export const createEmptyCharacter = (): Character => {
     heroPoints: 0,
     backstory: "",
     inventory: "",
+    inventoryItems: [],
     notes: "",
     customSections: [],
     weapons: [],
+    rollHistory: [],
     createdAt: now,
     updatedAt: now,
   };
 };
 
-// Migrate loaded characters that may lack newer fields (from older MVP schema).
+const parseInventoryFromString = (raw: string): InventoryItem[] =>
+  raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => createEmptyInventoryItem(l));
+
 export const migrateCharacter = (raw: any): Character => {
   const asArr = (v: any): any[] => (Array.isArray(v) ? v : []);
   const now = new Date().toISOString();
+  const migratedAbility = (a: any): Ability => ({
+    id: a?.id ?? genId(),
+    title: a?.title ?? "",
+    description: a?.description ?? "",
+    linkedStat: a?.linkedStat,
+    effectRoll: a?.effectRoll ?? "",
+    effectType: a?.effectType ?? "none",
+    used: !!a?.used,
+  });
+  const oncePerTurn = Array.isArray(raw.oncePerTurn)
+    ? raw.oncePerTurn.map(migratedAbility)
+    : typeof raw.oncePerTurn === "string" && raw.oncePerTurn.trim()
+      ? [{ ...createEmptyAbility(), description: raw.oncePerTurn }]
+      : [];
+  const oncePerRest = Array.isArray(raw.oncePerRest)
+    ? raw.oncePerRest.map(migratedAbility)
+    : typeof raw.oncePerRest === "string" && raw.oncePerRest.trim()
+      ? [{ ...createEmptyAbility(), description: raw.oncePerRest }]
+      : [];
+  const heroAbilities = Array.isArray(raw.heroAbilities)
+    ? raw.heroAbilities.map(migratedAbility)
+    : typeof raw.heroAbility === "string" && raw.heroAbility.trim()
+      ? [{ ...createEmptyAbility(), title: "Hero Ability", description: raw.heroAbility }]
+      : [];
+  const inventoryItems: InventoryItem[] = Array.isArray(raw.inventoryItems) && raw.inventoryItems.length > 0
+    ? raw.inventoryItems
+    : typeof raw.inventory === "string" && raw.inventory.trim()
+      ? parseInventoryFromString(raw.inventory)
+      : [];
   return {
     id: raw.id ?? genId(),
     name: raw.name ?? "",
@@ -186,27 +261,19 @@ export const migrateCharacter = (raw: any): Character => {
     armour: raw.armour ?? "10",
     meleeDmg: normalizeDice(raw.meleeDmg) ?? "1d6",
     stats: Array.isArray(raw.stats) && raw.stats.length === 4 ? raw.stats : defaultStats(),
-    oncePerTurn: Array.isArray(raw.oncePerTurn)
-      ? raw.oncePerTurn
-      : typeof raw.oncePerTurn === "string" && raw.oncePerTurn.trim()
-        ? [{ ...createEmptyAbility(), description: raw.oncePerTurn }]
-        : [],
-    oncePerRest: Array.isArray(raw.oncePerRest)
-      ? raw.oncePerRest
-      : typeof raw.oncePerRest === "string" && raw.oncePerRest.trim()
-        ? [{ ...createEmptyAbility(), description: raw.oncePerRest }]
-        : [],
-    heroAbilities: Array.isArray(raw.heroAbilities)
-      ? raw.heroAbilities
-      : typeof raw.heroAbility === "string" && raw.heroAbility.trim()
-        ? [{ ...createEmptyAbility(), title: "Hero Ability", description: raw.heroAbility }]
-        : [],
+    oncePerTurn,
+    oncePerRest,
+    heroAbilities,
     heroPoints: typeof raw.heroPoints === "number" ? raw.heroPoints : 0,
     backstory: raw.backstory ?? "",
     inventory: raw.inventory ?? "",
+    inventoryItems,
     notes: raw.notes ?? "",
     customSections: asArr(raw.customSections),
     weapons: asArr(raw.weapons),
+    rollHistory: Array.isArray(raw.rollHistory)
+      ? raw.rollHistory.slice(0, ROLL_HISTORY_MAX)
+      : [],
     createdAt: raw.createdAt ?? now,
     updatedAt: raw.updatedAt ?? now,
   };

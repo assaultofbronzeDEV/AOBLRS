@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend-only regression for the ASSAULT OF BRONZE character sheet. All requested features are working: visible trash delete + in-app confirmation modal (with cancel/backdrop/delete + long-press fallback), collapsible section headers (weapons, oncePerTurn, oncePerRest, heroAbilities, inventory, rollHistory) and LabeledField toggles (backstory, notes), roll-mode toggle cycles Normal -> Advantage -> Disadvantage -> Normal, ADV roll shows 'Rolled [d1, d2] — kept N' and auto-reverts to Normal after a single d20 roll (verified), Long Rest keeps HP at 20, Roll History records entries and Clear button is present, Inventory checklist qty +/- and used-toggle work with proper clamping at 0. No console errors observed. Preview URL: https://campaign-companion-13.preview.emergentagent.com.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_9.json"],
+  "action_items": [
+    "Minor: duplicate testID 'add-inv-item' is declared in both the parent CollapsibleSection (addTestID) and inside InventoryList. Because hideAdd=true in the parent, only one renders in practice, but consider removing the addTestID prop from the Inventory CollapsibleSection to avoid future ambiguity.",
+    "Consider adding a testID='hp-current' on the HP tracker so Long Rest can be verified end-to-end with a non-max starting HP; current test only confirms HP stays at 20 (already max) after Long Rest."
+  ],
+  "critical_code_review_comments": [
+    "character/[id].tsx is ~1100 lines. Extracting AbilitySection / HeroSection / CollapsibleSection into their own files would help maintainability.",
+    "triggerStatRoll, useAbility and useWeapon all repeat the pattern 'if (rollMode !== normal) setRollMode(normal)'. Could be centralised in a small helper to avoid drift."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "Created 2 test heroes via the New Hero FAB during the run; one of them was deleted via the trash confirmation flow as part of the test.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Preview URL: https://campaign-companion-13.preview.emergentagent.com. Delete flow: [data-testid^='character-row-'][data-testid$='-delete'] -> modal with delete-confirm-cancel / delete-confirm-delete / delete-confirm-backdrop. Long-press ([data-testid$='-open']) also opens the modal. Roll mode: [data-testid='roll-mode-toggle'] cycles Normal -> Advantage -> Disadvantage -> Normal; the toggle text uses an icon glyph prefix + label so match on substring (Advantage / Disadvantage / Normal). ADV/DIS roll must reset to Normal automatically after any d20 roll (stat/ability/weapon). Effect-only rolls (Melee DMG) do not consume rollMode. Roll history entries render as [data-testid^='roll-entry-'] inside section-rollHistory when expanded, and roll-history-clear is the clear action. Inventory section is expanded by default; add-inv-item lives inside InventoryList when expanded. HP has no hp-current testID exposed at the top of the sheet — HpTracker is a hearts grid, so Long Rest verification is limited unless the grid is inspected.",
+  "rca_of_issue": ""
+}

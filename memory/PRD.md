@@ -1,58 +1,57 @@
 # Assault of Bronze Companion — PRD
 
 ## Overview
-Mobile character sheet app for the "Assault of Bronze" lightweight roleplay TTRPG. Fully offline, multi-character, portrait-friendly.
+Mobile character sheet app for the "Assault of Bronze" lightweight roleplay TTRPG. Fully offline, multi-character, portrait-friendly, with a full session toolkit (dice, history, rests, inventory).
 
-## Core Features
+## Character List
+- Hero rows show portrait / name / class / level / HP.
+- FAB creates a new hero.
+- **Visible trash icon** on each row and long-press both open an **in-app confirmation modal** (Cancel / Delete).
 
-### Character List
-- List all heroes with portrait / name / class / level / HP `X / 20`.
-- FAB creates a new hero. Long-press a row to delete a hero.
+## Character Sheet
 
-### Character Sheet
-- **Portrait**: tap to pick from photo library; stored as inline base64 so it survives reloads.
-- **Name / Class / Level** labeled inputs.
-- **HP tracker**: fixed max of 20. Two neat rows of 10 hearts. Tap a heart to jump to that value. `+` / `-` buttons for fine adjustment (long-press = ±5).
-- **Armour** compact number input.
-- **Melee DMG** is a bronze "Roll Damage" button showing the current dice notation. Tap to roll (effect-only DAMAGE flow). Pencil icon toggles inline editing of the notation.
-- **4 stat blocks** — STR / DEX / INT / CHA abbreviations with the full name in small caps. Tapping the label/skill name rolls a d20 vs its number; tapping the number only edits.
+### Header block
+- Portrait picker (persisted as base64).
+- Name / Class / Level labeled inputs.
 
-### Weapons *(new)*
-Above Once Per Turn. Each weapon card has:
-- Name
-- Kind toggle (Melee ↔ Ranged, locked to those two)
-- Damage roll notation (e.g. `1d8+1`)
-- **Attack** button — rolls d20 vs `Melee Attack` or `Ranged Attack` (DEX sub-skills); on success also rolls the damage dice.
+### Combat block
+- HP tracker: fixed max of 20, two rows of 10 tappable hearts, +/- buttons.
+- Armour compact number input.
+- Melee DMG bronze roll button with tap-to-edit notation.
 
-### Structured Abilities
-Three sections: **Once Per Turn**, **Once Per Rest**, **Hero Abilities**. Each holds a list of ability cards with:
-- Title, description
-- Optional linked stat (any main stat or sub-skill; picker modal)
-- Optional damage/healing dice roll
-- **Use** button: rolls d20 vs the linked stat's target (green success / red failure / gold nat 20 / dark red nat 1). On success (or when no stat is linked), the effect dice roll also fires.
+### Action bar (below combat)
+- **Roll mode chip** cycles Normal → Advantage → Disadvantage → Normal. Auto-resets to Normal after one d20 roll consumes it (effect-only rolls do not consume the mode).
+- **Long Rest** button refills HP to 20 and clears `used` flags on all abilities.
 
-### Hero Points
-0–10 counter with +/- buttons next to Hero Abilities.
+### Stat grid
+- STR / DEX / INT / CHA cards with 4 sub-skills each. Tap a label to roll d20 vs its number; the number field only edits.
 
-### Custom Sections
-"Add Custom Section" at the bottom creates a titled text-box you can name and fill freely.
-
-### Freeform sections
-Backstory, Inventory, Notes remain as long-form multiline inputs.
+### Collapsible sections (tap header to expand/collapse)
+- **Weapons** — add cards with Melee/Ranged toggle, damage roll, and Attack button (d20 vs the DEX Melee/Ranged Attack, damage on success).
+- **Once Per Turn / Once Per Rest / Hero Abilities** — ability cards with title, description, linked stat picker, damage/healing dice, Use button.
+- **Backstory** — long-form freeform text (collapsible).
+- **Inventory** — checklist of items with quantity +/- and a used checkbox that strikes through the name.
+- **Notes** — long-form freeform text (collapsible).
+- **Roll History** — last 20 rolls per character with label, d20 result vs target (and adv/dis note), verdict, and damage/healing total. Clear button included.
+- **Custom sections** — user-titled text boxes at the bottom, collapsible.
 
 ### Dice Roll Overlay
-Animated d20 rotates and ticks through values, then reveals the final number. Verdict colors: green success, red failure, gold nat 20, dark red nat 1. When an effect roll is attached, the modal shows the total damage/healing plus the individual dice. If the dice notation cannot be parsed, the modal shows "INVALID DICE NOTATION" with a helpful hint instead of getting stuck.
+- Animated d20 rotates + ticker.
+- Colors: green success, red failure, gold nat 20, dark red nat 1.
+- **Advantage / Disadvantage** rolls 2 d20s and shows both dice + the kept value.
+- Effect rolls (damage/healing) fire on success and show total + individual rolls.
+- Invalid dice notation shows a friendly hint instead of getting stuck.
 
 ## Dice Parser
-Accepts standard notation `NdM`, `NdM+K`, `NdM-K`, and the tabletop shorthand `NxDM` / `N*dM`. Old characters using `1xD6` are automatically normalised to `1d6` on load.
+Accepts `NdM`, `NdM±K`, and the tabletop shorthand `NxDM` / `N*dM`. Legacy `1xD6` melee defaults auto-migrate to `1d6`.
 
 ## Persistence
-- `AsyncStorage` under key `aob:characters:v1`.
-- 400 ms debounced autosave after every edit.
-- Migration layer covers old string-based abilities, `hpMax` removal, missing weapons array, and legacy `1xD6` melee notation.
+- AsyncStorage under `aob:characters:v1`.
+- 400 ms debounced autosave.
+- Migration layer covers old string-based abilities, `hpMax` removal, missing weapons/inventoryItems/rollHistory arrays, legacy `1xD6` melee notation, and legacy inventory strings (parsed line-by-line into checklist items).
 
 ## Design
-Parchment / medieval scroll aesthetic. Heavy 2–3 pt ink borders, cream `#F5F0E6` background, bronze `#B26941` primary, crimson `#8A2A2B` for hearts / failures, serif typography (Georgia / platform serif).
+Parchment / medieval scroll aesthetic. Heavy 2–3 pt ink borders, cream `#F5F0E6` background, bronze `#B26941` primary, crimson `#8A2A2B` for hearts / failures / delete, serif typography (Georgia / platform serif).
 
 ## Tech Stack
 Expo Router, React Native, react-native-reanimated (dice animation), expo-image-picker (base64), expo-haptics, @react-native-vector-icons/material-design-icons, AsyncStorage.

@@ -6,7 +6,7 @@ import {
   Pressable,
   FlatList,
   RefreshControl,
-  Alert,
+  Modal,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,6 +22,7 @@ export default function CharacterListScreen() {
   const router = useRouter();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState<Character | null>(null);
 
   const refresh = useCallback(async () => {
     const list = await loadAllCharacters();
@@ -47,21 +48,14 @@ export default function CharacterListScreen() {
   };
 
   const confirmDelete = (c: Character) => {
-    Alert.alert(
-      "Delete hero?",
-      `Remove "${c.name || "Unnamed"}" permanently?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            const next = await deleteCharacter(c.id);
-            setCharacters(next);
-          },
-        },
-      ],
-    );
+    setPendingDelete(c);
+  };
+
+  const performDelete = async () => {
+    if (!pendingDelete) return;
+    const next = await deleteCharacter(pendingDelete.id);
+    setCharacters(next);
+    setPendingDelete(null);
   };
 
   return (
@@ -93,40 +87,66 @@ export default function CharacterListScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <Pressable
+          <View
             testID={`character-row-${item.id}`}
-            onPress={() => router.push(`/character/${item.id}`)}
-            onLongPress={() => confirmDelete(item)}
-            style={({ pressed }) => [
+            style={[
               styles.row,
               {
                 borderColor: colors.borderStrong,
-                backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
+                backgroundColor: colors.surfaceSecondary,
               },
             ]}
           >
-            <View style={[styles.avatar, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceTertiary }]}>
-              <Icon name="shield-sword" size={28} color={colors.brandPrimary} />
-            </View>
-            <View style={styles.rowInfo}>
-              <Text
-                numberOfLines={1}
-                style={[styles.rowName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
-              >
-                {item.name || "Unnamed"}
-              </Text>
-              <Text numberOfLines={1} style={[styles.rowMeta, { color: colors.muted, fontFamily: fonts.display }]}>
-                {item.className || "No class"} • Lvl {item.level || "1"}
-              </Text>
-              <View style={styles.hpRow}>
-                <Icon name="cards-heart" size={14} color={colors.brandSecondary} />
-                <Text style={[styles.hpText, { color: colors.onSurface, fontFamily: fonts.display }]}>
-                  {item.hp} / {HP_MAX}
-                </Text>
+            <Pressable
+              testID={`character-row-${item.id}-open`}
+              onPress={() => router.push(`/character/${item.id}`)}
+              onLongPress={() => confirmDelete(item)}
+              style={({ pressed }) => [
+                styles.rowMain,
+                { backgroundColor: pressed ? colors.brandTertiary : "transparent" },
+              ]}
+            >
+              <View style={[styles.avatar, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceTertiary }]}>
+                <Icon name="shield-sword" size={28} color={colors.brandPrimary} />
               </View>
-            </View>
-            <Icon name="chevron-right" size={26} color={colors.muted} />
-          </Pressable>
+              <View style={styles.rowInfo}>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.rowName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
+                >
+                  {item.name || "Unnamed"}
+                </Text>
+                <Text numberOfLines={1} style={[styles.rowMeta, { color: colors.muted, fontFamily: fonts.display }]}>
+                  {item.className || "No class"} • Lvl {item.level || "1"}
+                </Text>
+                <View style={styles.hpRow}>
+                  <Icon name="cards-heart" size={14} color={colors.brandSecondary} />
+                  <Text style={[styles.hpText, { color: colors.onSurface, fontFamily: fonts.display }]}>
+                    {item.hp} / {HP_MAX}
+                  </Text>
+                </View>
+              </View>
+              <Icon name="chevron-right" size={26} color={colors.muted} />
+            </Pressable>
+            <Pressable
+              testID={`character-row-${item.id}-delete`}
+              onPress={() => confirmDelete(item)}
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.rowDelete,
+                {
+                  borderLeftColor: colors.borderStrong,
+                  backgroundColor: pressed ? colors.brandSecondary : "transparent",
+                },
+              ]}
+            >
+              <Icon
+                name="trash-can-outline"
+                size={20}
+                color={colors.brandSecondary}
+              />
+            </Pressable>
+          </View>
         )}
       />
 
@@ -147,6 +167,67 @@ export default function CharacterListScreen() {
           New Hero
         </Text>
       </Pressable>
+
+      <Modal
+        transparent
+        visible={pendingDelete != null}
+        animationType="fade"
+        onRequestClose={() => setPendingDelete(null)}
+      >
+        <Pressable
+          testID="delete-confirm-backdrop"
+          style={styles.confirmBackdrop}
+          onPress={() => setPendingDelete(null)}
+        >
+          <Pressable
+            style={[
+              styles.confirmCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderStrong },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Icon name="alert-circle-outline" size={36} color={colors.brandSecondary} />
+            <Text style={[styles.confirmTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+              Delete hero?
+            </Text>
+            <Text style={[styles.confirmText, { color: colors.muted, fontFamily: fonts.display }]}>
+              This permanently removes "{pendingDelete?.name || "Unnamed"}" and all their data.
+            </Text>
+            <View style={styles.confirmButtons}>
+              <Pressable
+                testID="delete-confirm-cancel"
+                onPress={() => setPendingDelete(null)}
+                style={({ pressed }) => [
+                  styles.confirmBtn,
+                  {
+                    borderColor: colors.borderStrong,
+                    backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
+                  },
+                ]}
+              >
+                <Text style={[styles.confirmBtnText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                testID="delete-confirm-delete"
+                onPress={performDelete}
+                style={({ pressed }) => [
+                  styles.confirmBtn,
+                  {
+                    borderColor: colors.borderStrong,
+                    backgroundColor: pressed ? "#6b1f20" : colors.brandSecondary,
+                  },
+                ]}
+              >
+                <Text style={[styles.confirmBtnText, { color: colors.onBrandSecondary, fontFamily: fonts.displayBold }]}>
+                  Delete
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -171,10 +252,22 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 15, textAlign: "center" },
   row: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "stretch",
     borderWidth: 2.5,
-    padding: 12,
+    overflow: "hidden",
+  },
+  rowMain: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
+    padding: 12,
+  },
+  rowDelete: {
+    width: 52,
+    borderLeftWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatar: {
     width: 54,
@@ -199,4 +292,29 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
   },
   fabText: { fontSize: 15, fontWeight: "700", letterSpacing: 1 },
+  confirmBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(20,14,8,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  confirmCard: {
+    width: "100%",
+    maxWidth: 340,
+    borderWidth: 3,
+    padding: 20,
+    alignItems: "center",
+    gap: 10,
+  },
+  confirmTitle: { fontSize: 22, fontWeight: "700", letterSpacing: 1 },
+  confirmText: { fontSize: 14, textAlign: "center" },
+  confirmButtons: { flexDirection: "row", gap: 10, marginTop: 8, alignSelf: "stretch" },
+  confirmBtn: {
+    flex: 1,
+    borderWidth: 2,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  confirmBtnText: { fontSize: 15, fontWeight: "700", letterSpacing: 0.8 },
 });
