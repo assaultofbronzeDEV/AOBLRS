@@ -1,0 +1,142 @@
+{
+  "app_name": "Assault of Bronze Companion",
+  "personality": "5 Brutalist Mobile structure (heavy borders, sharp grids) with 8 Hand-Drawn / Journal typography and warm parchment palette",
+  "personality_one_liner": "An old-school, tactile parchment character sheet that feels like a physical scroll inked with heavy borders and serif typography.",
+  "color": {
+    "surface": "#F5F0E6",
+    "onSurface": "#2A241E",
+    "surfaceSecondary": "#E8DFC9",
+    "onSurfaceSecondary": "#2A241E",
+    "surfaceTertiary": "#D5C4A1",
+    "onSurfaceTertiary": "#2A241E",
+    "surfaceInverse": "#2A241E",
+    "onSurfaceInverse": "#F5F0E6",
+    "brand": "#B26941",
+    "brandPrimary": "#B26941",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#8A2A2B",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#D9BCA3",
+    "onBrandTertiary": "#2A241E",
+    "success": "#2E6F40",
+    "onSuccess": "#FFFFFF",
+    "warning": "#D4AF37",
+    "onWarning": "#2A241E",
+    "error": "#8A2A2B",
+    "onError": "#FFFFFF",
+    "border": "#2A241E",
+    "borderStrong": "#1A110B",
+    "divider": "#D5C4A1",
+    "muted": "#7A6A58"
+  },
+  "typography": {
+    "displayFontFamily": "Cormorant Garamond",
+    "textFontFamily": "Satoshi",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Use rigid grids, edge-to-edge sections, and exposed structure. Use 2pt thick borders for main containers to simulate hand-drawn heavy ink lines.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 0,
+    "md": 0,
+    "lg": 4,
+    "pill": 999
+  },
+  "shadow_tier": "0",
+  "navigation": "stack_only",
+  "icon_set": "MaterialCommunityIcons",
+  "glassmorphism": {
+    "enabled": "false",
+    "do's": [],
+    "dont's": [
+      "No glassmorphism or blur. Rely entirely on solid parchment tones and heavy ink borders."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-blur",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Character List",
+      "purpose": "Select a character or create a new one, presented as stacked parchment scrolls.",
+      "states": {
+        "loading": "Centered spinning d20 icon.",
+        "empty": "A bronze d20 graphic with text 'No characters found. Roll a new one.'",
+        "error": "Torn parchment graphic with error message and Retry button."
+      },
+      "layout": "Vertical list of heavy-bordered cards. Each card displays Character Name, Class, Level, and HP. Use the old parchment texture as a subtle background for the screen."
+    },
+    {
+      "name": "Character Sheet",
+      "purpose": "The main interactive sheet mimicking a physical TTRPG paper layout.",
+      "states": {
+        "loading": "Centered loading spinner.",
+        "empty": "N/A - Fillable sheet.",
+        "error": "Alert overlay."
+      },
+      "layout": "Scrollable layout. Top: Hero image/banner, Portrait square (heavy border) beside a stack of inputs (Name, Class, Level). Middle: HP Tracker (row of MaterialCommunityIcons 'heart' or 'heart-outline' in brandSecondary, wrapped flex row), Armour Class box, Melee DMG box. Next: 2-column grid of Stat Blocks (Strength, Dexterity, Intelligence, Charisma). Each block is a thick-bordered box with a main stat number and a list of 4 sub-skills with their target numbers. All stats are Pressable to trigger a roll. Bottom (Page 2 equivalent): Lists for 'Once Per Turn', 'Once Per Rest', 'Hero Ability & Points', 'Inventory', 'Notes'."
+    },
+    {
+      "name": "Dice Roll Overlay (Modal)",
+      "purpose": "Animated overlay displaying the result of a tapped stat roll.",
+      "states": {
+        "loading": "N/A",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Absolute positioned overlay covering the screen. Background: surfaceInverse at 85% opacity. Center: A large animated D20 graphic/text showing the rolled number. The number's color changes: success (green) if >= target, error (red) if < target, gold if Nat 20, dark red if Nat 1. Subtext showing 'Target: X'."
+    }
+  ],
+  "images": {
+    "parchment_background": {
+      "url": "https://images.unsplash.com/photo-1706790608211-4c03fd4f4d33?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwxfHxvbGQlMjBwYXBlciUyMHRleHR1cmUlMjBicm93bnxlbnwwfHx8fDE3ODkwMzE2MTB8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Old parchment paper texture"
+    },
+    "bronze_d20_empty_state": {
+      "url": "https://images.unsplash.com/photo-1650024520226-b63a33baff60?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwyfHxkMjAlMjBkaWNlfGVufDB8fHx8MTc4OTAzMTYxNXww&ixlib=rb-4.1.0&q=85",
+      "alt": "Bronze metal D20 dice"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Execute the '5 Brutalist Mobile' layout rules applied to a fantasy setting: use strong 2pt 'borderStrong' borders around all major inputs, stat blocks, and portrait containers to mimic the reference's heavy ink lines.",
+    "Typography: Use 'Cormorant Garamond' (max weight 500) for all headings, stat names, and numbers to give it the medieval scroll feel. Use 'Satoshi' for body text/input fields for readability.",
+    "HP Tracker: Implement a row of 20 tappable hearts using MaterialCommunityIcons ('cards-heart' and 'cards-heart-outline'). Use 'brandSecondary' (Crimson) for filled hearts.",
+    "Stat Blocks: Create a 2x2 grid for STRENGTH, DEXTERITY, INTELLIGENCE, CHARISMA. Inside each block, place the main stat large at the top right, and the 4 sub-skills stacked below it. Make the entire row for each skill a 'Pressable' that triggers the dice roll modal.",
+    "Dice Roll Animation: When a stat is tapped, show a full-screen overlay (use react-native Modal or absolute positioning over the root). The rolled number should animate in. If roll >= target, color is 'success'; if < target, color is 'error'. Handle Nat 1 / Nat 20 explicitly per rules.",
+    "Do NOT use glassmorphism anywhere. Stick to solid parchment colors (surface, surfaceSecondary) and heavy ink borders.",
+    "Persist character data locally using AsyncStorage or a local state context so the user can manage multiple characters.",
+    "Ensure 'Hero Points' uses a simple increment/decrement counter UI next to the hero ability text box."
+  ],
+  "haptics": {
+    "events": {
+      "toggle_hp_heart": "selection",
+      "roll_dice": "medium",
+      "crit_success": "heavy",
+      "crit_fail": "heavy",
+      "increment_hero_points": "light"
+    }
+  }
+}
