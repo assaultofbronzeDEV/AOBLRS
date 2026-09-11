@@ -10,6 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
   Image,
+  Modal,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,6 +37,7 @@ import {
 import { getCharacter, upsertCharacter } from "@/src/storage/characters";
 import HpTracker from "@/src/components/HpTracker";
 import StatCard from "@/src/components/StatCard";
+import FlatStatCard, { abbreviateStat } from "@/src/components/FlatStatCard";
 import LabeledField from "@/src/components/LabeledField";
 import AbilityCard from "@/src/components/AbilityCard";
 import CustomSectionCard from "@/src/components/CustomSectionCard";
@@ -56,6 +58,8 @@ export default function CharacterSheetScreen() {
   const [char, setChar] = useState<Character | null>(null);
   const [roll, setRoll] = useState<RollRequest | null>(null);
   const [rollMode, setRollMode] = useState<RollMode>("normal");
+  const [boostPending, setBoostPending] = useState(false);
+  const [heroPointsWarning, setHeroPointsWarning] = useState<string | null>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -80,8 +84,9 @@ export default function CharacterSheetScreen() {
 
   const triggerStatRoll = (label: string, target: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setRoll({ label, target, mode: rollMode });
+    setRoll({ label, target, mode: rollMode, boost: boostPending });
     if (rollMode !== "normal") setRollMode("normal");
+    if (boostPending) setBoostPending(false);
   };
 
   const pickPortrait = async () => {
@@ -147,6 +152,20 @@ export default function CharacterSheetScreen() {
 
   const useAbility = (ability: Ability) => {
     if (!char) return;
+    const isHero = char.heroAbilities.some((a) => a.id === ability.id);
+    const isOncePerRest = char.oncePerRest.some((a) => a.id === ability.id);
+
+    if (isHero && char.heroPoints < 1) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setHeroPointsWarning("You need at least 1 Hero Point to use a Hero Ability.");
+      return;
+    }
+    if (isOncePerRest && ability.used) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setHeroPointsWarning("Already used. Take a Long Rest to refresh this ability.");
+      return;
+    }
+
     const target = valueForRef(char.stats, ability.linkedStat) ?? undefined;
     const label = ability.title || "Ability";
     const effect =
@@ -154,26 +173,37 @@ export default function CharacterSheetScreen() {
         ? { notation: ability.effectRoll.trim(), type: ability.effectType as "damage" | "healing" }
         : undefined;
 
-    // Nothing to roll: silently ignore (button becomes a no-op).
     if (target == null && !effect) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // No linked stat: just roll the effect dice (damage/healing) directly.
+    // Spend the Hero Point *after* validation succeeds.
+    if (isHero) {
+      update({ heroPoints: Math.max(0, char.heroPoints - 1) });
+    }
+    // Lock Once Per Rest abilities until the next Long Rest.
+    if (isOncePerRest) {
+      const nextList = char.oncePerRest.map((a) =>
+        a.id === ability.id ? { ...a, used: true } : a,
+      );
+      update({ oncePerRest: nextList });
+    }
+
     if (target == null) {
       setRoll({ label, effect });
       return;
     }
 
-    // Linked stat: d20 vs target, and effect on success.
     const linkedLabel = labelForRef(char.stats, ability.linkedStat);
     setRoll({
       label: `${label} · ${linkedLabel}`,
       target,
       effect,
       mode: rollMode,
+      boost: boostPending,
     });
     if (rollMode !== "normal") setRollMode("normal");
+    if (boostPending) setBoostPending(false);
   };
 
   const addCustomSection = () => {
@@ -207,8 +237,27 @@ export default function CharacterSheetScreen() {
     const notation = weapon.damageRoll.trim();
     const effect = notation ? { notation, type: "damage" as const } : undefined;
     const weaponName = weapon.name.trim() || (weapon.attackKind === "melee" ? "Melee weapon" : "Ranged weapon");
-    setRoll({ label: `${weaponName} · ${label}`, target, effect, mode: rollMode });
+    setRoll({ label: `${weaponName} · ${label}`, target, effect, mode: rollMode, boost: boostPending });
     if (rollMode !== "normal") setRollMode("normal");
+    if (boostPending) setBoostPending(false);
+  };
+
+  const spendBoost = () => {
+    if (!char) return;
+    if (boostPending) {
+      // Already pending — allow cancelling to reclaim... actually just toggle off silently.
+      setBoostPending(false);
+      Haptics.selectionAsync();
+      return;
+    }
+    if (char.heroPoints < 1) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setHeroPointsWarning("You need at least 1 Hero Point to boost a roll.");
+      return;
+    }
+    update({ heroPoints: Math.max(0, char.heroPoints - 1) });
+    setBoostPending(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
   const logRoll = (entry: RollHistoryEntry) => {
@@ -281,6 +330,43 @@ export default function CharacterSheetScreen() {
     return pairs;
   }, [char]);
 
+  // For monsters we flatten stat blocks into a single list of individual cards
+  // (main stat + each sub-skill), each rendered like a "main stat" header.
+  type FlatStat = { key: string; short: string; full: string; value: number; set: (n: number) => void };
+  const flatStats: FlatStat[] = useMemo(() => {
+    if (!char) return [];
+    const out: FlatStat[] = [];
+    char.stats.forEach((block, blockIdx) => {
+      out.push({
+        key: `main-${block.key}`,
+        short: block.key,
+        full: block.name,
+        value: block.value,
+        set: (n) => updateStat(blockIdx, { ...block, value: n }),
+      });
+      block.subs.forEach((sub, subIdx) => {
+        out.push({
+          key: `sub-${block.key}-${subIdx}`,
+          short: abbreviateStat(sub.name),
+          full: sub.name,
+          value: sub.value,
+          set: (n) => {
+            const nextSubs = block.subs.map((s, i) => (i === subIdx ? { ...s, value: n } : s));
+            updateStat(blockIdx, { ...block, subs: nextSubs });
+          },
+        });
+      });
+    });
+    return out;
+  }, [char]);
+  const flatStatPairs = useMemo(() => {
+    const pairs: [FlatStat, FlatStat | undefined][] = [];
+    for (let i = 0; i < flatStats.length; i += 2) {
+      pairs.push([flatStats[i], flatStats[i + 1]]);
+    }
+    return pairs;
+  }, [flatStats]);
+
   if (!char) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.surface }]}>
@@ -309,14 +395,7 @@ export default function CharacterSheetScreen() {
         >
           <Icon name="chevron-left" size={28} color={colors.onSurface} />
         </Pressable>
-        <View style={styles.headerCenter}>
-          <Text style={[styles.headerTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-            ASSAULT OF BRONZE
-          </Text>
-          <Text style={[styles.headerSub, { color: colors.muted, fontFamily: fonts.display }]}>
-            Lightweight Roleplay System
-          </Text>
-        </View>
+        <View style={{ flex: 1 }} />
         <View style={{ width: 32 }} />
       </View>
 
@@ -329,6 +408,12 @@ export default function CharacterSheetScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ padding: 12, paddingBottom: 40 + insets.bottom, gap: 12 }}
         >
+          <Image
+            source={require("@/assets/images/aob-logo.png")}
+            resizeMode="contain"
+            style={styles.sheetLogo}
+            accessibilityLabel="Assault of Bronze — Lightweight Roleplay System"
+          />
           <View style={styles.topRow}>
             <Pressable
               testID="portrait-picker"
@@ -377,7 +462,13 @@ export default function CharacterSheetScreen() {
           </View>
 
           <View style={[styles.combatBox, { borderColor: colors.borderStrong }]}>
-            <HpTracker hp={char.hp} onChange={(hp) => update({ hp })} />
+            <HpTracker
+              hp={char.hp}
+              maxHp={char.maxHp}
+              onChange={(hp) => update({ hp })}
+              editableMax={char.kind === "monster"}
+              onMaxChange={(maxHp) => update({ maxHp, hp: Math.min(char.hp, maxHp) })}
+            />
             <View style={[styles.divider, { backgroundColor: colors.borderStrong }]} />
             <View style={styles.combatRow}>
               <View style={[styles.combatCell, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
@@ -468,22 +559,35 @@ export default function CharacterSheetScreen() {
             </Pressable>
           </View>
 
-          {statPairs.map((pair, rowIdx) => (
-            <View key={rowIdx} style={styles.statRow}>
-              {pair.map((block, colIdx) =>
-                block ? (
-                  <StatCard
-                    key={block.key}
-                    block={block}
-                    onChange={(next) => updateStat(rowIdx * 2 + colIdx, next)}
+          {char.kind === "monster"
+            ? flatStats.map((fs) => (
+                <View key={fs.key} style={styles.statRow}>
+                  <FlatStatCard
+                    testID={`flat-stat-${fs.key}`}
+                    short={fs.short}
+                    full={fs.full}
+                    value={fs.value}
+                    onChange={fs.set}
                     onRoll={triggerStatRoll}
                   />
-                ) : (
-                  <View key={`empty-${colIdx}`} style={{ flex: 1 }} />
-                ),
-              )}
-            </View>
-          ))}
+                </View>
+              ))
+            : statPairs.map((pair, rowIdx) => (
+                <View key={rowIdx} style={styles.statRow}>
+                  {pair.map((block, colIdx) =>
+                    block ? (
+                      <StatCard
+                        key={block.key}
+                        block={block}
+                        onChange={(next) => updateStat(rowIdx * 2 + colIdx, next)}
+                        onRoll={triggerStatRoll}
+                      />
+                    ) : (
+                      <View key={`empty-${colIdx}`} style={{ flex: 1 }} />
+                    ),
+                  )}
+                </View>
+              ))}
 
           <Text style={[styles.tapHint, { color: colors.muted, fontFamily: fonts.display }]}>
             Tap the stat or skill name to roll a d20 against it.
@@ -542,6 +646,9 @@ export default function CharacterSheetScreen() {
             onChange={(i, a) => updateAbility("heroAbilities", i, a)}
             onDelete={(i) => deleteAbility("heroAbilities", i)}
             onUse={useAbility}
+            onSpendBoost={spendBoost}
+            boostPending={boostPending}
+            hidden={char.kind === "monster"}
           />
 
           <LabeledField
@@ -555,7 +662,7 @@ export default function CharacterSheetScreen() {
             placeholder="Where your hero comes from…"
           />
           <CollapsibleSection
-            title="Inventory"
+            title={char.kind === "monster" ? "Dropped Loot" : "Inventory"}
             keyName="inventory"
             count={char.inventoryItems.length}
             emptyLabel="No items yet."
@@ -623,6 +730,53 @@ export default function CharacterSheetScreen() {
       </KeyboardAvoidingView>
 
       <DiceRollModal request={roll} onClose={() => setRoll(null)} onLog={logRoll} />
+
+      <Modal
+        transparent
+        visible={heroPointsWarning != null}
+        animationType="fade"
+        onRequestClose={() => setHeroPointsWarning(null)}
+      >
+        <Pressable
+          testID="hp-warning-backdrop"
+          style={styles.warnBackdrop}
+          onPress={() => setHeroPointsWarning(null)}
+        >
+          <Pressable
+            style={[
+              styles.warnCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderStrong },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Icon name="alert-circle-outline" size={36} color={colors.brandSecondary} />
+            <Text
+              testID="hp-warning-title"
+              style={[styles.warnTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
+            >
+              Not Enough Hero Points
+            </Text>
+            <Text style={[styles.warnText, { color: colors.muted, fontFamily: fonts.display }]}>
+              {heroPointsWarning}
+            </Text>
+            <Pressable
+              testID="hp-warning-ok"
+              onPress={() => setHeroPointsWarning(null)}
+              style={({ pressed }) => [
+                styles.warnBtn,
+                {
+                  borderColor: colors.borderStrong,
+                  backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
+                },
+              ]}
+            >
+              <Text style={[styles.warnBtnText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
+                OK
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -826,6 +980,9 @@ function HeroSection({
   onChange,
   onDelete,
   onUse,
+  onSpendBoost,
+  boostPending,
+  hidden,
 }: {
   heroPoints: number;
   onHeroPointsChange: (delta: number) => void;
@@ -835,9 +992,14 @@ function HeroSection({
   onChange: (i: number, a: Ability) => void;
   onDelete: (i: number) => void;
   onUse: (a: Ability) => void;
+  onSpendBoost: () => void;
+  boostPending: boolean;
+  hidden?: boolean;
 }) {
   const { colors } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
+  const boostDisabled = !boostPending && heroPoints < 1;
+  if (hidden) return null;
   return (
     <View>
       <View
@@ -864,6 +1026,47 @@ function HeroSection({
             size={22}
             color={colors.onSurface}
           />
+        </Pressable>
+        <Pressable
+          testID="hero-boost-btn"
+          onPress={onSpendBoost}
+          hitSlop={6}
+          style={({ pressed }) => [
+            styles.boostBtn,
+            {
+              borderColor: colors.borderStrong,
+              backgroundColor: boostPending
+                ? colors.brandPrimary
+                : boostDisabled
+                  ? colors.surface
+                  : pressed
+                    ? colors.brandTertiary
+                    : colors.surface,
+              opacity: boostDisabled ? 0.5 : 1,
+            },
+          ]}
+          accessibilityLabel={
+            boostPending
+              ? "Boost armed for next roll. Tap to cancel."
+              : "Spend 1 Hero Point to add 1d6 to your next roll."
+          }
+        >
+          <Icon
+            name={boostPending ? "star-four-points" : "dice-6-outline"}
+            size={14}
+            color={boostPending ? colors.onBrandPrimary : colors.onSurface}
+          />
+          <Text
+            style={[
+              styles.boostText,
+              {
+                color: boostPending ? colors.onBrandPrimary : colors.onSurface,
+                fontFamily: fonts.displayBold,
+              },
+            ]}
+          >
+            {boostPending ? "+1d6 armed" : "Boost +1d6"}
+          </Text>
         </Pressable>
         <View style={styles.heroPoints}>
           <Pressable
@@ -942,6 +1145,18 @@ const styles = StyleSheet.create({
   headerCenter: { flex: 1, alignItems: "center" },
   headerTitle: { fontSize: 18, letterSpacing: 2, fontWeight: "700" },
   headerSub: { fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase" },
+  headerLogo: {
+    width: "100%",
+    maxWidth: 260,
+    height: 46,
+  },
+  sheetLogo: {
+    width: "100%",
+    height: 100,
+    alignSelf: "center",
+    marginTop: 4,
+    marginBottom: -4,
+  },
 
   topRow: { flexDirection: "row", gap: 10 },
   portrait: {
@@ -1054,6 +1269,19 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   heroPoints: { flexDirection: "row", alignItems: "center", gap: 6 },
+  boostBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1.5,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  boostText: {
+    fontSize: 11,
+    letterSpacing: 0.5,
+    fontWeight: "700",
+  },
   hpStep: {
     width: 28,
     height: 28,
@@ -1100,4 +1328,31 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   addSectionText: { fontSize: 15, fontWeight: "700", letterSpacing: 1 },
+
+  warnBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(20,14,8,0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  warnCard: {
+    width: "100%",
+    maxWidth: 340,
+    borderWidth: 3,
+    padding: 20,
+    alignItems: "center",
+    gap: 10,
+  },
+  warnTitle: { fontSize: 20, fontWeight: "700", letterSpacing: 1, textAlign: "center" },
+  warnText: { fontSize: 14, textAlign: "center" },
+  warnBtn: {
+    marginTop: 6,
+    paddingHorizontal: 30,
+    paddingVertical: 10,
+    borderWidth: 2,
+    alignSelf: "stretch",
+    alignItems: "center",
+  },
+  warnBtnText: { fontSize: 15, fontWeight: "700", letterSpacing: 0.8 },
 });

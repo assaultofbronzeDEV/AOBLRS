@@ -27,7 +27,7 @@ export type Ability = {
   linkedStat?: StatRef;
   effectRoll: string;
   effectType: EffectType;
-  used?: boolean; // marked when Use is pressed; Long Rest clears it
+  used?: boolean;
 };
 
 export type CustomSection = {
@@ -53,16 +53,15 @@ export type InventoryItem = {
 };
 
 export type RollMode = "normal" | "advantage" | "disadvantage";
-
 export type RollVerdict = "crit-success" | "crit-fail" | "success" | "fail";
 
 export type RollHistoryEntry = {
   id: string;
-  at: string; // ISO
+  at: string;
   label: string;
   target?: number;
   rolled?: number;
-  d20All?: number[]; // both d20s when advantage/disadvantage
+  d20All?: number[];
   mode?: RollMode;
   verdict?: RollVerdict;
   effect?: {
@@ -74,16 +73,20 @@ export type RollHistoryEntry = {
   };
 };
 
+export type EntityKind = "hero" | "monster";
+
 export const HP_MAX = 20;
 export const ROLL_HISTORY_MAX = 20;
 
 export type Character = {
   id: string;
+  kind: EntityKind;
   name: string;
   className: string;
   level: string;
   portraitUri?: string;
   hp: number;
+  maxHp: number;
   armour: string;
   meleeDmg: string;
   stats: StatBlock[];
@@ -92,7 +95,7 @@ export type Character = {
   heroAbilities: Ability[];
   heroPoints: number;
   backstory: string;
-  inventory: string; // legacy freeform text kept for backward compat
+  inventory: string;
   inventoryItems: InventoryItem[];
   notes: string;
   customSections: CustomSection[];
@@ -102,7 +105,7 @@ export type Character = {
   updatedAt: string;
 };
 
-export const defaultStats = (): StatBlock[] => [
+export const defaultHeroStats = (): StatBlock[] => [
   {
     key: "STR",
     name: "STRENGTH",
@@ -149,6 +152,23 @@ export const defaultStats = (): StatBlock[] => [
   },
 ];
 
+// Keep for legacy compat with other files.
+export const defaultStats = defaultHeroStats;
+
+export const defaultMonsterStats = (): StatBlock[] => [
+  { key: "STR", name: "STRENGTH", value: 12, subs: [] },
+  {
+    key: "DEX",
+    name: "DEXTERITY",
+    value: 12,
+    subs: [
+      { name: "Melee Attack", value: 12 },
+      { name: "Ranged Attack", value: 12 },
+    ],
+  },
+  { key: "INT", name: "SPECIAL ABILITY", value: 12, subs: [] },
+];
+
 export const genId = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -184,18 +204,21 @@ export const createEmptyInventoryItem = (name = ""): InventoryItem => ({
   used: false,
 });
 
-export const createEmptyCharacter = (): Character => {
+const createBase = (kind: EntityKind): Character => {
   const now = new Date().toISOString();
+  const stats = kind === "monster" ? defaultMonsterStats() : defaultHeroStats();
   return {
     id: genId(),
+    kind,
     name: "",
     className: "",
     level: "1",
     portraitUri: undefined,
     hp: HP_MAX,
+    maxHp: HP_MAX,
     armour: "10",
     meleeDmg: "1d6",
-    stats: defaultStats(),
+    stats,
     oncePerTurn: [],
     oncePerRest: [],
     heroAbilities: [],
@@ -211,6 +234,9 @@ export const createEmptyCharacter = (): Character => {
     updatedAt: now,
   };
 };
+
+export const createEmptyCharacter = () => createBase("hero");
+export const createEmptyMonster = () => createBase("monster");
 
 const parseInventoryFromString = (raw: string): InventoryItem[] =>
   raw
@@ -251,16 +277,21 @@ export const migrateCharacter = (raw: any): Character => {
     : typeof raw.inventory === "string" && raw.inventory.trim()
       ? parseInventoryFromString(raw.inventory)
       : [];
+  const kind: EntityKind = raw.kind === "monster" ? "monster" : "hero";
+  const defaultForKind = kind === "monster" ? defaultMonsterStats : defaultHeroStats;
+  const maxHp = typeof raw.maxHp === "number" && raw.maxHp > 0 ? raw.maxHp : HP_MAX;
   return {
     id: raw.id ?? genId(),
+    kind,
     name: raw.name ?? "",
     className: raw.className ?? "",
     level: raw.level ?? "1",
     portraitUri: raw.portraitUri,
-    hp: typeof raw.hp === "number" ? Math.max(0, Math.min(HP_MAX, raw.hp)) : HP_MAX,
+    hp: typeof raw.hp === "number" ? Math.max(0, Math.min(maxHp, raw.hp)) : maxHp,
+    maxHp,
     armour: raw.armour ?? "10",
     meleeDmg: normalizeDice(raw.meleeDmg) ?? "1d6",
-    stats: Array.isArray(raw.stats) && raw.stats.length === 4 ? raw.stats : defaultStats(),
+    stats: Array.isArray(raw.stats) && raw.stats.length > 0 ? raw.stats : defaultForKind(),
     oncePerTurn,
     oncePerRest,
     heroAbilities,
@@ -271,9 +302,7 @@ export const migrateCharacter = (raw: any): Character => {
     notes: raw.notes ?? "",
     customSections: asArr(raw.customSections),
     weapons: asArr(raw.weapons),
-    rollHistory: Array.isArray(raw.rollHistory)
-      ? raw.rollHistory.slice(0, ROLL_HISTORY_MAX)
-      : [],
+    rollHistory: Array.isArray(raw.rollHistory) ? raw.rollHistory.slice(0, ROLL_HISTORY_MAX) : [],
     createdAt: raw.createdAt ?? now,
     updatedAt: raw.updatedAt ?? now,
   };

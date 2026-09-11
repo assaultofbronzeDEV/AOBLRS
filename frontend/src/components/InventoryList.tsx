@@ -37,7 +37,7 @@ export default function InventoryList({ items, onChange, onAdd }: Props) {
             hitSlop={6}
             style={[styles.check, { borderColor: colors.borderStrong }]}
           >
-            {it.used && <Icon name="check" size={16} color={colors.brandPrimary} />}
+            {it.used && <Icon name="check" size={14} color={colors.brandPrimary} />}
           </Pressable>
           <TextInput
             testID={`inv-item-${i}-name`}
@@ -62,10 +62,11 @@ export default function InventoryList({ items, onChange, onAdd }: Props) {
               hitSlop={6}
               style={[styles.qtyBtn, { borderColor: colors.borderStrong }]}
             >
-              <Icon name="minus" size={14} color={colors.onSurface} />
+              <Icon name="minus" size={12} color={colors.onSurface} />
             </Pressable>
             <Text
               testID={`inv-item-${i}-qty`}
+              numberOfLines={1}
               style={[styles.qty, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
             >
               {it.qty}
@@ -76,16 +77,16 @@ export default function InventoryList({ items, onChange, onAdd }: Props) {
               hitSlop={6}
               style={[styles.qtyBtn, { borderColor: colors.borderStrong }]}
             >
-              <Icon name="plus" size={14} color={colors.onSurface} />
+              <Icon name="plus" size={12} color={colors.onSurface} />
             </Pressable>
           </View>
           <Pressable
             testID={`inv-item-${i}-delete`}
             onPress={() => remove(i)}
             hitSlop={6}
-            style={{ padding: 4 }}
+            style={styles.trashBtn}
           >
-            <Icon name="trash-can-outline" size={18} color={colors.muted} />
+            <Icon name="trash-can-outline" size={16} color={colors.muted} />
           </Pressable>
         </View>
       ))}
@@ -114,28 +115,51 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     borderWidth: 1.5,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 6,
+    overflow: "hidden",
   },
   check: {
+    width: 20,
+    height: 20,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  name: {
+    flex: 1,
+    minWidth: 0,
+    fontSize: 15,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  qtyGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    flexShrink: 0,
+  },
+  qtyBtn: {
     width: 22,
     height: 22,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
-  name: { flex: 1, fontSize: 15, paddingVertical: 4 },
-  qtyGroup: { flexDirection: "row", alignItems: "center", gap: 4 },
-  qtyBtn: {
-    width: 24,
-    height: 24,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
+  qty: {
+    fontSize: 14,
+    width: 22,
+    textAlign: "center",
+    flexShrink: 0,
   },
-  qty: { fontSize: 15, minWidth: 22, textAlign: "center" },
+  trashBtn: {
+    padding: 2,
+    flexShrink: 0,
+  },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",

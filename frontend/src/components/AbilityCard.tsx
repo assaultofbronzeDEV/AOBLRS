@@ -159,32 +159,49 @@ export default function AbilityCard({ ability, stats, onChange, onDelete, onUse,
         style={({ pressed }) => [
           styles.useBtn,
           {
-            backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
+            backgroundColor: ability.used
+              ? colors.surfaceTertiary
+              : pressed
+                ? colors.brandSecondary
+                : colors.brandPrimary,
             borderColor: colors.borderStrong,
+            opacity: ability.used ? 0.7 : 1,
           },
         ]}
       >
         <Icon
           name={
-            ability.linkedStat
-              ? "dice-d20"
-              : ability.effectType === "healing"
-                ? "heart-plus"
-                : ability.effectType === "damage"
-                  ? "sword-cross"
-                  : "dice-d20"
+            ability.used
+              ? "check-circle-outline"
+              : ability.linkedStat
+                ? "dice-d20"
+                : ability.effectType === "healing"
+                  ? "heart-plus"
+                  : ability.effectType === "damage"
+                    ? "sword-cross"
+                    : "dice-d20"
           }
           size={18}
-          color={colors.onBrandPrimary}
+          color={ability.used ? colors.onSurfaceTertiary : colors.onBrandPrimary}
         />
-        <Text style={[styles.useText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
-          {ability.linkedStat
-            ? "Use Ability"
-            : ability.effectType === "healing" && ability.effectRoll.trim()
-              ? "Roll Healing"
-              : ability.effectType === "damage" && ability.effectRoll.trim()
-                ? "Roll Damage"
-                : "Use Ability"}
+        <Text
+          style={[
+            styles.useText,
+            {
+              color: ability.used ? colors.onSurfaceTertiary : colors.onBrandPrimary,
+              fontFamily: fonts.displayBold,
+            },
+          ]}
+        >
+          {ability.used
+            ? "Used — Long Rest to reset"
+            : ability.linkedStat
+              ? "Use Ability"
+              : ability.effectType === "healing" && ability.effectRoll.trim()
+                ? "Roll Healing"
+                : ability.effectType === "damage" && ability.effectRoll.trim()
+                  ? "Roll Damage"
+                  : "Use Ability"}
         </Text>
       </Pressable>
 

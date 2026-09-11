@@ -18,6 +18,7 @@ export type RollRequest = {
   target?: number; // if omitted, only rolls effect (no d20 check)
   effect?: { notation: string; type: "damage" | "healing" };
   mode?: RollMode; // advantage / disadvantage on the d20 check
+  boost?: boolean; // add 1d6 to the d20 roll for this check
 };
 
 type Props = {
@@ -42,6 +43,7 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
   const [effect, setEffect] = useState<DiceRollResult | null>(null);
   const [invalidNotation, setInvalidNotation] = useState<string | null>(null);
   const [d20Pair, setD20Pair] = useState<number[] | null>(null);
+  const [boostRoll, setBoostRoll] = useState<number | null>(null);
   const scale = useSharedValue(0.4);
   const rotate = useSharedValue(0);
 
@@ -52,6 +54,7 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
       setEffect(null);
       setInvalidNotation(null);
       setD20Pair(null);
+      setBoostRoll(null);
       return;
     }
     setRolled(null);
@@ -59,6 +62,7 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
     setEffect(null);
     setInvalidNotation(null);
     setD20Pair(null);
+    setBoostRoll(null);
     scale.value = 0.4;
     rotate.value = 0;
     scale.value = withSequence(
@@ -101,8 +105,9 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
       return () => clearInterval(interval);
     }
 
-    // d20 vs target flow (with optional advantage / disadvantage)
+    // d20 vs target flow (with optional advantage / disadvantage / boost)
     const mode: RollMode = request.mode ?? "normal";
+    const useBoost = !!request.boost;
     const start = Date.now();
     const interval = setInterval(() => {
       setTickValue(1 + Math.floor(Math.random() * 20));
@@ -110,21 +115,28 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
         clearInterval(interval);
         const d1 = 1 + Math.floor(Math.random() * 20);
         const d2 = 1 + Math.floor(Math.random() * 20);
-        let final: number;
+        let d20: number;
         let pair: number[] | null = null;
         if (mode === "advantage") {
           pair = [d1, d2];
-          final = Math.max(d1, d2);
+          d20 = Math.max(d1, d2);
         } else if (mode === "disadvantage") {
           pair = [d1, d2];
-          final = Math.min(d1, d2);
+          d20 = Math.min(d1, d2);
         } else {
-          final = d1;
+          d20 = d1;
         }
-        setRolled(final);
+        const bRoll = useBoost ? 1 + Math.floor(Math.random() * 6) : 0;
+        const finalTotal = d20 + bRoll;
+        setRolled(d20);
         setD20Pair(pair);
+        setBoostRoll(useBoost ? bRoll : null);
         const target = request.target ?? 0;
-        const v = verdictFor(final, target);
+        // Crit checks on the d20 alone; other verdicts use total.
+        let v: Verdict;
+        if (d20 === 20) v = "crit-success";
+        else if (d20 === 1) v = "crit-fail";
+        else v = finalTotal >= target ? "success" : "fail";
         setVerdict(v);
         if (v === "crit-success" || v === "crit-fail") {
           Haptics.notificationAsync(
@@ -144,9 +156,9 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
         onLog?.({
           id: genId(),
           at: new Date().toISOString(),
-          label: request.label,
+          label: request.label + (useBoost ? " (Boosted)" : ""),
           target,
-          rolled: final,
+          rolled: finalTotal,
           d20All: pair ?? undefined,
           mode: mode !== "normal" ? mode : undefined,
           verdict: v,
@@ -173,9 +185,10 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
   if (!request) return null;
 
   const onlyEffect = request.target == null;
+  const finalTotal = rolled != null ? rolled + (boostRoll ?? 0) : null;
   const display = onlyEffect
     ? effect?.total ?? tickValue ?? "?"
-    : rolled ?? tickValue ?? "?";
+    : finalTotal ?? tickValue ?? "?";
 
   const isDone = onlyEffect
     ? effect != null || invalidNotation != null || request.effect == null
@@ -262,6 +275,20 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
                 }}
               >
                 Rolled [{d20Pair.join(", ")}] — kept {rolled}
+              </Text>
+            )}
+
+            {boostRoll != null && rolled != null && (
+              <Text
+                testID="dice-boost"
+                style={{
+                  color: colors.brandPrimary,
+                  fontFamily: fonts.displayBold,
+                  fontSize: 14,
+                  marginTop: -4,
+                }}
+              >
+                d20 {rolled} + Boost d6 {boostRoll} = {rolled + boostRoll}
               </Text>
             )}
 
