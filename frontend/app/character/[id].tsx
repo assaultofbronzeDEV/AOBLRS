@@ -156,7 +156,7 @@ export default function CharacterSheetScreen() {
         id: genId(),
         title: preset.name,
         description: preset.description,
-        linkedStat: undefined,
+        linkedStat: preset.linkedStat,
         effectRoll: preset.effectRoll ?? "",
         effectType: preset.effectType,
         used: false,

@@ -1,8 +1,19 @@
 // Assault of Bronze — starter ability library.
-// Four power tiers. Once Per Rest rolls at 1d10 minimum, Hero Abilities at
-// d20 minimum. Players may still craft custom abilities via the picker.
+//
+// Every preset (except Hero Abilities) ships with a default `linkedStat`
+// so the roll button prompts the right sub-skill check:
+//
+//   magic (utility / area / non-directional)  → INT main
+//   ranged magic OR ranged physical            → DEX · Ranged Attack
+//   melee (magic or physical)                  → DEX · Melee Attack
+//   non-magical healing                        → INT · First Aid
+//   magical healing                            → INT main
+//   stealth / social / creature specifics      → the sub-skill it echoes
+//
+// Hero Abilities intentionally have no linkedStat — they trigger without a
+// check when a Hero Point is spent.
 
-import type { EffectType } from "@/src/types";
+import type { EffectType, StatRef } from "@/src/types";
 
 export type AbilityCategory =
   | "Starter Spells"
@@ -17,12 +28,23 @@ export type AbilityPreset = {
   category: AbilityCategory;
   effectType: EffectType;
   effectRoll?: string;
-  // Optional flavor tag ("Warrior", "Ranger" etc.) shown as a soft hint.
+  linkedStat?: StatRef;
   tag?: string;
 };
 
+// Handy shortcuts.
+const INT_MAIN: StatRef = { kind: "main", statKey: "INT" };
+const INT_FIRST_AID: StatRef = { kind: "sub", statKey: "INT", subIndex: 3 };
+const DEX_MELEE: StatRef = { kind: "sub", statKey: "DEX", subIndex: 0 };
+const DEX_RANGED: StatRef = { kind: "sub", statKey: "DEX", subIndex: 1 };
+const DEX_STEALTH: StatRef = { kind: "sub", statKey: "DEX", subIndex: 3 };
+const STR_INTIMIDATION: StatRef = { kind: "sub", statKey: "STR", subIndex: 2 };
+const STR_VITALITY: StatRef = { kind: "sub", statKey: "STR", subIndex: 3 };
+const CHA_PERSUASION: StatRef = { kind: "sub", statKey: "CHA", subIndex: 0 };
+const CHA_CREATURE: StatRef = { kind: "sub", statKey: "CHA", subIndex: 3 };
+
 export const ABILITY_PRESETS: AbilityPreset[] = [
-  // ── Starter Spells (cantrip tier — good as Once Per Turn) ────
+  // ── Starter Spells (cantrip tier — Once Per Turn) ────────
   {
     id: "firebolt",
     name: "Firebolt",
@@ -30,6 +52,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Starter Spells",
     effectType: "damage",
     effectRoll: "1d6",
+    linkedStat: DEX_RANGED,
   },
   {
     id: "frost-ray",
@@ -38,6 +61,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Starter Spells",
     effectType: "damage",
     effectRoll: "1d6",
+    linkedStat: DEX_RANGED,
   },
   {
     id: "shocking-grasp",
@@ -46,6 +70,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Starter Spells",
     effectType: "damage",
     effectRoll: "1d6",
+    linkedStat: DEX_MELEE,
   },
   {
     id: "healing-touch",
@@ -54,6 +79,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Starter Spells",
     effectType: "healing",
     effectRoll: "1d4",
+    linkedStat: INT_MAIN,
   },
   {
     id: "guiding-light",
@@ -61,6 +87,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "A mote of light shows the way. Advantage on the next Perception roll.",
     category: "Starter Spells",
     effectType: "none",
+    linkedStat: INT_MAIN,
   },
   {
     id: "mage-hand",
@@ -68,6 +95,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "A spectral hand fetches, presses, or nudges within 30 ft.",
     category: "Starter Spells",
     effectType: "none",
+    linkedStat: INT_MAIN,
   },
   {
     id: "minor-illusion",
@@ -75,6 +103,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Conjure a small sound or image for one scene.",
     category: "Starter Spells",
     effectType: "none",
+    linkedStat: INT_MAIN,
   },
   {
     id: "prestidigitation",
@@ -82,6 +111,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Small tricks: clean, chill, warm, flavour, spark.",
     category: "Starter Spells",
     effectType: "none",
+    linkedStat: INT_MAIN,
   },
 
   // ── Class Specials (mid tier — Once Per Turn signature moves) ─
@@ -92,6 +122,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Class Specials",
     effectType: "healing",
     effectRoll: "1d6+2",
+    linkedStat: INT_FIRST_AID,
     tag: "Warrior",
   },
   {
@@ -101,6 +132,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Class Specials",
     effectType: "damage",
     effectRoll: "1d8",
+    linkedStat: DEX_RANGED,
     tag: "Ranger",
   },
   {
@@ -110,6 +142,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Class Specials",
     effectType: "damage",
     effectRoll: "1d6",
+    linkedStat: DEX_MELEE,
     tag: "Rogue",
   },
   {
@@ -119,6 +152,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Class Specials",
     effectType: "damage",
     effectRoll: "1d6",
+    linkedStat: DEX_RANGED,
     tag: "Alchemist",
   },
   {
@@ -127,6 +161,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Speak with a beast for one short scene. It may listen. It may not.",
     category: "Class Specials",
     effectType: "none",
+    linkedStat: CHA_CREATURE,
     tag: "Warden",
   },
   {
@@ -135,14 +170,16 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Party gains advantage on their next roll.",
     category: "Class Specials",
     effectType: "none",
+    linkedStat: CHA_PERSUASION,
     tag: "Warrior",
   },
   {
     id: "vanish",
     name: "Vanish",
-    description: "Melt into shadow. Enter Stealth without a check.",
+    description: "Melt into shadow.",
     category: "Class Specials",
     effectType: "none",
+    linkedStat: DEX_STEALTH,
     tag: "Rogue",
   },
   {
@@ -152,6 +189,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Class Specials",
     effectType: "damage",
     effectRoll: "1d4+2",
+    linkedStat: DEX_RANGED,
     tag: "Sorcerer",
   },
   {
@@ -160,6 +198,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Rhythmic old-tongue chant. +1 damage on melee attacks this scene.",
     category: "Class Specials",
     effectType: "none",
+    linkedStat: INT_MAIN,
     tag: "Battle-Mage",
   },
   {
@@ -169,10 +208,11 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Class Specials",
     effectType: "damage",
     effectRoll: "1d10",
+    linkedStat: DEX_MELEE,
     tag: "Scrapper",
   },
 
-  // ── Once Per Rest (powerful — minimum 1d10) ───────────────
+  // ── Once Per Rest (powerful — 1d10 minimum) ───────────────
   {
     id: "fireball",
     name: "Fireball",
@@ -180,6 +220,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Once Per Rest",
     effectType: "damage",
     effectRoll: "3d10",
+    linkedStat: INT_MAIN,
   },
   {
     id: "massive-heal",
@@ -188,6 +229,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Once Per Rest",
     effectType: "healing",
     effectRoll: "2d10+2",
+    linkedStat: INT_MAIN,
   },
   {
     id: "lightning-storm",
@@ -196,6 +238,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Once Per Rest",
     effectType: "damage",
     effectRoll: "3d10",
+    linkedStat: INT_MAIN,
     tag: "Sorcerer",
   },
   {
@@ -205,6 +248,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Once Per Rest",
     effectType: "damage",
     effectRoll: "2d12",
+    linkedStat: DEX_RANGED,
     tag: "Ranger",
   },
   {
@@ -214,6 +258,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Once Per Rest",
     effectType: "damage",
     effectRoll: "2d10",
+    linkedStat: DEX_MELEE,
     tag: "Warrior",
   },
   {
@@ -223,6 +268,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Once Per Rest",
     effectType: "damage",
     effectRoll: "2d12",
+    linkedStat: DEX_RANGED,
     tag: "Ranger",
   },
   {
@@ -232,6 +278,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Once Per Rest",
     effectType: "damage",
     effectRoll: "2d10",
+    linkedStat: DEX_MELEE,
   },
   {
     id: "blood-frenzy",
@@ -240,6 +287,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Once Per Rest",
     effectType: "damage",
     effectRoll: "3d10",
+    linkedStat: DEX_MELEE,
     tag: "Scrapper",
   },
   {
@@ -249,6 +297,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     category: "Once Per Rest",
     effectType: "healing",
     effectRoll: "2d10",
+    linkedStat: INT_MAIN,
   },
   {
     id: "berserker-fury",
@@ -256,6 +305,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Rage takes you. +2 to every roll this scene. You feel it later.",
     category: "Once Per Rest",
     effectType: "none",
+    linkedStat: STR_VITALITY,
     tag: "Warrior",
   },
   {
@@ -264,6 +314,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Nullify a single attack — even one you didn't see coming.",
     category: "Once Per Rest",
     effectType: "none",
+    linkedStat: STR_VITALITY,
   },
   {
     id: "ice-wall",
@@ -271,6 +322,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Raise a wall of ice — 30 ft long, one scene. Passage denied.",
     category: "Once Per Rest",
     effectType: "none",
+    linkedStat: INT_MAIN,
   },
   {
     id: "dimension-step",
@@ -278,6 +330,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Blink up to 60 ft to a spot you can see.",
     category: "Once Per Rest",
     effectType: "none",
+    linkedStat: INT_MAIN,
     tag: "Sorcerer",
   },
   {
@@ -286,13 +339,15 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "The world slows. Your next attack lands at maximum damage.",
     category: "Once Per Rest",
     effectType: "none",
+    linkedStat: INT_MAIN,
   },
   {
     id: "war-cry",
     name: "War Cry",
-    description: "Foes within earshot must make an Intimidation roll or flinch (disadvantage on their next action).",
+    description: "Foes within earshot flinch — disadvantage on their next action.",
     category: "Once Per Rest",
     effectType: "none",
+    linkedStat: STR_INTIMIDATION,
     tag: "Warrior",
   },
   {
@@ -301,9 +356,10 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Enemies within 30 ft suffer -2 to all rolls for one scene.",
     category: "Once Per Rest",
     effectType: "none",
+    linkedStat: INT_MAIN,
   },
 
-  // ── Hero Abilities (legendary — minimum 1d20) ──────────────
+  // ── Hero Abilities (legendary — d20 minimum, no check needed) ─
   {
     id: "meteor-strike",
     name: "Meteor Strike",
