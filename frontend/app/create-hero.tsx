@@ -111,6 +111,74 @@ export default function CreateHeroScreen() {
     setSelectedRollIdx(null);
   };
 
+  const autoFill = () => {
+    // Collect all 20 numbers (both those still in the pool and already-assigned
+    // ones) so this button always produces a full board.
+    const available = pool.filter((v) => v !== 0);
+    const already = Object.values(assigned);
+    const numbers = [...available, ...already];
+    if (numbers.length !== 20) return; // safety
+
+    // 20 slot refs in the same order the UI uses.
+    const slots: SlotRef[] = [];
+    for (const k of STATS_ORDER) {
+      slots.push({ statKey: k, subIndex: null });
+      for (let i = 0; i < 4; i++) slots.push({ statKey: k, subIndex: i });
+    }
+
+    // Partition slots: greens get lowest, reds get highest, rest random.
+    const green: SlotRef[] = [];
+    const red: SlotRef[] = [];
+    const neutral: SlotRef[] = [];
+    for (const s of slots) {
+      if (s.subIndex == null) {
+        // main stats fall into neutral (no border tint)
+        neutral.push(s);
+        continue;
+      }
+      const traitK = `${s.statKey}.${s.subIndex}`;
+      if (highSet.has(traitK)) green.push(s);
+      else if (lowSet.has(traitK)) red.push(s);
+      else neutral.push(s);
+    }
+
+    const asc = [...numbers].sort((a, b) => a - b);
+    const nextAssigned: Record<string, number> = {};
+
+    // Green slots get the lowest N numbers (in random order among greens).
+    const shuffle = <T,>(arr: T[]): T[] => {
+      const out = [...arr];
+      for (let i = out.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+      return out;
+    };
+
+    const lowest = asc.slice(0, green.length);
+    const highest = asc.slice(asc.length - red.length);
+    const middle = asc.slice(green.length, asc.length - red.length);
+
+    const shuffledLowest = shuffle(lowest);
+    const shuffledHighest = shuffle(highest);
+    const shuffledMiddle = shuffle(middle);
+    const shuffledNeutral = shuffle(neutral);
+
+    green.forEach((s, i) => {
+      nextAssigned[slotKey(s)] = shuffledLowest[i];
+    });
+    red.forEach((s, i) => {
+      nextAssigned[slotKey(s)] = shuffledHighest[i];
+    });
+    shuffledNeutral.forEach((s, i) => {
+      nextAssigned[slotKey(s)] = shuffledMiddle[i];
+    });
+
+    setAssigned(nextAssigned);
+    setPool((prev) => prev.map(() => 0)); // fully consumed
+    setSelectedRollIdx(null);
+  };
+
   const onPickRoll = (idx: number) => {
     if (pool[idx] === 0) return;
     setSelectedRollIdx((cur) => (cur === idx ? null : idx));
@@ -256,6 +324,7 @@ export default function CreateHeroScreen() {
             onPickRoll={onPickRoll}
             onPickSlot={onPickSlot}
             onReroll={reroll}
+            onAutoFill={autoFill}
           />
         )}
         {step === 4 && race && charClass && (
@@ -751,6 +820,7 @@ function AssignStep({
   onPickRoll,
   onPickSlot,
   onReroll,
+  onAutoFill,
 }: {
   pool: number[];
   assigned: Record<string, number>;
@@ -760,6 +830,7 @@ function AssignStep({
   onPickRoll: (i: number) => void;
   onPickSlot: (s: SlotRef) => void;
   onReroll: () => void;
+  onAutoFill: () => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -826,20 +897,38 @@ function AssignStep({
             );
           })}
         </View>
-        <Pressable
-          testID="assign-reroll"
-          onPress={onReroll}
-          style={({ pressed }) => [
-            styles.rerollSmall,
-            {
-              borderColor: colors.borderStrong,
-              backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
-            },
-          ]}
-        >
-          <Icon name="restart" size={13} color={colors.onSurface} />
-          <Text style={styles.rerollSmallText}>Reroll & reset</Text>
-        </Pressable>
+        <View style={styles.assignActionRow}>
+          <Pressable
+            testID="assign-autofill"
+            onPress={onAutoFill}
+            style={({ pressed }) => [
+              styles.autoFillBtn,
+              {
+                borderColor: colors.brandPrimary,
+                backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
+              },
+            ]}
+          >
+            <Icon name="auto-fix" size={13} color={colors.onBrandPrimary} />
+            <Text style={[styles.autoFillText, { color: colors.onBrandPrimary }]}>
+              Auto-fill
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="assign-reroll"
+            onPress={onReroll}
+            style={({ pressed }) => [
+              styles.rerollSmall,
+              {
+                borderColor: colors.borderStrong,
+                backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
+              },
+            ]}
+          >
+            <Icon name="restart" size={13} color={colors.onSurface} />
+            <Text style={styles.rerollSmallText}>Reroll &amp; reset</Text>
+          </Pressable>
+        </View>
       </View>
 
       {STATS_ORDER.map((sk) => (
@@ -1265,12 +1354,31 @@ const getStyles = (colors: ThemeColors) =>
       gap: 4,
       borderWidth: 1.5,
       paddingVertical: 6,
-      alignSelf: "center",
       paddingHorizontal: 10,
     },
     rerollSmallText: {
       fontSize: 11,
       color: colors.onSurface,
+      fontFamily: fonts.displayBold,
+      letterSpacing: 0.8,
+    },
+    assignActionRow: {
+      flexDirection: "row",
+      gap: 6,
+      justifyContent: "center",
+      marginTop: 2,
+    },
+    autoFillBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      borderWidth: 1.5,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+    },
+    autoFillText: {
+      fontSize: 11,
       fontFamily: fonts.displayBold,
       letterSpacing: 0.8,
     },
