@@ -41,5 +41,15 @@ Mobile character sheet app for the "Assault of Bronze" lightweight roleplay TTRP
 ## Design
 Parchment / dark forge aesthetic. Light and dark palettes both feature heavy 2–3 pt ink borders, bronze accents, crimson for hearts / failures / delete.
 
+## Hero Character Creator (`/create-hero`)
+5-step wizard launched by the **New Hero** button on the home screen.
+1. **Race** — Elf/Half-Elf, Human, Dwarf, Hobbit/Halfling, Dragonborn, Giantborn, Therion, Orc/Half-Orc, Demonborn/Tiefling. Each has a tagline, short lore, and colored trait chips (green = high, red = low) mapped to specific sub-skills.
+2. **Class** — Warrior, Ranger, Battle-Mage, Alchemist, Rogue, Warden, Scrapper, Sorcerer. Sets base Armour and starting weapon(s), plus its own high/low trait chips.
+3. **Roll** — auto-rolls 20 × d20 clamped to [6, 18] with a staggered scale-in animation. "Reroll all" button.
+4. **Assign** — tap a die → tap a slot to place. Sub-skill slots inherit **green borders** where race+class say "high" (want a LOW roll) and **red borders** where they say "low" (want a HIGH roll). Tapping a filled slot returns the value to the pool. Cannot proceed until all 20 dice are placed.
+5. **Finalize** — name input (with sensible placeholder) + summary chips. Forge Hero creates the character with HP 20/20, applies base Armour + starting weapons, then navigates to the character sheet.
+
+Data source: `/app/frontend/src/data/lineages.ts` — pure data (races + classes + trait refs).
+
 ## Tech Stack
 Expo Router, React Native, react-native-reanimated (dice), expo-image-picker (base64 portraits), expo-haptics, @react-native-vector-icons/material-design-icons, AsyncStorage.

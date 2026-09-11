@@ -13,7 +13,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/material-design-icons";
 import { fonts, setThemeMode, useTheme } from "@/src/theme";
-import { Character, createEmptyCharacter, createEmptyMonster } from "@/src/types";
+import { Character, createEmptyMonster } from "@/src/types";
 import { deleteCharacter, loadAllCharacters, upsertCharacter } from "@/src/storage/characters";
 
 export default function CharacterListScreen() {
@@ -39,11 +39,8 @@ export default function CharacterListScreen() {
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
   useEffect(() => { refresh(); }, [refresh]);
 
-  const createHero = async () => {
-    const c = createEmptyCharacter();
-    c.name = "New Hero";
-    await upsertCharacter(c);
-    router.push(`/character/${c.id}`);
+  const createHero = () => {
+    router.push("/create-hero");
   };
   const createMonster = async () => {
     const m = createEmptyMonster();
