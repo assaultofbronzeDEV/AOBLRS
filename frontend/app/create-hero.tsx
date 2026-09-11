@@ -63,6 +63,7 @@ export default function CreateHeroScreen() {
   const router = useRouter();
   const styles = getStyles(colors);
 
+  const [mode, setMode] = useState<"easy" | null>(null);
   const [step, setStep] = useState<Step>(0);
   const [race, setRace] = useState<Race | null>(null);
   const [charClass, setCharClass] = useState<CharClass | null>(null);
@@ -197,6 +198,14 @@ export default function CreateHeroScreen() {
     router.replace(`/character/${hero.id}`);
   };
 
+  const startCustom = async () => {
+    setSaving(true);
+    const c = createEmptyCharacter();
+    c.name = "New Hero";
+    await upsertCharacter(c);
+    router.replace(`/character/${c.id}`);
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -212,12 +221,20 @@ export default function CreateHeroScreen() {
           <Icon name="close" size={22} color={colors.onSurface} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          Forge a Hero
+          {mode == null ? "New Hero" : "Forge a Hero"}
         </Text>
         <View style={{ width: 36 }} />
       </View>
 
-      <StepBar step={step} />
+      {mode == null ? (
+        <ModePicker
+          onEasy={() => setMode("easy")}
+          onCustom={startCustom}
+          saving={saving}
+        />
+      ) : (
+        <>
+          <StepBar step={step} />
 
       <View style={{ flex: 1 }}>
         {step === 0 && (
@@ -329,7 +346,110 @@ export default function CreateHeroScreen() {
           </Pressable>
         )}
       </View>
+        </>
+      )}
     </View>
+  );
+}
+
+// ---------- Mode picker ----------
+function ModePicker({
+  onEasy,
+  onCustom,
+  saving,
+}: {
+  onEasy: () => void;
+  onCustom: () => void;
+  saving: boolean;
+}) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+  return (
+    <ScrollView contentContainerStyle={styles.modeBody}>
+      <Text style={styles.stepHeading}>How shall we begin?</Text>
+      <Text style={styles.stepSubHeading}>
+        Choose your path. You can always tweak everything on the sheet afterwards.
+      </Text>
+
+      <Pressable
+        testID="mode-easy"
+        onPress={onEasy}
+        disabled={saving}
+        style={({ pressed }) => [
+          styles.modeCard,
+          {
+            borderColor: colors.brandPrimary,
+            backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
+          },
+        ]}
+      >
+        <View style={styles.modeIconWrap}>
+          <Icon name="auto-fix" size={30} color={colors.brandPrimary} />
+        </View>
+        <Text style={styles.modeTitle}>Easy Creation</Text>
+        <Text style={styles.modeSub}>
+          A guided 5-step forge — pick a race and class, roll 20 dice, tap them into place. Great for a first hero or players new to the system.
+        </Text>
+        <View style={styles.modeMetaRow}>
+          <View style={styles.modeMetaChip}>
+            <Icon name="account-star" size={12} color={colors.brandPrimary} />
+            <Text style={styles.modeMetaText}>9 Races</Text>
+          </View>
+          <View style={styles.modeMetaChip}>
+            <Icon name="shield-sword" size={12} color={colors.brandPrimary} />
+            <Text style={styles.modeMetaText}>8 Classes</Text>
+          </View>
+          <View style={styles.modeMetaChip}>
+            <Icon name="dice-multiple" size={12} color={colors.brandPrimary} />
+            <Text style={styles.modeMetaText}>Guided rolls</Text>
+          </View>
+        </View>
+        <View style={[styles.modeCta, { backgroundColor: colors.brandPrimary }]}>
+          <Text style={[styles.modeCtaText, { color: colors.onBrandPrimary }]}>
+            Start guided forge
+          </Text>
+          <Icon name="chevron-right" size={16} color={colors.onBrandPrimary} />
+        </View>
+      </Pressable>
+
+      <Pressable
+        testID="mode-custom"
+        onPress={onCustom}
+        disabled={saving}
+        style={({ pressed }) => [
+          styles.modeCard,
+          {
+            borderColor: colors.borderStrong,
+            backgroundColor: pressed ? colors.surfaceTertiary : colors.surface,
+            opacity: saving ? 0.6 : 1,
+          },
+        ]}
+      >
+        <View style={styles.modeIconWrap}>
+          <Icon name="pencil-outline" size={30} color={colors.onSurface} />
+        </View>
+        <Text style={styles.modeTitle}>Custom Creation</Text>
+        <Text style={styles.modeSub}>
+          Skip the wizard entirely and land on a blank sheet. Fill in name, class, stats, weapons and abilities by hand — perfect for veterans porting an existing hero.
+        </Text>
+        <View style={styles.modeMetaRow}>
+          <View style={styles.modeMetaChip}>
+            <Icon name="lightning-bolt-outline" size={12} color={colors.onSurface} />
+            <Text style={styles.modeMetaText}>Fastest start</Text>
+          </View>
+          <View style={styles.modeMetaChip}>
+            <Icon name="tune" size={12} color={colors.onSurface} />
+            <Text style={styles.modeMetaText}>Total control</Text>
+          </View>
+        </View>
+        <View style={[styles.modeCta, { backgroundColor: colors.surfaceSecondary, borderWidth: 2, borderColor: colors.borderStrong }]}>
+          <Text style={[styles.modeCtaText, { color: colors.onSurface }]}>
+            {saving ? "Preparing…" : "Straight to sheet"}
+          </Text>
+          <Icon name="chevron-right" size={16} color={colors.onSurface} />
+        </View>
+      </Pressable>
+    </ScrollView>
   );
 }
 
@@ -940,6 +1060,64 @@ const getStyles = (colors: ThemeColors) =>
     stepDotText: { fontSize: 12, fontFamily: fonts.displayBold },
     stepLabel: { fontSize: 11, letterSpacing: 1 },
     stepBody: { padding: 16, paddingBottom: 32, gap: 14 },
+    modeBody: { padding: 16, paddingBottom: 48, gap: 14 },
+    modeCard: {
+      borderWidth: 2.5,
+      padding: 18,
+      gap: 8,
+    },
+    modeIconWrap: {
+      width: 52,
+      height: 52,
+      borderWidth: 2,
+      borderColor: colors.borderStrong,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modeTitle: {
+      fontSize: 22,
+      color: colors.onSurface,
+      fontFamily: fonts.displayBold,
+      letterSpacing: 1.5,
+      marginTop: 4,
+    },
+    modeSub: {
+      fontSize: 13,
+      color: colors.onSurface,
+      fontFamily: fonts.display,
+      lineHeight: 18,
+    },
+    modeMetaRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 4 },
+    modeMetaChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      borderWidth: 1.5,
+      borderColor: colors.borderStrong,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+    },
+    modeMetaText: {
+      fontSize: 11,
+      color: colors.onSurface,
+      fontFamily: fonts.displayBold,
+      letterSpacing: 0.5,
+    },
+    modeCta: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 12,
+      marginTop: 8,
+    },
+    modeCtaText: {
+      fontSize: 14,
+      fontFamily: fonts.displayBold,
+      letterSpacing: 1,
+    },
     stepHeading: {
       fontSize: 22,
       color: colors.onSurface,

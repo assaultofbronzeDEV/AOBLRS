@@ -42,7 +42,11 @@ Mobile character sheet app for the "Assault of Bronze" lightweight roleplay TTRP
 Parchment / dark forge aesthetic. Light and dark palettes both feature heavy 2–3 pt ink borders, bronze accents, crimson for hearts / failures / delete.
 
 ## Hero Character Creator (`/create-hero`)
-5-step wizard launched by the **New Hero** button on the home screen.
+Launched by the **New Hero** button. First shows a **mode picker**:
+- **Easy Creation** → 5-step guided wizard (below).
+- **Custom Creation** → skips the wizard entirely, creates an empty hero and jumps straight to the character sheet where every field can be edited freely.
+
+### Easy Creation — 5-step wizard
 1. **Race** — Elf/Half-Elf, Human, Dwarf, Hobbit/Halfling, Dragonborn, Giantborn, Therion, Orc/Half-Orc, Demonborn/Tiefling. Each has a tagline, short lore, and colored trait chips (green = high, red = low) mapped to specific sub-skills.
 2. **Class** — Warrior, Ranger, Battle-Mage, Alchemist, Rogue, Warden, Scrapper, Sorcerer. Sets base Armour and starting weapon(s), plus its own high/low trait chips.
 3. **Roll** — auto-rolls 20 × d20 clamped to [6, 18] with a staggered scale-in animation. "Reroll all" button.
