@@ -1,12 +1,14 @@
 // Assault of Bronze — starter ability library.
-// Three tiers of power. Players may still craft custom abilities.
+// Four power tiers. Once Per Rest rolls at 1d10 minimum, Hero Abilities at
+// d20 minimum. Players may still craft custom abilities via the picker.
 
 import type { EffectType } from "@/src/types";
 
 export type AbilityCategory =
   | "Starter Spells"
   | "Class Specials"
-  | "Once Per Rest";
+  | "Once Per Rest"
+  | "Hero Abilities";
 
 export type AbilityPreset = {
   id: string;
@@ -82,7 +84,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     effectType: "none",
   },
 
-  // ── Class Specials (mid tier) ─────────────────────────────
+  // ── Class Specials (mid tier — Once Per Turn signature moves) ─
   {
     id: "second-wind",
     name: "Second Wind",
@@ -170,14 +172,14 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     tag: "Scrapper",
   },
 
-  // ── Once Per Rest (powerful) ─────────────────────────────
+  // ── Once Per Rest (powerful — minimum 1d10) ───────────────
   {
     id: "fireball",
     name: "Fireball",
     description: "A roar of flame engulfs everyone in a 20 ft radius.",
     category: "Once Per Rest",
     effectType: "damage",
-    effectRoll: "3d6",
+    effectRoll: "3d10",
   },
   {
     id: "massive-heal",
@@ -185,7 +187,68 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Golden light. An ally is pulled back from the brink.",
     category: "Once Per Rest",
     effectType: "healing",
-    effectRoll: "3d6",
+    effectRoll: "2d10+2",
+  },
+  {
+    id: "lightning-storm",
+    name: "Lightning Storm",
+    description: "The sky opens. Everyone in the field takes the hit.",
+    category: "Once Per Rest",
+    effectType: "damage",
+    effectRoll: "3d10",
+    tag: "Sorcerer",
+  },
+  {
+    id: "arrow-storm",
+    name: "Arrow Storm",
+    description: "A quiver empties into the air. It rains.",
+    category: "Once Per Rest",
+    effectType: "damage",
+    effectRoll: "2d12",
+    tag: "Ranger",
+  },
+  {
+    id: "cleave",
+    name: "Cleave",
+    description: "One swing, two enemies in reach. Both feel it.",
+    category: "Once Per Rest",
+    effectType: "damage",
+    effectRoll: "2d10",
+    tag: "Warrior",
+  },
+  {
+    id: "explosive-shot",
+    name: "Explosive Shot",
+    description: "Alchemist-tipped arrow bursts on impact.",
+    category: "Once Per Rest",
+    effectType: "damage",
+    effectRoll: "2d12",
+    tag: "Ranger",
+  },
+  {
+    id: "frozen-grasp",
+    name: "Frozen Grasp",
+    description: "The target's blood slows. They lose their next action.",
+    category: "Once Per Rest",
+    effectType: "damage",
+    effectRoll: "2d10",
+  },
+  {
+    id: "blood-frenzy",
+    name: "Blood Frenzy",
+    description: "Deal massive damage — and drink 1d6 of it yourself.",
+    category: "Once Per Rest",
+    effectType: "damage",
+    effectRoll: "3d10",
+    tag: "Scrapper",
+  },
+  {
+    id: "consecrate-ground",
+    name: "Consecrate Ground",
+    description: "Bless the earth beneath you. Allies within 10 ft are healed.",
+    category: "Once Per Rest",
+    effectType: "healing",
+    effectRoll: "2d10",
   },
   {
     id: "berserker-fury",
@@ -201,15 +264,6 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     description: "Nullify a single attack — even one you didn't see coming.",
     category: "Once Per Rest",
     effectType: "none",
-  },
-  {
-    id: "lightning-storm",
-    name: "Lightning Storm",
-    description: "The sky opens. Everyone in the field takes the hit.",
-    category: "Once Per Rest",
-    effectType: "damage",
-    effectRoll: "4d6",
-    tag: "Sorcerer",
   },
   {
     id: "ice-wall",
@@ -234,32 +288,6 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     effectType: "none",
   },
   {
-    id: "divine-intervention",
-    name: "Divine Intervention",
-    description: "Reach across the veil. A fallen ally returns at 1 HP.",
-    category: "Once Per Rest",
-    effectType: "healing",
-    effectRoll: "1d4",
-  },
-  {
-    id: "blood-frenzy",
-    name: "Blood Frenzy",
-    description: "Deal massive damage — and drink 1d6 of it yourself.",
-    category: "Once Per Rest",
-    effectType: "damage",
-    effectRoll: "2d10",
-    tag: "Scrapper",
-  },
-  {
-    id: "arrow-storm",
-    name: "Arrow Storm",
-    description: "A quiver empties into the air. It rains.",
-    category: "Once Per Rest",
-    effectType: "damage",
-    effectRoll: "3d8",
-    tag: "Ranger",
-  },
-  {
     id: "war-cry",
     name: "War Cry",
     description: "Foes within earshot must make an Intimidation roll or flinch (disadvantage on their next action).",
@@ -267,10 +295,144 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
     effectType: "none",
     tag: "Warrior",
   },
+  {
+    id: "curse-of-weakness",
+    name: "Curse of Weakness",
+    description: "Enemies within 30 ft suffer -2 to all rolls for one scene.",
+    category: "Once Per Rest",
+    effectType: "none",
+  },
+
+  // ── Hero Abilities (legendary — minimum 1d20) ──────────────
+  {
+    id: "meteor-strike",
+    name: "Meteor Strike",
+    description: "Call a stone from the black sky. All in a 30 ft radius are struck.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "3d20",
+  },
+  {
+    id: "wrath-of-khaliik",
+    name: "Wrath of Khaliik",
+    description: "The old god answers. A pillar of bronze fire consumes the field.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "3d20",
+  },
+  {
+    id: "world-shatter",
+    name: "World-Shatter",
+    description: "Slam the earth. It cracks outward — anything standing on it is thrown.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "4d20",
+    tag: "Scrapper",
+  },
+  {
+    id: "blade-of-dawn",
+    name: "Blade of Dawn",
+    description: "Your weapon flares with white flame. One cut, one enemy, one memory.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "2d20+10",
+    tag: "Warrior",
+  },
+  {
+    id: "dragons-breath",
+    name: "Dragon's Breath",
+    description: "Breathe fire in a 60 ft cone. Everyone in it burns.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "2d20",
+    tag: "Dragonborn",
+  },
+  {
+    id: "nova-burst",
+    name: "Nova Burst",
+    description: "Your body explodes with light. Every foe within 20 ft is blasted.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "3d20",
+    tag: "Sorcerer",
+  },
+  {
+    id: "soul-rend",
+    name: "Soul Rend",
+    description: "Tear a chunk from the target's spirit. You heal for half the damage dealt.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "2d20",
+  },
+  {
+    id: "godslayer",
+    name: "Godslayer",
+    description: "One perfect strike. Meant for kings, gods, and monsters — no exceptions.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "2d20+10",
+  },
+  {
+    id: "chains-of-bronze",
+    name: "Chains of Bronze",
+    description: "Bronze links erupt from the ground, holding the target. They cannot act next turn.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "1d20",
+  },
+  {
+    id: "phoenix-rebirth",
+    name: "Phoenix Rebirth",
+    description: "The next time you would fall this scene, rise instead at full HP.",
+    category: "Hero Abilities",
+    effectType: "healing",
+    effectRoll: "1d20+10",
+  },
+  {
+    id: "divine-resurrection",
+    name: "Divine Resurrection",
+    description: "A fallen ally opens their eyes. They stand at full strength.",
+    category: "Hero Abilities",
+    effectType: "healing",
+    effectRoll: "2d20",
+  },
+  {
+    id: "sanctuary",
+    name: "Sanctuary",
+    description: "Bathe every ally in warm light. Each is healed for the same amount.",
+    category: "Hero Abilities",
+    effectType: "healing",
+    effectRoll: "1d20+5",
+  },
+  {
+    id: "absolute-judgement",
+    name: "Absolute Judgement",
+    description: "You point. The target's HP is reduced to 1. Once per hero, ever.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "1d20",
+  },
+  {
+    id: "time-slip",
+    name: "Time Slip",
+    description: "For one heartbeat, only you move. Take an extra full turn.",
+    category: "Hero Abilities",
+    effectType: "none",
+  },
+  {
+    id: "titans-roar",
+    name: "Titan's Roar",
+    description: "A voice like breaking mountains. All enemies flee for one scene.",
+    category: "Hero Abilities",
+    effectType: "damage",
+    effectRoll: "1d20",
+    tag: "Giantborn",
+  },
 ];
 
 export const ABILITY_CATEGORY_ORDER: AbilityCategory[] = [
   "Starter Spells",
   "Class Specials",
   "Once Per Rest",
+  "Hero Abilities",
 ];

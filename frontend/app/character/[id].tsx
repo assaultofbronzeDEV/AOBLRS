@@ -911,9 +911,9 @@ export default function CharacterSheetScreen() {
         }
         subtitle={
           abilityPickerFor === "oncePerRest"
-            ? "Big moves — great for once-per-rest slots. You can still pick from any tier."
+            ? "Big moves — 1d10 minimum. Great for once-per-rest slots. Any tier works."
             : abilityPickerFor === "heroAbilities"
-              ? "Epic feats — spend a Hero Point to trigger. Any tier works."
+              ? "Legendary feats — d20 dice, spend a Hero Point to trigger. Any tier works."
               : "Cantrip-tier picks, class specials, or bigger moves — your choice."
         }
         customLabel="Create custom ability"
