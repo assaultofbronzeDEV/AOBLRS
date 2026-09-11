@@ -46,6 +46,9 @@ import MeleeDmgCell from "@/src/components/MeleeDmgCell";
 import WeaponCard, { getAttackTarget } from "@/src/components/WeaponCard";
 import InventoryList from "@/src/components/InventoryList";
 import RollHistoryList from "@/src/components/RollHistoryList";
+import PickerSheet, { PickerEntry } from "@/src/components/PickerSheet";
+import { WEAPON_PRESETS } from "@/src/data/weapons";
+import { ITEM_PRESETS, ITEM_CATEGORY_ORDER } from "@/src/data/items";
 import { valueForRef, labelForRef } from "@/src/components/StatPickerModal";
 
 type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
@@ -60,6 +63,8 @@ export default function CharacterSheetScreen() {
   const [rollMode, setRollMode] = useState<RollMode>("normal");
   const [boostPending, setBoostPending] = useState(false);
   const [heroPointsWarning, setHeroPointsWarning] = useState<string | null>(null);
+  const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
+  const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -215,7 +220,31 @@ export default function CharacterSheetScreen() {
 
   const addWeapon = () => {
     if (!char) return;
+    Haptics.selectionAsync();
+    setWeaponPickerOpen(true);
+  };
+
+  const addCustomWeapon = () => {
+    if (!char) return;
     update({ weapons: [...char.weapons, createEmptyWeapon()] });
+    Haptics.selectionAsync();
+  };
+
+  const addPresetWeapon = (p: PickerEntry) => {
+    if (!char) return;
+    const preset = WEAPON_PRESETS.find((w) => w.id === p.id);
+    if (!preset) return;
+    update({
+      weapons: [
+        ...char.weapons,
+        {
+          id: genId(),
+          name: preset.name,
+          attackKind: preset.attackKind,
+          damageRoll: preset.damageRoll,
+        },
+      ],
+    });
     Haptics.selectionAsync();
   };
 
@@ -300,7 +329,24 @@ export default function CharacterSheetScreen() {
 
   const addInventoryItem = () => {
     if (!char) return;
+    Haptics.selectionAsync();
+    setItemPickerOpen(true);
+  };
+
+  const addCustomInventoryItem = () => {
+    if (!char) return;
     update({ inventoryItems: [...char.inventoryItems, createEmptyInventoryItem()] });
+    Haptics.selectionAsync();
+  };
+
+  const addPresetItem = (p: PickerEntry) => {
+    if (!char) return;
+    const preset = ITEM_PRESETS.find((it) => it.id === p.id);
+    if (!preset) return;
+    const label = preset.price ? `${preset.name} (${preset.price})` : preset.name;
+    update({
+      inventoryItems: [...char.inventoryItems, createEmptyInventoryItem(label)],
+    });
     Haptics.selectionAsync();
   };
 
@@ -777,6 +823,45 @@ export default function CharacterSheetScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <PickerSheet
+        visible={weaponPickerOpen}
+        testIDPrefix="weapon-picker"
+        title="Weapon Library"
+        subtitle="Tap a weapon to add it — or forge your own."
+        customLabel="Create custom weapon"
+        presets={WEAPON_PRESETS.map((w) => ({
+          id: w.id,
+          name: w.name,
+          category: w.category,
+          meta: `${w.attackKind === "ranged" ? "↦" : "×"} ${w.damageRoll}`,
+          notes: w.notes,
+          icon: w.attackKind === "ranged" ? "bow-arrow" : "sword",
+        }))}
+        categoryOrder={["Blades", "Big Steel", "Hafted", "Brawler", "Bows & Slings", "Magic & Named"]}
+        onClose={() => setWeaponPickerOpen(false)}
+        onSelect={addPresetWeapon}
+        onCustom={addCustomWeapon}
+      />
+
+      <PickerSheet
+        visible={itemPickerOpen}
+        testIDPrefix="item-picker"
+        title="Item Library"
+        subtitle="Prices in gold (g), silver (s), copper (c). Edit anytime."
+        customLabel="Create custom item"
+        presets={ITEM_PRESETS.map((it) => ({
+          id: it.id,
+          name: it.name,
+          category: it.category,
+          meta: it.price,
+          notes: it.notes,
+        }))}
+        categoryOrder={ITEM_CATEGORY_ORDER}
+        onClose={() => setItemPickerOpen(false)}
+        onSelect={addPresetItem}
+        onCustom={addCustomInventoryItem}
+      />
     </View>
   );
 }
