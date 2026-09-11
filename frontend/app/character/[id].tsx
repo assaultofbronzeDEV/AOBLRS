@@ -907,17 +907,22 @@ export default function CharacterSheetScreen() {
             ? "Hero Ability Library"
             : abilityPickerFor === "oncePerRest"
               ? "Once Per Rest Library"
-              : "Ability Library"
+              : "Once Per Turn Library"
         }
         subtitle={
           abilityPickerFor === "oncePerRest"
-            ? "Big moves — 1d10 minimum. Great for once-per-rest slots. Any tier works."
+            ? "Big moves — 1d10 minimum. Fires once, refreshed on Long Rest."
             : abilityPickerFor === "heroAbilities"
-              ? "Legendary feats — d20 dice, spend a Hero Point to trigger. Any tier works."
-              : "Cantrip-tier picks, class specials, or bigger moves — your choice."
+              ? "Legendary feats — d20 dice, spend a Hero Point to trigger."
+              : "Cantrip-tier spells and class signatures — safe to reuse each turn."
         }
         customLabel="Create custom ability"
-        presets={ABILITY_PRESETS.map((a) => ({
+        presets={ABILITY_PRESETS.filter((a) => {
+          if (abilityPickerFor === "heroAbilities") return a.category === "Hero Abilities";
+          if (abilityPickerFor === "oncePerRest") return a.category === "Once Per Rest";
+          // oncePerTurn: starter spells + class specials
+          return a.category === "Starter Spells" || a.category === "Class Specials";
+        }).map((a) => ({
           id: a.id,
           name: a.name,
           category: a.category,
