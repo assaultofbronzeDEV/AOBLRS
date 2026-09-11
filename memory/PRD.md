@@ -59,9 +59,12 @@ Data source: `/app/frontend/src/data/lineages.ts` — pure data (races + classes
 Expo Router, React Native, react-native-reanimated (dice), expo-image-picker (base64 portraits), expo-haptics, @react-native-vector-icons/material-design-icons, AsyncStorage.
 
 ## Weapon & Item Libraries
-Tapping **Add Weapon** or **Add Item** on a hero sheet opens a bottom-sheet **PickerSheet** modal with:
+Tapping **Add Weapon**, **Add Item**, or any **Add Ability** button on a hero sheet opens a bottom-sheet **PickerSheet** modal with:
 - A prominent **"Create custom …"** button up top (routes to a blank row like before).
 - A live-search field.
 - The full preset library grouped by category and tappable to add.
 
-Weapon presets live in `src/data/weapons.ts` (categories: Blades, Big Steel, Hafted, Brawler, Bows & Slings, Magic & Named — includes Dagger, Short Sword, Weapon of Khaliik, and more). Item presets live in `src/data/items.ts` (General Goods, Tools, Medical, Consumables, Misc — prices baked into the name so `Torch (1s)`, `Potion of Healing (50g)`, etc.). All added rows remain fully editable inline.
+Weapon presets live in `src/data/weapons.ts` (categories: Blades, Big Steel, Hafted, Brawler, Bows & Slings, Magic & Named — includes Dagger, Short Sword, Weapon of Khaliik, and more). Item presets live in `src/data/items.ts` (General Goods, Tools, Medical, Consumables, Misc — prices in gold (g), silver (s), bronze (b) baked into the name so `Torch (1s)`, `Potion of Healing (50g)`, etc.). Ability presets live in `src/data/abilities.ts` in three tiers: **Starter Spells** (cantrip level), **Class Specials** (mid-tier), and **Once Per Rest** (powerful — Fireball, Lightning Storm, Blood Frenzy). All added rows remain fully editable inline.
+
+## Currency Purse
+Below the action bar on every hero sheet, a compact 3-column **Purse** tracks **Gold / Silver / Bronze** with tap-steppers (long-press = ±10) and editable value inputs. Persists with the character.

@@ -47,8 +47,10 @@ import WeaponCard, { getAttackTarget } from "@/src/components/WeaponCard";
 import InventoryList from "@/src/components/InventoryList";
 import RollHistoryList from "@/src/components/RollHistoryList";
 import PickerSheet, { PickerEntry } from "@/src/components/PickerSheet";
+import CurrencyPurse from "@/src/components/CurrencyPurse";
 import { WEAPON_PRESETS } from "@/src/data/weapons";
 import { ITEM_PRESETS, ITEM_CATEGORY_ORDER } from "@/src/data/items";
+import { ABILITY_PRESETS, ABILITY_CATEGORY_ORDER } from "@/src/data/abilities";
 import { valueForRef, labelForRef } from "@/src/components/StatPickerModal";
 
 type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
@@ -65,6 +67,7 @@ export default function CharacterSheetScreen() {
   const [heroPointsWarning, setHeroPointsWarning] = useState<string | null>(null);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
+  const [abilityPickerFor, setAbilityPickerFor] = useState<AbilityKey | null>(null);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -131,8 +134,34 @@ export default function CharacterSheetScreen() {
 
   const addAbility = (key: AbilityKey) => {
     if (!char) return;
+    Haptics.selectionAsync();
+    setAbilityPickerFor(key);
+  };
+
+  const addCustomAbility = (key: AbilityKey) => {
+    if (!char) return;
     const cur = char[key] as Ability[];
     setAbilities(key, [...cur, createEmptyAbility()]);
+    Haptics.selectionAsync();
+  };
+
+  const addPresetAbility = (key: AbilityKey, entry: PickerEntry) => {
+    if (!char) return;
+    const preset = ABILITY_PRESETS.find((a) => a.id === entry.id);
+    if (!preset) return;
+    const cur = char[key] as Ability[];
+    setAbilities(key, [
+      ...cur,
+      {
+        id: genId(),
+        title: preset.name,
+        description: preset.description,
+        linkedStat: undefined,
+        effectRoll: preset.effectRoll ?? "",
+        effectType: preset.effectType,
+        used: false,
+      },
+    ]);
     Haptics.selectionAsync();
   };
 
@@ -605,6 +634,13 @@ export default function CharacterSheetScreen() {
             </Pressable>
           </View>
 
+          {char.kind === "hero" && (
+            <CurrencyPurse
+              value={char.currency}
+              onChange={(currency) => update({ currency })}
+            />
+          )}
+
           {char.kind === "monster"
             ? flatStats.map((fs) => (
                 <View key={fs.key} style={styles.statRow}>
@@ -848,7 +884,7 @@ export default function CharacterSheetScreen() {
         visible={itemPickerOpen}
         testIDPrefix="item-picker"
         title="Item Library"
-        subtitle="Prices in gold (g), silver (s), copper (c). Edit anytime."
+        subtitle="Prices in gold (g), silver (s), bronze (b). Edit anytime."
         customLabel="Create custom item"
         presets={ITEM_PRESETS.map((it) => ({
           id: it.id,
@@ -861,6 +897,47 @@ export default function CharacterSheetScreen() {
         onClose={() => setItemPickerOpen(false)}
         onSelect={addPresetItem}
         onCustom={addCustomInventoryItem}
+      />
+
+      <PickerSheet
+        visible={abilityPickerFor != null}
+        testIDPrefix="ability-picker"
+        title={
+          abilityPickerFor === "heroAbilities"
+            ? "Hero Ability Library"
+            : abilityPickerFor === "oncePerRest"
+              ? "Once Per Rest Library"
+              : "Ability Library"
+        }
+        subtitle={
+          abilityPickerFor === "oncePerRest"
+            ? "Big moves — great for once-per-rest slots. You can still pick from any tier."
+            : abilityPickerFor === "heroAbilities"
+              ? "Epic feats — spend a Hero Point to trigger. Any tier works."
+              : "Cantrip-tier picks, class specials, or bigger moves — your choice."
+        }
+        customLabel="Create custom ability"
+        presets={ABILITY_PRESETS.map((a) => ({
+          id: a.id,
+          name: a.name,
+          category: a.category,
+          meta: a.effectRoll,
+          notes: a.tag ? `${a.tag} · ${a.description}` : a.description,
+          icon:
+            a.effectType === "healing"
+              ? "heart-plus"
+              : a.effectType === "damage"
+                ? "sword-cross"
+                : "sparkles",
+        }))}
+        categoryOrder={ABILITY_CATEGORY_ORDER}
+        onClose={() => setAbilityPickerFor(null)}
+        onSelect={(entry) => {
+          if (abilityPickerFor) addPresetAbility(abilityPickerFor, entry);
+        }}
+        onCustom={() => {
+          if (abilityPickerFor) addCustomAbility(abilityPickerFor);
+        }}
       />
     </View>
   );

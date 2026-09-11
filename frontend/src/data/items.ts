@@ -24,7 +24,7 @@ export const ITEM_PRESETS: ItemPreset[] = [
   { id: "rations", name: "Rations (1 day)", price: "5s", category: "General Goods", notes: "Dry. Filling. Tasteless." },
   { id: "tinderbox", name: "Tinderbox", price: "5s", category: "General Goods", notes: "Flint, steel, tinder." },
   { id: "candles", name: "Candles (×5)", price: "1s", category: "General Goods" },
-  { id: "sack", name: "Sack", price: "5c", category: "General Goods", notes: "Holds ~30 lb." },
+  { id: "sack", name: "Sack", price: "5b", category: "General Goods", notes: "Holds ~30 lb." },
 
   // ── Tools ─────────────────────────────────────────
   { id: "thieves-tools", name: "Thieves' Tools", price: "25g", category: "Tools", notes: "Picks, tension bars, a lucky charm." },

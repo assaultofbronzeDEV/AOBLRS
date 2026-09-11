@@ -78,6 +78,12 @@ export type EntityKind = "hero" | "monster";
 export const HP_MAX = 20;
 export const ROLL_HISTORY_MAX = 20;
 
+export type Currency = {
+  gold: number;
+  silver: number;
+  bronze: number;
+};
+
 export type Character = {
   id: string;
   kind: EntityKind;
@@ -94,6 +100,7 @@ export type Character = {
   oncePerRest: Ability[];
   heroAbilities: Ability[];
   heroPoints: number;
+  currency: Currency;
   backstory: string;
   inventory: string;
   inventoryItems: InventoryItem[];
@@ -223,6 +230,7 @@ const createBase = (kind: EntityKind): Character => {
     oncePerRest: [],
     heroAbilities: [],
     heroPoints: 0,
+    currency: { gold: 0, silver: 0, bronze: 0 },
     backstory: "",
     inventory: "",
     inventoryItems: [],
@@ -296,6 +304,11 @@ export const migrateCharacter = (raw: any): Character => {
     oncePerRest,
     heroAbilities,
     heroPoints: typeof raw.heroPoints === "number" ? raw.heroPoints : 0,
+    currency: {
+      gold: Number.isFinite(raw?.currency?.gold) ? Math.max(0, raw.currency.gold) : 0,
+      silver: Number.isFinite(raw?.currency?.silver) ? Math.max(0, raw.currency.silver) : 0,
+      bronze: Number.isFinite(raw?.currency?.bronze) ? Math.max(0, raw.currency.bronze) : 0,
+    },
     backstory: raw.backstory ?? "",
     inventory: raw.inventory ?? "",
     inventoryItems,
