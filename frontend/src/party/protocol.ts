@@ -83,7 +83,7 @@ export function decodeMessages(
 
 // Short room code A-Z 2-9 (avoiding lookalikes) — 6 chars, ~1 billion combos.
 export function generateRoomCode(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let out = "";
   for (let i = 0; i < 6; i++) {
     out += alphabet[Math.floor(Math.random() * alphabet.length)];

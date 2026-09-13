@@ -9,10 +9,13 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.emergent.aoblrs",
+      "bundleIdentifier": "com.assaultofbronze.aoblrs",
       "infoPlist": {
-        "NSLocalNetworkUsageDescription": "Find and host Party rooms with players on the same Wi-Fi network.",
-        "NSBonjourServices": ["_aob-party._udp", "_aob-party._tcp"]
+        "NSLocalNetworkUsageDescription": "Connect to Party hosts on the same Wi-Fi network.",
+        "NSBonjourServices": [
+          "_aob-party._udp",
+          "_aob-party._tcp"
+        ]
       }
     },
     "android": {
@@ -20,12 +23,14 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "package": "com.emergent.aoblrs",
+      "package": "com.assaultofbronze.aoblrs",
       "permissions": [
-        "INTERNET",
-        "ACCESS_WIFI_STATE",
-        "ACCESS_NETWORK_STATE",
-        "CHANGE_WIFI_MULTICAST_STATE"
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.CHANGE_WIFI_MULTICAST_STATE",
+        "android.permission.NEARBY_WIFI_DEVICES",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -38,7 +43,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-image.png",
+          "image": "./assets/images/aob-logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#000000"
@@ -47,7 +52,6 @@
       "expo-font",
       "expo-image",
       "expo-secure-store",
-      "expo-web-browser",
       "expo-status-bar",
       "@react-native-vector-icons/material-design-icons",
       [
@@ -67,6 +71,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e79b358a-6690-46f6-84f3-deeffcd62cd5"
+      }
+    },
+    "owner": "emergent-em-user-d3843c6e-9ac7-4207-ad6d-c7c2af131a88"
   }
 }

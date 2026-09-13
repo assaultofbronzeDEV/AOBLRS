@@ -16,17 +16,26 @@ import {
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import * as ScreenOrientation from "expo-screen-orientation";
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import Icon from "@react-native-vector-icons/material-design-icons";
+
 import { fonts, setThemeMode, useTheme } from "@/src/theme";
+
 import { Character, RollHistoryEntry } from "@/src/types";
+
 import { deleteCharacter, loadAllCharacters, upsertCharacter } from "@/src/storage/characters";
+
 import { genId } from "@/src/types";
+
 import DiceRollModal, { RollRequest } from "@/src/components/DiceRollModal";
+
 import { partyManager } from "@/src/party/PartyManager";
+
 import { usePartyState } from "@/src/party/usePartyState";
-import { PARTY_UNSUPPORTED_REASON } from "@/src/party/nativeSupport";
 
 const HELP_TABS = [
   {
@@ -34,6 +43,38 @@ const HELP_TABS = [
     label: "Overview",
     title: "Assault of Bronze",
     body: "Create heroes and monsters, then open their sheets to manage stats, equipment, abilities, health, and rolls. Open Lore to explore Aryndos, or Party to create and join a local Wi-Fi room. GM Tools includes a quick dice roller, weapon-roll shortcuts, and an initiative tracker for heroes, monsters, and connected party members.",
+  },
+  {
+    key: "dice",
+    label: "Dice",
+    title: "Dice and Stat Checks",
+    body: `STAT CHECKS
+
+Stat checks do not work like typical D&D rules in the AoB system. The stats on the Character Sheet equal the number you have to roll or higher with a D20 to succeed at any task. The lower the number in a stat, the better you are at that skill and the more often the character will succeed.
+
+Whenever players take an important action, the GM determines which skill the character is using. The player rolls against the corresponding stat on the Character Sheet. If the player passes the check, the character succeeds to the best of their ability: a quick, easy yes or no answer without DCs to reference.
+
+If the GM decides the method described by the player will not work as stated, the GM may set a higher target based on Logical Roleplay. For example, lifting a 1000kg boulder might require a roll of 50 or higher. The character could get help from other Player Characters or NPCs, who would all roll their strength checks; if the combined result reaches 50 or more, the group lifts the boulder.
+
+CRITICAL SUCCESSES AND FAILURES
+
+A natural 20 on a D20 during a stat check is the best possible outcome. In combat, it gives the player a full extra turn immediately, including movement, one action, and a bonus action. This is a Critical Success.
+
+A natural 1 on a D20 during a stat check is the worst possible outcome and typically results in damage during combat. This is a Critical Failure. The GM decides whether the damage comes from a consequence or an extra attack by a creature.
+
+MODIFIERS
+
+Modifiers are typically added to damage rolls based on the weapon used. A basic dagger might deal 1D4 damage, while a better dagger might deal 1D4+5. The modifier guarantees at least 5 damage on every successful ATK roll.
+
+Modifiers are never added to stat rolls. Instead, use Advantage or Disadvantage:
+
+ADV: Roll 2D20 and take the highest number.
+
+DISADV: Roll 2D20 and take the lowest number.
+
+THE HERO DIE
+
+During any stat check, the player performing the roll may spend 1 hero point to add an additional D6 to the result. This die can be rolled during or after the initial D20 roll.`,
   },
   {
     key: "logical-roleplay",
@@ -94,8 +135,8 @@ Combat ends when the last enemy is defeated or surrenders. Remove the initiative
   {
     key: "party",
     label: "Party",
-    title: "Party server",
-    body: "Create or join a private room for nearby players.",
+    title: "Offline mode",
+    body: "This build keeps all game data on this device. Party rooms and backend synchronization are disabled.",
   },
 ] as const;
 
@@ -173,6 +214,7 @@ export default function CharacterListScreen() {
   const { colors, mode } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const party = usePartyState();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<Character | null>(null);
@@ -182,47 +224,38 @@ export default function CharacterListScreen() {
   const [helpMode, setHelpMode] = useState<"help" | "lore">("help");
   const [helpTab, setHelpTab] = useState<(typeof HELP_TABS)[number]["key"]>("overview");
   const [loreTab, setLoreTab] = useState<(typeof LORE_TABS)[number]["key"]>("overview");
+  const [helpTabMenuOpen, setHelpTabMenuOpen] = useState(false);
   const [rotationEnabled, setRotationEnabled] = useState(true);
+  const [serverCreating, setServerCreating] = useState(false);
+  const [serverInfo, setServerInfo] = useState<{ room_code: string } | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState("");
-  const [selectedSharedHeroId, setSelectedSharedHeroId] = useState<string | null>(null);
+  const [joinedRoom, setJoinedRoom] = useState<string | null>(null);
+  const [sharedHeroes, setSharedHeroes] = useState<Character[]>([]);
+  const [selectedSharedHero, setSelectedSharedHero] = useState<Character | null>(null);
   const [gmToolsOpen, setGmToolsOpen] = useState(false);
   const [gmRoll, setGmRoll] = useState<RollRequest | null>(null);
-  const [gmDamage, setGmDamage] = useState("");
   const [gmNotation, setGmNotation] = useState("");
+  const [gmDamage, setGmDamage] = useState("");
   const [initiative, setInitiative] = useState<{ id: string; order: string }[]>([]);
   const [turnIndex, setTurnIndex] = useState(0);
   const [availableCombatantsCollapsed, setAvailableCombatantsCollapsed] = useState(false);
   const [partyCombatantsCollapsed, setPartyCombatantsCollapsed] = useState(false);
+  const [rollNotes, setRollNotes] = useState<Record<string, string>>({});
   const [collapsedRollHistoryGroups, setCollapsedRollHistoryGroups] = useState<Record<string, boolean>>({});
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
   const [renamingGroupKey, setRenamingGroupKey] = useState<string | null>(null);
-  const [localRollNotes, setLocalRollNotes] = useState<Record<string, string>>({});
+  useEffect(() => {
+    setSharedHeroes(party.sharedHeroes);
+    setJoinedRoom(party.roomCode);
+    setRollNotes(party.rollNotes);
+    if (party.roomCode) setServerInfo({ room_code: party.roomCode });
+    if (party.error) setServerError(party.error);
+  }, [party]);
 
-  // Party state comes from the PartyManager (host or client role).
-  const party = usePartyState();
-  const partySupported = useMemo(() => partyManager.isSupported(), []);
-  const serverCreating = party.connecting && party.role === "host";
-  const serverInfo = party.role === "host" && party.roomCode
-    ? {
-        room_code: party.roomCode,
-        join_url:
-          party.hostPort != null
-            ? `Room code ${party.roomCode} · port ${party.hostPort}`
-            : `Room code ${party.roomCode}`,
-      }
-    : null;
-  const joinedRoom = party.connected ? party.roomCode : null;
-  const sharedHeroes = party.sharedHeroes;
-  const rollNotes = party.connected ? party.rollNotes : localRollNotes;
-  const partyError = party.error ?? serverError;
-
-  // Always look up the freshest shared-hero snapshot from party state so live
-  // HP / stat updates flow through the preview modal automatically.
-  const selectedSharedHero = useMemo(
-    () => sharedHeroes.find((h) => h.id === selectedSharedHeroId) ?? null,
-    [sharedHeroes, selectedSharedHeroId],
-  );
+  useEffect(() => {
+    partyManager.updateMyCharacters(characters);
+  }, [characters]);
 
   const cycleTheme = () => {
     setThemeMode(mode === "dark" ? "light" : "dark");
@@ -386,7 +419,7 @@ export default function CharacterListScreen() {
   const openCombatantSheet = (combatant: Character) => {
     setGmToolsOpen(false);
     if (sharedHeroes.some((hero) => hero.id === combatant.id)) {
-      setSelectedSharedHeroId(combatant.id);
+      setSelectedSharedHero(combatant);
       return;
     }
     router.push(`/character/${combatant.id}`);
@@ -397,64 +430,30 @@ export default function CharacterListScreen() {
     setGmRoll({
       label: damage?.trim() ? `GM Roll · ${cleanNotation} + ${damage.trim()}` : "GM Roll",
       effect: { notation: cleanNotation, type: "damage" },
+      resultLabel: damage?.trim() ? undefined : "YOU ROLLED",
     });
   };
 
   const createLanServer = async () => {
+    setServerCreating(true);
     setServerError(null);
-    if (!partyManager.isSupported()) {
-      setServerError(PARTY_UNSUPPORTED_REASON);
-      return;
-    }
-    try {
-      await partyManager.createParty(characters, "Game Master");
-    } catch (err) {
-      console.warn("createParty failed", err);
-      setServerError("Could not start the party host.");
-    }
+    await partyManager.createParty(characters);
+    setServerCreating(false);
   };
 
   const joinLanServer = async () => {
     const code = joinCode.trim().toUpperCase();
     if (!code) return;
     setServerError(null);
-    if (!partyManager.isSupported()) {
-      setServerError(PARTY_UNSUPPORTED_REASON);
-      return;
-    }
-    try {
-      await partyManager.joinParty(code, characters, "Player");
-    } catch (err) {
-      console.warn("joinParty failed", err);
-      setServerError("Could not reach the party.");
-    }
+    await partyManager.joinParty(code, characters);
   };
 
-  const leaveParty = async () => {
+  const leaveLanServer = async () => {
     await partyManager.leaveParty();
-    setServerError(null);
+    setServerInfo(null);
+    setJoinedRoom(null);
+    setSharedHeroes([]);
   };
-
-  const saveRollNotes = (nextNotes: Record<string, string>) => {
-    if (party.connected) partyManager.updateRollNotes(nextNotes);
-  };
-
-  const setRollNotes = (
-    updater: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>),
-  ) => {
-    const prev = party.connected ? party.rollNotes : localRollNotes;
-    const next = typeof updater === "function" ? updater(prev) : updater;
-    if (party.connected) {
-      partyManager.updateRollNotes(next);
-    } else {
-      setLocalRollNotes(next);
-    }
-  };
-
-  // Push local character changes to peers whenever we're in a party.
-  useEffect(() => {
-    if (party.connected) partyManager.updateMyCharacters(characters);
-  }, [characters, party.connected]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
@@ -528,7 +527,7 @@ export default function CharacterListScreen() {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sharedHeroesList}>
             {sharedHeroes.map((hero) => (
-              <Pressable key={hero.id} testID={`shared-hero-${hero.id}`} onPress={() => setSelectedSharedHeroId(hero.id)} style={[styles.sharedHeroChip, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
+              <Pressable key={hero.id} testID={`shared-hero-${hero.id}`} onPress={() => setSelectedSharedHero(hero)} style={[styles.sharedHeroChip, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
                 <Icon name="shield-sword" size={16} color={colors.brandPrimary} />
                 <Text numberOfLines={1} style={[styles.sharedHeroName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{hero.name || "Unnamed hero"}</Text>
               </Pressable>
@@ -749,40 +748,43 @@ export default function CharacterListScreen() {
                 <Icon name="close" size={22} color={colors.onSurface} />
               </Pressable>
             </View>
-            {helpMode === "help" && <View style={[styles.helpTabs, { borderBottomColor: colors.divider }]}> 
-              {HELP_TABS.map((tab) => (
-                <Pressable
-                  key={tab.key}
-                  testID={`help-tab-${tab.key}`}
-                  onPress={() => setHelpTab(tab.key)}
-                  style={[
-                    styles.helpTab,
-                    { borderBottomColor: helpTab === tab.key ? colors.brandPrimary : "transparent" },
-                  ]}
-                >
-                  <Text style={[styles.helpTabText, { color: helpTab === tab.key ? colors.brandPrimary : colors.muted, fontFamily: fonts.displayBold }]}>
-                    {tab.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>}
-            {helpMode === "lore" && <View style={[styles.helpTabs, { borderBottomColor: colors.divider }]}> 
-              {LORE_TABS.map((tab) => (
-                <Pressable
-                  key={tab.key}
-                  testID={`lore-tab-${tab.key}`}
-                  onPress={() => setLoreTab(tab.key)}
-                  style={[
-                    styles.helpTab,
-                    { borderBottomColor: loreTab === tab.key ? colors.brandPrimary : "transparent" },
-                  ]}
-                >
-                  <Text style={[styles.helpTabText, { color: loreTab === tab.key ? colors.brandPrimary : colors.muted, fontFamily: fonts.displayBold }]}>
-                    {tab.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>}
+            {(() => {
+              const tabs = helpMode === "help" ? HELP_TABS : LORE_TABS;
+              const selectedKey = helpMode === "help" ? helpTab : loreTab;
+              const selectedTab = tabs.find((tab) => tab.key === selectedKey) ?? tabs[0];
+              return (
+                <View style={styles.helpTabMenuContainer}>
+                  <Pressable
+                    testID={`${helpMode}-tab-menu`}
+                    onPress={() => setHelpTabMenuOpen((open) => !open)}
+                    style={[styles.helpTabMenuButton, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}
+                  >
+                    <Text style={[styles.helpTabText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedTab.label}</Text>
+                    <Icon name={helpTabMenuOpen ? "chevron-up" : "chevron-down"} size={18} color={colors.onSurface} />
+                  </Pressable>
+                  {helpTabMenuOpen && (
+                    <View style={[styles.helpTabMenu, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+                      {tabs.map((tab) => (
+                        <Pressable
+                          key={tab.key}
+                          testID={`${helpMode}-tab-${tab.key}`}
+                          onPress={() => {
+                            if (helpMode === "help") setHelpTab(tab.key as (typeof HELP_TABS)[number]["key"]);
+                            else setLoreTab(tab.key as (typeof LORE_TABS)[number]["key"]);
+                            setHelpTabMenuOpen(false);
+                          }}
+                          style={[styles.helpTabMenuItem, { backgroundColor: selectedKey === tab.key ? colors.brandTertiary : "transparent" }]}
+                        >
+                          <Text style={[styles.helpTabText, { color: selectedKey === tab.key ? colors.brandPrimary : colors.onSurface, fontFamily: fonts.displayBold }]}>
+                            {tab.label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })()}
             {helpMode === "help" && (
               <View style={[styles.rotationSetting, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}> 
                 <View style={styles.rotationSettingText}>
@@ -808,53 +810,50 @@ export default function CharacterListScreen() {
               <View style={[styles.serverPanel, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}> 
                 <View style={styles.serverPanelHeader}>
                   <Icon name="lan-connect" size={20} color={colors.brandPrimary} />
-                  <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Local Wi-Fi Party</Text>
+                  <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Local Wi-Fi Server</Text>
                 </View>
-                <Text style={[styles.helpText, { color: colors.onSurface, fontFamily: fonts.body }]}>Create a private room for nearby players. Everyone must be on the same Wi-Fi (no internet required).</Text>
-                {!partySupported && (
-                  <View style={[styles.serverResult, { borderColor: colors.error, backgroundColor: "rgba(155,45,45,0.10)" }]}>
-                    <Text style={[styles.serverError, { color: colors.error, fontFamily: fonts.displayBold }]}>Not available here</Text>
-                    <Text style={[styles.serverUrl, { color: colors.onSurface, fontFamily: fonts.body }]}>{PARTY_UNSUPPORTED_REASON}</Text>
-                  </View>
+                <Text style={[styles.helpText, { color: colors.onSurface, fontFamily: fonts.body }]}>Create or join a room directly over local Wi-Fi. No cloud server or remote database is used.</Text>
+                {!party.connected && (
+                  <Pressable testID="create-lan-server" onPress={createLanServer} disabled={serverCreating} style={[styles.serverButton, { borderColor: colors.borderStrong, backgroundColor: colors.brandPrimary, opacity: serverCreating ? 0.6 : 1 }]}>
+                    <Icon name="server-network" size={18} color={colors.onBrandPrimary} />
+                    <Text style={[styles.gmButtonText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>{serverCreating ? "Starting…" : "Host Local Party"}</Text>
+                  </Pressable>
                 )}
-                <Pressable testID="create-lan-server" onPress={createLanServer} disabled={serverCreating || !partySupported || party.role !== "idle"} style={[styles.serverButton, { borderColor: colors.borderStrong, backgroundColor: colors.brandPrimary, opacity: (serverCreating || !partySupported || party.role !== "idle") ? 0.5 : 1 }]}>
-                  <Icon name="server-network" size={18} color={colors.onBrandPrimary} />
-                  <Text style={[styles.gmButtonText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>{serverCreating ? "Starting…" : "Create Party"}</Text>
-                </Pressable>
                 {serverInfo && (
-                  <View style={[styles.serverResult, { borderColor: colors.success, backgroundColor: "rgba(46,111,64,0.12)" }]}>
+                  <View
+                    style={[styles.serverResult, { borderColor: colors.success, backgroundColor: "rgba(46,111,64,0.12)" }]}
+                  >
                     <Text style={[styles.serverResultText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Room code: {serverInfo.room_code}</Text>
-                    <Text selectable style={[styles.serverUrl, { color: colors.onSurface, fontFamily: fonts.body }]}>{serverInfo.join_url}</Text>
-                    <Text style={[styles.serverUrl, { color: colors.muted, fontFamily: fonts.body }]}>Players in room: {party.peers.length}</Text>
+                    <Text style={[styles.serverUrl, { color: colors.muted, fontFamily: fonts.body }]}>Local Wi-Fi only</Text>
+                    <Pressable testID="leave-lan-server" onPress={leaveLanServer} style={[styles.serverJoinButton, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+                      <Icon name="logout" size={18} color={colors.brandSecondary} />
+                      <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Leave</Text>
+                    </Pressable>
                   </View>
                 )}
-                {partyError && <Text style={[styles.serverError, { color: colors.error, fontFamily: fonts.body }]}>{partyError}</Text>}
-                <View style={[styles.serverJoinDivider, { borderTopColor: colors.divider }]} />
-                <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Join a Party</Text>
-                <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Enter the room code shared by the Game Master.</Text>
-                <View style={styles.serverJoinRow}>
-                  <TextInput
-                    testID="join-lan-code"
-                    value={joinCode}
-                    onChangeText={(value) => setJoinCode(value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase())}
-                    placeholder="ABC123"
-                    placeholderTextColor={colors.muted}
-                    autoCapitalize="characters"
-                    autoCorrect={false}
-                    style={[styles.serverCodeInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.displayBold }]}
-                  />
-                  <Pressable testID="join-lan-server" onPress={joinLanServer} disabled={!partySupported || party.role !== "idle"} style={[styles.serverJoinButton, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary, opacity: (!partySupported || party.role !== "idle") ? 0.5 : 1 }]}>
-                    <Icon name="login" size={18} color={colors.brandPrimary} />
-                    <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Join</Text>
-                  </Pressable>
-                </View>
-                {joinedRoom && <Text style={[styles.serverJoined, { color: colors.success, fontFamily: fonts.displayBold }]}>Joined room {joinedRoom} · {party.peers.length} player{party.peers.length === 1 ? "" : "s"}</Text>}
-                {party.role !== "idle" && (
-                  <Pressable testID="leave-party" onPress={leaveParty} style={[styles.serverButton, { borderColor: colors.borderStrong, backgroundColor: colors.surface, marginTop: 4 }]}>
-                    <Icon name="exit-run" size={18} color={colors.error} />
-                    <Text style={[styles.gmButtonText, { color: colors.error, fontFamily: fonts.displayBold }]}>Leave Party</Text>
-                  </Pressable>
-                )}
+                {serverError && <Text style={[styles.serverError, { color: colors.error, fontFamily: fonts.body }]}>{serverError}</Text>}
+                {!party.connected && <>
+                  <View style={[styles.serverJoinDivider, { borderTopColor: colors.divider }]} />
+                  <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Join a Local Party</Text>
+                  <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Enter the room code shown on the host device while connected to the same Wi-Fi.</Text>
+                  <View style={styles.serverJoinRow}>
+                    <TextInput
+                      testID="join-lan-code"
+                      value={joinCode}
+                      onChangeText={(value) => setJoinCode(value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase())}
+                      placeholder="ABC123"
+                      placeholderTextColor={colors.muted}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      style={[styles.serverCodeInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.displayBold }]}
+                    />
+                    <Pressable testID="join-lan-server" onPress={joinLanServer} style={[styles.serverJoinButton, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+                      <Icon name="login" size={18} color={colors.brandPrimary} />
+                      <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Join</Text>
+                    </Pressable>
+                  </View>
+                </>}
+                {party.connected && <Text style={[styles.serverJoined, { color: colors.success, fontFamily: fonts.displayBold }]}>{party.role === "host" ? "Hosting locally" : "Connected locally"}</Text>}
               </View>
               </ScrollView>
             )}
@@ -1088,7 +1087,7 @@ export default function CharacterListScreen() {
                         <TextInput
                           value={rollNotes[`${entry.characterId}:${entry.id}`] ?? ""}
                           onChangeText={(description) => setRollNotes((current) => ({ ...current, [`${entry.characterId}:${entry.id}`]: description }))}
-                          onBlur={() => saveRollNotes(rollNotes)}
+                          onBlur={() => partyManager.updateRollNotes(rollNotes)}
                           placeholder="Add a note about this roll"
                           placeholderTextColor={colors.muted}
                           multiline
@@ -1107,12 +1106,12 @@ export default function CharacterListScreen() {
       </Modal>
       <DiceRollModal request={gmRoll} onClose={() => setGmRoll(null)} />
 
-      <Modal transparent visible={selectedSharedHero != null} animationType="slide" onRequestClose={() => setSelectedSharedHeroId(null)}>
+      <Modal transparent visible={selectedSharedHero != null} animationType="slide" onRequestClose={() => setSelectedSharedHero(null)}>
         <View style={styles.helpBackdrop}>
           <View style={[styles.sharedHeroCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
             <View style={styles.helpHeader}>
               <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedSharedHero?.name || "Shared Hero"}</Text>
-              <Pressable testID="shared-hero-close" onPress={() => setSelectedSharedHeroId(null)} hitSlop={8}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
+              <Pressable testID="shared-hero-close" onPress={() => setSelectedSharedHero(null)} hitSlop={8}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
             </View>
             <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>READ ONLY · LIVE LAN VIEW</Text>
             <ScrollView contentContainerStyle={styles.sharedHeroBody}>
@@ -1289,6 +1288,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 2,
   },
+  helpTabMenuContainer: { position: "relative", zIndex: 2, marginBottom: 10 },
+  helpTabMenuButton: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+  },
+  helpTabMenu: {
+    position: "absolute",
+    top: 48,
+    left: 0,
+    right: 0,
+    borderWidth: 1.5,
+    paddingVertical: 4,
+  },
+  helpTabMenuItem: { minHeight: 42, justifyContent: "center", paddingHorizontal: 12 },
   helpTab: {
     flex: 1,
     alignItems: "center",

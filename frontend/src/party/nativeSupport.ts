@@ -31,7 +31,10 @@ export type TcpSocket = {
   remotePort?: number;
 };
 export type TcpModule = {
-  Server: TcpServerModule;
+  createServer: (
+    opts: unknown,
+    listener: (socket: TcpSocket) => void,
+  ) => TcpServerInstance;
   createConnection: (
     opts: { host: string; port: number },
     cb?: () => void,
@@ -41,7 +44,7 @@ export type TcpModule = {
 export type UdpSocketInstance = {
   bind: (port: number, cb?: () => void) => void;
   send: (
-    data: Buffer | string,
+    data: Uint8Array | string,
     offset: number,
     length: number,
     port: number,

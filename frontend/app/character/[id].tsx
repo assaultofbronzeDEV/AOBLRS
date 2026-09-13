@@ -35,7 +35,6 @@ import {
   genId,
 } from "@/src/types";
 import { getCharacter, upsertCharacter } from "@/src/storage/characters";
-import { partyManager } from "@/src/party/PartyManager";
 import HpTracker from "@/src/components/HpTracker";
 import StatCard from "@/src/components/StatCard";
 import FlatStatCard, { abbreviateStat } from "@/src/components/FlatStatCard";
@@ -86,10 +85,8 @@ export default function CharacterSheetScreen() {
       if (!prev) return prev;
       const next = { ...prev, ...patch };
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
-      saveTimeout.current = setTimeout(async () => {
-        const list = await upsertCharacter(next);
-        // Push live updates to the party (safe no-op when not connected).
-        partyManager.updateMyCharacters(list);
+      saveTimeout.current = setTimeout(() => {
+        upsertCharacter(next);
       }, 400);
       return next;
     });

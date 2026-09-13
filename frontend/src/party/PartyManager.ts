@@ -155,10 +155,11 @@ class PartyManager {
       Math.floor(Math.random() * (PARTY_DEFAULT_TCP_PORT_MAX - PARTY_DEFAULT_TCP_PORT_MIN));
 
     try {
-      const server = tcp.Server.createServer({}, (socket) => this.hostOnConnection(socket));
+      const server = tcp.createServer({}, (socket) => this.hostOnConnection(socket));
       server.on("error", (err: unknown) => {
         console.warn("[Party.host] server error", err);
-        this.setState({ error: "Server error — try creating the party again." });
+        const errMsg = err && typeof err === "object" && "message" in err ? String((err as any).message) : String(err);
+        this.setState({ error: `Server error: ${errMsg}` });
       });
       server.listen({ port, host: "0.0.0.0" }, () => {
         console.log(`[Party.host] listening on 0.0.0.0:${port}`);
@@ -188,9 +189,10 @@ class PartyManager {
 
       // Start heartbeat monitor.
       this.startHostHeartbeat();
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn("[Party.host] create failed", err);
-      this.setState({ role: "idle", connecting: false, connected: false, error: "Could not start the party server." });
+      const errMsg = err instanceof Error ? err.message : String(err);
+      this.setState({ role: "idle", connecting: false, connected: false, error: `Could not start party server: ${errMsg}` });
     }
   }
 
@@ -591,7 +593,7 @@ class PartyManager {
       socket.on("message", (data: unknown, rinfo: unknown) => {
         try {
           const info = rinfo as { address: string; port: number };
-          const text = typeof data === "string" ? data : (data as Buffer).toString("utf8");
+          const text = typeof data === "string" ? data : (data as { toString: (encoding: string) => string }).toString("utf8");
           const packet = JSON.parse(text) as DiscoveryPacket;
           if (packet?.aob === 1 && packet.code === code && typeof packet.tcpPort === "number") {
             console.log(`[Party.client] discovered host at ${info.address}:${packet.tcpPort}`);

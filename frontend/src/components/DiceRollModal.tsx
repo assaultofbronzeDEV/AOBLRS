@@ -17,6 +17,7 @@ export type RollRequest = {
   label: string;
   target?: number; // if omitted, only rolls effect (no d20 check)
   effect?: { notation: string; type: "damage" | "healing" };
+  resultLabel?: string;
   mode?: RollMode; // advantage / disadvantage on the d20 check
   boost?: boolean; // add 1d6 to the d20 roll for this check
 };
@@ -211,7 +212,7 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
     if (invalidNotation) return "INVALID DICE NOTATION";
     if (onlyEffect) {
       if (!effect) return "Rolling…";
-      return request.effect?.type === "healing" ? "HEALING" : "DAMAGE";
+      return request.resultLabel ?? (request.effect?.type === "healing" ? "HEALING" : "DAMAGE");
     }
     if (!verdict) return "Rolling…";
     if (verdict === "crit-success") return "CRITICAL SUCCESS!";
