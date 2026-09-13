@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Assault of Bronze - Lightweight Roleplay System",
+    "slug": "aoblrs",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/images/icon.png",
+    "scheme": "aoblrs",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.assaultofbronze.aoblrs",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Connect to Party hosts on the same Wi-Fi network.",
+        "NSBonjourServices": ["_aob-party._udp", "_aob-party._tcp"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.assaultofbronze.aoblrs",
+      "permissions": ["INTERNET", "ACCESS_WIFI_STATE", "ACCESS_NETWORK_STATE", "CHANGE_WIFI_MULTICAST_STATE"]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-image.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#000000"
+        }
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-secure-store",
+      "expo-status-bar",
+      "@react-native-vector-icons/material-design-icons",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Add a portrait for your hero"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
