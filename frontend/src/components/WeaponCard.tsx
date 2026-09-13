@@ -54,6 +54,7 @@ export default function WeaponCard({ weapon, stats, onChange, onDelete, onUse, t
           onChangeText={(t) => onChange({ ...weapon, name: t })}
           placeholder="Weapon name"
           placeholderTextColor={colors.muted}
+          disableFullscreenUI
           style={[styles.titleInput, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
         />
         <Pressable
@@ -65,6 +66,17 @@ export default function WeaponCard({ weapon, stats, onChange, onDelete, onUse, t
           <Icon name="trash-can-outline" size={20} color={colors.muted} />
         </Pressable>
       </View>
+
+      <TextInput
+        testID={`${testID}-description`}
+        value={weapon.description ?? ""}
+        onChangeText={(t) => onChange({ ...weapon, description: t })}
+        placeholder="Description (optional)"
+        placeholderTextColor={colors.muted}
+        multiline
+        disableFullscreenUI
+        style={[styles.description, { color: colors.muted, fontFamily: fonts.body }]}
+      />
 
       <View style={styles.chipRow}>
         <Pressable
@@ -109,6 +121,7 @@ export default function WeaponCard({ weapon, stats, onChange, onDelete, onUse, t
           autoCapitalize="none"
           autoCorrect={false}
           maxLength={12}
+          disableFullscreenUI
           style={[
             styles.rollInput,
             { color: colors.onSurface, borderColor: colors.border, fontFamily: fonts.displayBold },
@@ -158,6 +171,16 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     paddingVertical: 4,
+  },
+  description: {
+    alignSelf: "stretch",
+    width: "100%",
+    maxWidth: "100%",
+    minHeight: 20,
+    fontSize: 11,
+    lineHeight: 15,
+    paddingHorizontal: 2,
+    paddingVertical: 0,
   },
   iconBtn: { padding: 4 },
   chipRow: { flexDirection: "row", gap: 8 },

@@ -71,6 +71,7 @@ export default function HpTracker({ hp, maxHp, onChange, editableMax, onMaxChang
                 onEndEditing={commitMax}
                 keyboardType="number-pad"
                 maxLength={2}
+                disableFullscreenUI
                 style={[
                   styles.hpMaxInput,
                   {

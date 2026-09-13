@@ -41,6 +41,7 @@ export type AttackKind = "melee" | "ranged";
 export type Weapon = {
   id: string;
   name: string;
+  description?: string;
   attackKind: AttackKind;
   damageRoll: string;
 };
@@ -48,6 +49,7 @@ export type Weapon = {
 export type InventoryItem = {
   id: string;
   name: string;
+  description?: string;
   qty: number;
   used: boolean;
 };
@@ -197,16 +199,18 @@ export const createEmptyAbility = (): Ability => ({
   used: false,
 });
 
-export const createEmptyWeapon = (): Weapon => ({
+export const createEmptyWeapon = (description = ""): Weapon => ({
   id: genId(),
   name: "",
+  description,
   attackKind: "melee",
   damageRoll: "1d6",
 });
 
-export const createEmptyInventoryItem = (name = ""): InventoryItem => ({
+export const createEmptyInventoryItem = (name = "", description = ""): InventoryItem => ({
   id: genId(),
   name,
+  description,
   qty: 1,
   used: false,
 });
@@ -281,7 +285,10 @@ export const migrateCharacter = (raw: any): Character => {
       ? [{ ...createEmptyAbility(), title: "Hero Ability", description: raw.heroAbility }]
       : [];
   const inventoryItems: InventoryItem[] = Array.isArray(raw.inventoryItems) && raw.inventoryItems.length > 0
-    ? raw.inventoryItems
+    ? raw.inventoryItems.map((item: any) => ({
+        ...item,
+        description: item?.description ?? "",
+      }))
     : typeof raw.inventory === "string" && raw.inventory.trim()
       ? parseInventoryFromString(raw.inventory)
       : [];
@@ -314,7 +321,10 @@ export const migrateCharacter = (raw: any): Character => {
     inventoryItems,
     notes: raw.notes ?? "",
     customSections: asArr(raw.customSections),
-    weapons: asArr(raw.weapons),
+    weapons: asArr(raw.weapons).map((weapon: any) => ({
+      ...weapon,
+      description: weapon?.description ?? "",
+    })),
     rollHistory: Array.isArray(raw.rollHistory) ? raw.rollHistory.slice(0, ROLL_HISTORY_MAX) : [],
     createdAt: raw.createdAt ?? now,
     updatedAt: raw.updatedAt ?? now,

@@ -52,6 +52,7 @@ import { WEAPON_PRESETS } from "@/src/data/weapons";
 import { ITEM_PRESETS, ITEM_CATEGORY_ORDER } from "@/src/data/items";
 import { ABILITY_PRESETS, ABILITY_CATEGORY_ORDER } from "@/src/data/abilities";
 import { valueForRef, labelForRef } from "@/src/components/StatPickerModal";
+import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
 
 type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
 
@@ -68,6 +69,7 @@ export default function CharacterSheetScreen() {
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [abilityPickerFor, setAbilityPickerFor] = useState<AbilityKey | null>(null);
+  const keyboardSpace = useKeyboardBottomSpace(320);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -199,6 +201,11 @@ export default function CharacterSheetScreen() {
       setHeroPointsWarning("Already used. Take a Long Rest to refresh this ability.");
       return;
     }
+    if (isHero && ability.used) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setHeroPointsWarning("Already used. Take a Long Rest to refresh this ability.");
+      return;
+    }
 
     const target = valueForRef(char.stats, ability.linkedStat) ?? undefined;
     const label = ability.title || "Ability";
@@ -207,7 +214,25 @@ export default function CharacterSheetScreen() {
         ? { notation: ability.effectRoll.trim(), type: ability.effectType as "damage" | "healing" }
         : undefined;
 
-    if (target == null && !effect) return;
+    if (target == null && !effect) {
+      if (!isHero && !char.oncePerTurn.some((a) => a.id === ability.id)) return;
+      if (isHero) update({ heroPoints: Math.max(0, char.heroPoints - 1) });
+      if (isHero) {
+        update({
+          heroAbilities: char.heroAbilities.map((a) =>
+            a.id === ability.id ? { ...a, used: true } : a,
+          ),
+        });
+      } else {
+        update({
+          oncePerTurn: char.oncePerTurn.map((a) =>
+            a.id === ability.id ? { ...a, used: true } : a,
+          ),
+        });
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      return;
+    }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -269,6 +294,7 @@ export default function CharacterSheetScreen() {
         {
           id: genId(),
           name: preset.name,
+          description: preset.notes ?? "",
           attackKind: preset.attackKind,
           damageRoll: preset.damageRoll,
         },
@@ -374,13 +400,30 @@ export default function CharacterSheetScreen() {
     if (!preset) return;
     const label = preset.price ? `${preset.name} (${preset.price})` : preset.name;
     update({
-      inventoryItems: [...char.inventoryItems, createEmptyInventoryItem(label)],
+      inventoryItems: [...char.inventoryItems, createEmptyInventoryItem(label, preset.notes ?? "")],
     });
     Haptics.selectionAsync();
   };
 
   const setInventoryItems = (items: InventoryItem[]) => {
     update({ inventoryItems: items });
+  };
+
+  const useInventoryItem = (item: InventoryItem) => {
+    if (!char || !item.description) return;
+    const diceMatch = item.description.match(/\b(\d+\s*[xX*]?\s*d\s*\d+(?:\s*[+-]\s*\d+)?)\b/i);
+    if (!diceMatch) return;
+    const type = /\b(heal|heals|healing|healed|restore|restores|restored)\b/i.test(item.description)
+      ? "healing"
+      : /\b(damage|damages|deal|deals)\b/i.test(item.description)
+        ? "damage"
+        : null;
+    if (!type) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setRoll({
+      label: item.name.trim() || "Inventory item",
+      effect: { notation: diceMatch[1], type },
+    });
   };
 
   const updateCustomSection = (idx: number, next: CustomSection) => {
@@ -481,7 +524,11 @@ export default function CharacterSheetScreen() {
         <ScrollView
           testID="character-scroll"
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 12, paddingBottom: 40 + insets.bottom, gap: 12 }}
+          contentContainerStyle={{
+            padding: 12,
+            paddingBottom: 40 + insets.bottom + keyboardSpace,
+            gap: 12,
+          }}
         >
           <Image
             source={require("@/assets/images/aob-logo.png")}
@@ -757,6 +804,7 @@ export default function CharacterSheetScreen() {
               items={char.inventoryItems}
               onChange={setInventoryItems}
               onAdd={addInventoryItem}
+              onUse={useInventoryItem}
             />
           </CollapsibleSection>
           <LabeledField

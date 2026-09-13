@@ -29,6 +29,7 @@ function NumberField({
       }}
       keyboardType="number-pad"
       maxLength={2}
+      disableFullscreenUI
       style={[
         styles.numInput,
         { color: colors.onSurface, borderColor: colors.border, fontFamily: fonts.displayBold },

@@ -5,7 +5,8 @@
 
 import type { StatKey } from "@/src/types";
 
-export type TraitRef = { statKey: StatKey; subIndex: number };
+// A TraitRef points at either a main stat (subIndex = null) or a sub-skill.
+export type TraitRef = { statKey: StatKey; subIndex: number | null };
 
 export type Race = {
   id: string;
@@ -43,7 +44,7 @@ export const RACES: Race[] = [
   {
     id: "elf",
     name: "Elf / Half-Elf",
-    tagline: "Long-lived. Keen-eyed. Untethered from time.",
+    tagline: "Long-lived. Keen-eyed. Untethered from time, but fragile.",
     lore:
       "Born to the whisper of ancient forests, elves move with unhurried grace and see what others miss. Their patience is a blade.",
     high: [
@@ -60,7 +61,7 @@ export const RACES: Race[] = [
     name: "Human",
     tagline: "Ambitious. Adaptable. Everywhere.",
     lore:
-      "Humans build empires in a lifetime and forget them in another. Their gift is not strength — it is the raw, restless drive to try.",
+      "Humans are the most adaptable and ambitious of all races. Their shorter lifespans drive them to achieve greatness in a variety of fields, from trade and war to  invention and in rare cases magic. They are a diverse race with a vast array of cultures and beliefs, though most typically reside in and around Central City in the main Human territory on the eastern half of Aryndos..",
     high: [
       { statKey: "CHA", subIndex: 0 }, // Persuasion
       { statKey: "CHA", subIndex: 2 }, // Haggling
@@ -74,7 +75,7 @@ export const RACES: Race[] = [
     name: "Dwarf",
     tagline: "Stone-hearted. Forge-forged. Unmoved.",
     lore:
-      "Carved from mountain and beard-braided oaths, dwarves endure where others break. They speak little and lift much.",
+      "Stout and hardy, dwarves are master craftsmen and miners who typically dwell in mountain strongholds or far underground. These Dwarven strongholds are accessible through secret entryways and tunnel systems scattered across Aryndos. Renowned for their resilience, loyalty, and love of gold, they are unmatched in forging weapons and armor. .",
     high: [
       { statKey: "STR", subIndex: 0 }, // Lifting
       { statKey: "STR", subIndex: 3 }, // Vitality
@@ -89,7 +90,7 @@ export const RACES: Race[] = [
     name: "Hobbit / Halfling",
     tagline: "Small feet. Full plates. Sharper than they look.",
     lore:
-      "Underestimated in every tavern and every fight, halflings slip past trouble — or into pockets — before anyone notices.",
+      "Small and unassuming, hobbits are cheerful, resourceful people who value home, family, and good food. Despite their small stature, they are remarkably brave when the need arises and are known for their stealth, luck and nimbleness; they are typically found in the far west of Aryndos in small, tight knit communities.",
     high: [
       { statKey: "DEX", subIndex: 2 }, // Sleight of Hand
       { statKey: "DEX", subIndex: 3 }, // Stealth
@@ -104,7 +105,7 @@ export const RACES: Race[] = [
     name: "Dragonborn",
     tagline: "Scaled kin. Proud voice. Old blood.",
     lore:
-      "Descended from the great wyrms, dragonborn wear their heritage like a crown. When they speak, rooms quiet.",
+      "The reason for the Dragonborn's existence is largely unknown and debated, they are hatched from True-Dragon eggs when the egg has been abandoned by its True-Dragon Parent and cared for by any humanoid Magi until hatching. The Dragonborn are proud, imposing beings with scales that shimmer in a variety of colors. They possess the elemental breath of their True-Dragon kin and a deep connection to them, often embodying their strength and honor, though True-Dragons are rare, there are historical instances of Dragonborn and True Dragons being an extremely powerful pairing.",
     high: [
       { statKey: "STR", subIndex: 2 }, // Intimidation
       { statKey: "CHA", subIndex: 0 }, // Persuasion
@@ -133,7 +134,7 @@ export const RACES: Race[] = [
     name: "Therion",
     tagline: "Beast-kin. Wild eye. Half-tamed.",
     lore:
-      "Part beast, part person — therions never quite fit at either hearth. They read the world through fur, fang, and instinct.",
+      "These Animalistic humanoids hail from distant islands around the Continent of Aryndos and exist in many breeds, most resemble common animals like Cats and Dogs and other mammals. Agile and curious, Therions are natural explorers and treasure seekers, driven by an insatiable wanderlust. Their keen senses make them adept hunters, fighters and rogues.",
     high: [
       { statKey: "INT", subIndex: 0 }, // Perception
       { statKey: "CHA", subIndex: 3 }, // Creature Handling
@@ -147,10 +148,10 @@ export const RACES: Race[] = [
     name: "Orc / Half-Orc",
     tagline: "Battle-born. Loud. Loyal to the last.",
     lore:
-      "Orcs live loud and die louder. Their reputation walks a room ahead of them — sometimes to their advantage, mostly not.",
+      "Fierce and resilient, orcs are a warrior race that thrives on strength and determination. Once feared raiders, many orcs have embraced a more honorable path, becoming skilled blacksmiths, shamans, or even heroes. Their culture values loyalty, courage, and the will to overcome any challenge, most Magi cultures accept Orcs within their ranks.",
     high: [
       { statKey: "STR", subIndex: 2 }, // Intimidation
-      { statKey: "STR", subIndex: 3 }, // Vitality
+      { statKey: "DEX", subIndex: 0 }, // Melee Attack
     ],
     low: [
       { statKey: "CHA", subIndex: 0 }, // Persuasion
@@ -162,7 +163,7 @@ export const RACES: Race[] = [
     name: "Demonborn / Tiefling",
     tagline: "Marked. Whispered about. Silver-tongued.",
     lore:
-      "A drop of infernal blood, a lifetime of sideways looks. Demonborn learn early that words are sharper than swords.",
+      "Nobody knows the true reason that Demonborn come into existence, they are always born of Elven parentage and are often discarded shortly afterwards. Demonborn are largely misunderstood due to their coloured skin, horns and aptitude for Necromancy.",
     high: [
       { statKey: "CHA", subIndex: 1 }, // Deception
       { statKey: "CHA", subIndex: 0 }, // Persuasion
@@ -181,7 +182,7 @@ export const CLASSES: CharClass[] = [
     tagline: "First through the door. Last one standing.",
     lore:
       "A soldier of any banner or none. Warriors read a fight like a book they wrote themselves.",
-    baseArmour: 14,
+    baseArmour: 3,
     weapons: [{ name: "Short Sword", attackKind: "melee", damageRoll: "1d6" }],
     high: [
       { statKey: "DEX", subIndex: 0 }, // Melee Attack
@@ -197,7 +198,7 @@ export const CLASSES: CharClass[] = [
     tagline: "Loose the arrow. Vanish. Repeat.",
     lore:
       "The wilds obey no laws but a ranger has learned to move like they wrote the rules themselves.",
-    baseArmour: 12,
+    baseArmour: 2,
     weapons: [
       { name: "Shortbow", attackKind: "ranged", damageRoll: "1d6" },
       { name: "Dagger", attackKind: "melee", damageRoll: "1d4" },
@@ -216,11 +217,11 @@ export const CLASSES: CharClass[] = [
     tagline: "Steel in one hand. Fire in the other.",
     lore:
       "Half scholar, half brawler. Battle-mages weave hurried cantrips between sword-strokes and count it a good day.",
-    baseArmour: 12,
+    baseArmour: 2,
     weapons: [{ name: "Runed Staff", attackKind: "melee", damageRoll: "1d6" }],
     high: [
       { statKey: "DEX", subIndex: 0 }, // Melee Attack
-      { statKey: "INT", subIndex: 2 }, // History
+      { statKey: "INT", subIndex: null }, // Intelligence (main)
     ],
     low: [
       { statKey: "DEX", subIndex: 3 }, // Stealth
@@ -232,7 +233,7 @@ export const CLASSES: CharClass[] = [
     tagline: "Boil, distil, throw the flask.",
     lore:
       "Alchemists make the unlikely inevitable. Their pockets clink with vials that could heal you — or dissolve a door.",
-    baseArmour: 10,
+    baseArmour: 1,
     weapons: [{ name: "Dagger", attackKind: "melee", damageRoll: "1d4" }],
     high: [
       { statKey: "INT", subIndex: 3 }, // First Aid
@@ -248,7 +249,7 @@ export const CLASSES: CharClass[] = [
     tagline: "The lock. The purse. The window.",
     lore:
       "Rogues walk the roofs and back-alleys of the world. Doors open for them — usually without asking.",
-    baseArmour: 11,
+    baseArmour: 1,
     weapons: [
       { name: "Dagger", attackKind: "melee", damageRoll: "1d4" },
       { name: "Short Sword", attackKind: "melee", damageRoll: "1d6" },
@@ -267,7 +268,7 @@ export const CLASSES: CharClass[] = [
     tagline: "Beast-friend. Grove-keeper. Quiet oath.",
     lore:
       "Wardens keep the border between wilderness and everything else. Creatures they meet listen a little longer.",
-    baseArmour: 12,
+    baseArmour: 4,
     weapons: [{ name: "Spear", attackKind: "melee", damageRoll: "1d6" }],
     high: [
       { statKey: "CHA", subIndex: 3 }, // Creature Handling
@@ -283,7 +284,7 @@ export const CLASSES: CharClass[] = [
     tagline: "Fists first. Questions never.",
     lore:
       "Grew up in the pits, the docks, or somewhere worse. A scrapper punches through problems most people negotiate around.",
-    baseArmour: 11,
+    baseArmour: 2,
     weapons: [{ name: "Bare Fists", attackKind: "melee", damageRoll: "1d4" }],
     high: [
       { statKey: "STR", subIndex: 0 }, // Lifting
@@ -299,17 +300,17 @@ export const CLASSES: CharClass[] = [
     tagline: "Magic in the blood. Consequences in the room.",
     lore:
       "Sorcerers don't study — they simply are. Their power leaks around the edges: candles snuff, coins spin, fate flinches.",
-    baseArmour: 10,
+    baseArmour: 1,
     weapons: [{ name: "Focus Wand", attackKind: "ranged", damageRoll: "1d6" }],
     high: [
-      { statKey: "INT", subIndex: 0 }, // Perception
-      { statKey: "CHA", subIndex: 1 }, // Deception
+      { statKey: "INT", subIndex: null }, // intelligence (main)
+      { statKey: "DEX", subIndex: 1 }, // Ranged Attack
     ],
     low: [
-      { statKey: "STR", subIndex: 0 }, // Lifting
+      { statKey: "DEX", subIndex: 0 }, // Melee Attack
     ],
   },
 ];
 
-// Utility: encode a trait ref as a stable string key.
-export const traitKey = (t: TraitRef) => `${t.statKey}.${t.subIndex}`;
+// Utility: encode a trait ref as a stable string key. Main stats use "M".
+export const traitKey = (t: TraitRef) => `${t.statKey}.${t.subIndex ?? "M"}`;

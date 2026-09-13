@@ -8,9 +8,10 @@ type Props = {
   items: InventoryItem[];
   onChange: (items: InventoryItem[]) => void;
   onAdd: () => void;
+  onUse: (item: InventoryItem) => void;
 };
 
-export default function InventoryList({ items, onChange, onAdd }: Props) {
+export default function InventoryList({ items, onChange, onAdd, onUse }: Props) {
   const { colors } = useTheme();
 
   const update = (i: number, patch: Partial<InventoryItem>) => {
@@ -33,28 +34,44 @@ export default function InventoryList({ items, onChange, onAdd }: Props) {
         >
           <Pressable
             testID={`inv-item-${i}-used`}
-            onPress={() => update(i, { used: !it.used })}
+            onPress={() => {
+              update(i, { used: !it.used });
+              if (!it.used) onUse(it);
+            }}
             hitSlop={6}
             style={[styles.check, { borderColor: colors.borderStrong }]}
           >
             {it.used && <Icon name="check" size={14} color={colors.brandPrimary} />}
           </Pressable>
-          <TextInput
-            testID={`inv-item-${i}-name`}
-            value={it.name}
-            onChangeText={(t) => update(i, { name: t })}
-            placeholder="Item name"
-            placeholderTextColor={colors.muted}
-            style={[
-              styles.name,
-              {
-                color: colors.onSurface,
-                fontFamily: fonts.body,
-                textDecorationLine: it.used ? "line-through" : "none",
-                opacity: it.used ? 0.6 : 1,
-              },
-            ]}
-          />
+          <View style={styles.itemDetails}>
+            <TextInput
+              testID={`inv-item-${i}-name`}
+              value={it.name}
+              onChangeText={(t) => update(i, { name: t })}
+              placeholder="Item name"
+              placeholderTextColor={colors.muted}
+              disableFullscreenUI
+              style={[
+                styles.name,
+                {
+                  color: colors.onSurface,
+                  fontFamily: fonts.body,
+                  textDecorationLine: it.used ? "line-through" : "none",
+                  opacity: it.used ? 0.6 : 1,
+                },
+              ]}
+            />
+            <TextInput
+              testID={`inv-item-${i}-description`}
+              value={it.description ?? ""}
+              onChangeText={(t) => update(i, { description: t })}
+              placeholder=""
+              placeholderTextColor={colors.muted}
+              multiline
+              disableFullscreenUI
+              style={[styles.description, { color: colors.muted, fontFamily: fonts.body }]}
+            />
+          </View>
           <View style={styles.qtyGroup}>
             <Pressable
               testID={`inv-item-${i}-qty-minus`}
@@ -114,7 +131,7 @@ const styles = StyleSheet.create({
   empty: { fontStyle: "italic", fontSize: 14 },
   row: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 6,
     borderWidth: 1.5,
     paddingHorizontal: 8,
@@ -129,12 +146,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
+  itemDetails: { flex: 1, minWidth: 0 },
   name: {
-    flex: 1,
     minWidth: 0,
     fontSize: 15,
     paddingVertical: 4,
     paddingHorizontal: 2,
+  },
+  description: {
+    minHeight: 18,
+    fontSize: 11,
+    lineHeight: 15,
+    paddingHorizontal: 2,
+    paddingBottom: 3,
   },
   qtyGroup: {
     flexDirection: "row",

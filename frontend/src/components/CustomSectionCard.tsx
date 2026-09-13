@@ -32,6 +32,7 @@ export default function CustomSectionCard({ section, onChange, onDelete }: Props
           onChangeText={(t) => onChange({ ...section, title: t })}
           placeholder="Section title"
           placeholderTextColor={colors.muted}
+          disableFullscreenUI
           style={[styles.labelInput, { color: colors.onSurfaceTertiary, fontFamily: fonts.displayBold }]}
         />
         <Pressable
@@ -63,6 +64,7 @@ export default function CustomSectionCard({ section, onChange, onDelete }: Props
           multiline
           placeholder="Notes…"
           placeholderTextColor={colors.muted}
+          disableFullscreenUI
           style={[
             styles.input,
             {

@@ -44,6 +44,7 @@ export default function FlatStatCard({ short, full, value, onChange, onRoll, tes
         }}
         keyboardType="number-pad"
         maxLength={2}
+        disableFullscreenUI
         style={[
           styles.numInput,
           { color: colors.onSurface, borderColor: colors.border, fontFamily: fonts.displayBold },

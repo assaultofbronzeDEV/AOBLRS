@@ -91,6 +91,7 @@ export default function CurrencyPurse({ value, onChange }: Props) {
                   onChangeText={(t) => setRaw(k, t)}
                   keyboardType="number-pad"
                   maxLength={4}
+                  disableFullscreenUI
                   style={[
                     styles.valueInput,
                     {

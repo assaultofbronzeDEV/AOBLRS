@@ -24,7 +24,7 @@ export const ITEM_PRESETS: ItemPreset[] = [
   { id: "rations", name: "Rations (1 day)", price: "5s", category: "General Goods", notes: "Dry. Filling. Tasteless." },
   { id: "tinderbox", name: "Tinderbox", price: "5s", category: "General Goods", notes: "Flint, steel, tinder." },
   { id: "candles", name: "Candles (×5)", price: "1s", category: "General Goods" },
-  { id: "sack", name: "Sack", price: "5b", category: "General Goods", notes: "Holds ~30 lb." },
+  { id: "sack", name: "Sack", price: "5b", category: "General Goods", notes: "Could come in useful." },
 
   // ── Tools ─────────────────────────────────────────
   { id: "thieves-tools", name: "Thieves' Tools", price: "25g", category: "Tools", notes: "Picks, tension bars, a lucky charm." },
@@ -34,12 +34,12 @@ export const ITEM_PRESETS: ItemPreset[] = [
   { id: "hammer", name: "Hammer", price: "1g", category: "Tools" },
   { id: "shovel", name: "Shovel", price: "2g", category: "Tools" },
   { id: "fishing-kit", name: "Fishing Kit", price: "1g", category: "Tools", notes: "Line, hooks, patience." },
-  { id: "chalk-10", name: "Chalk (×10)", price: "1s", category: "Tools", notes: "Mark your path. Or don't." },
+  { id: "chalk-10", name: "Chalk (×10)", price: "1s", category: "Tools", notes: "Mark your path. Or send a message." },
   { id: "spyglass", name: "Spyglass", price: "1000g", category: "Tools", notes: "See trouble a mile off." },
   { id: "manacles", name: "Manacles", price: "2g", category: "Tools" },
 
   // ── Medical ───────────────────────────────────────
-  { id: "bandages", name: "Bandages", price: "5s", category: "Medical", notes: "Roll of clean linen." },
+  { id: "bandages", name: "Bandages", price: "5s", category: "Medical", notes: "Roll of clean linen - Advantage on First Aid." },
   { id: "healing-salve", name: "Healing Salve", price: "10g", category: "Medical", notes: "Restores 1d4 HP on use." },
   { id: "antidote", name: "Antidote", price: "25g", category: "Medical", notes: "Neutralises common poisons." },
   { id: "herb-bundle", name: "Herb Bundle", price: "3g", category: "Medical", notes: "For poultices and steeping." },
@@ -47,10 +47,10 @@ export const ITEM_PRESETS: ItemPreset[] = [
   { id: "healers-kit", name: "Healer's Kit (10 uses)", price: "5g", category: "Medical" },
 
   // ── Consumables ──────────────────────────────────
-  { id: "potion-healing", name: "Potion of Healing", price: "50g", category: "Consumables", notes: "Heals 2d4+2 HP." },
+  { id: "potion-healing", name: "Potion of Healing", price: "50g", category: "Consumables", notes: "Heals 2d8+2 HP." },
   { id: "potion-vigor", name: "Potion of Vigour", price: "75g", category: "Consumables", notes: "Advantage on next Vitality roll." },
-  { id: "smoke-bomb", name: "Smoke Bomb", price: "10g", category: "Consumables", notes: "Fills a 10 ft cube. One escape." },
-  { id: "alchemist-fire", name: "Alchemist's Fire", price: "50g", category: "Consumables", notes: "Thrown flask. 1d6 fire, burns on." },
+  { id: "smoke-bomb", name: "Smoke Bomb", price: "10g", category: "Consumables", notes: "Fills a 20ft cube. One escape." },
+  { id: "alchemist-fire", name: "Alchemist's Fire", price: "50g", category: "Consumables", notes: "Thrown flask. 2d10 fire damage, burns permenantly." },
   { id: "acid-vial", name: "Vial of Acid", price: "25g", category: "Consumables", notes: "Eats through most locks. Slowly." },
   { id: "holy-water", name: "Holy Water", price: "25g", category: "Consumables", notes: "Blessed. Damages the unholy." },
 

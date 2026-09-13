@@ -70,6 +70,7 @@ export default function LabeledField({
           testID={testID}
           multiline={multiline}
           placeholderTextColor={colors.muted}
+          disableFullscreenUI
           style={[
             styles.input,
             {

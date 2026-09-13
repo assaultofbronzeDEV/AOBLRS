@@ -7,6 +7,8 @@ import {
   Pressable,
   ScrollView,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/material-design-icons";
@@ -89,7 +91,12 @@ export default function PickerSheet({
     >
       <View style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: 12 + insets.bottom }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={insets.top}
+          style={styles.keyboardAvoiding}
+        >
+          <View style={[styles.sheet, { paddingTop: insets.top, paddingBottom: 12 + insets.bottom }]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.grabber} />
@@ -218,7 +225,8 @@ export default function PickerSheet({
               </View>
             ))}
           </ScrollView>
-        </View>
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -231,11 +239,15 @@ const getStyles = (colors: ThemeColors) =>
       backgroundColor: "rgba(20,14,8,0.6)",
       justifyContent: "flex-end",
     },
+    keyboardAvoiding: { flex: 1, width: "100%", justifyContent: "flex-end" },
     sheet: {
-      maxHeight: "88%",
+      flex: 1,
+      width: "100%",
+      height: "100%",
+      maxHeight: "100%",
       backgroundColor: colors.surface,
-      borderTopWidth: 3,
-      borderTopColor: colors.borderStrong,
+      borderWidth: 3,
+      borderColor: colors.borderStrong,
     },
     header: {
       paddingHorizontal: 16,

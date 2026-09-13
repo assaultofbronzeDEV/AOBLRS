@@ -112,7 +112,7 @@ async function loadMode() {
     modeLoaded = true;
   }
 }
-if (Platform.OS !== "server") loadMode();
+if ((Platform.OS as string) !== "server") loadMode();
 
 export function setThemeMode(mode: ThemeMode) {
   currentMode = mode;
@@ -146,7 +146,9 @@ export function useTheme(): { scheme: ColorScheme; colors: ThemeColors; mode: Th
 
 // Backwards-compatible: previously we forced light. Now we respect user pref.
 export function setColorScheme(scheme: ColorScheme | null) {
-  Appearance.setColorScheme?.(scheme);
+  if (scheme != null) {
+    Appearance.setColorScheme?.(scheme);
+  }
 }
 
 export function makeStyles<T extends StyleSheet.NamedStyles<T> | StyleSheet.NamedStyles<any>>(

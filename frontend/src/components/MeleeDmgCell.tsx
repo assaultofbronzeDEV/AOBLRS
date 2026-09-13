@@ -49,6 +49,7 @@ export default function MeleeDmgCell({ value, onChange, onRoll }: Props) {
           placeholderTextColor={colors.muted}
           returnKeyType="done"
           onSubmitEditing={() => setEditing(false)}
+          disableFullscreenUI
           style={[
             styles.input,
             { color: colors.onSurface, borderColor: colors.border, fontFamily: fonts.displayBold },

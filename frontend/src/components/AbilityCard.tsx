@@ -45,6 +45,7 @@ export default function AbilityCard({ ability, stats, onChange, onDelete, onUse,
           onChangeText={(t) => onChange({ ...ability, title: t })}
           placeholder="Ability name"
           placeholderTextColor={colors.muted}
+          disableFullscreenUI
           style={[styles.titleInput, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
         />
         <Pressable
@@ -65,6 +66,7 @@ export default function AbilityCard({ ability, stats, onChange, onDelete, onUse,
         placeholder="Description / effect…"
         placeholderTextColor={colors.muted}
         multiline
+        disableFullscreenUI
         style={[styles.description, { color: colors.onSurface, fontFamily: fonts.body }]}
         textAlignVertical="top"
       />
@@ -145,6 +147,7 @@ export default function AbilityCard({ ability, stats, onChange, onDelete, onUse,
             placeholderTextColor={colors.muted}
             autoCapitalize="none"
             autoCorrect={false}
+            disableFullscreenUI
             style={[
               styles.rollInput,
               { color: colors.onSurface, borderColor: colors.border, fontFamily: fonts.displayBold },
