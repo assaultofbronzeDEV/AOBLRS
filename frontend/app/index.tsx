@@ -185,7 +185,7 @@ export default function CharacterListScreen() {
   const [rotationEnabled, setRotationEnabled] = useState(true);
   const [serverError, setServerError] = useState<string | null>(null);
   const [joinCode, setJoinCode] = useState("");
-  const [selectedSharedHero, setSelectedSharedHero] = useState<Character | null>(null);
+  const [selectedSharedHeroId, setSelectedSharedHeroId] = useState<string | null>(null);
   const [gmToolsOpen, setGmToolsOpen] = useState(false);
   const [gmRoll, setGmRoll] = useState<RollRequest | null>(null);
   const [gmDamage, setGmDamage] = useState("");
@@ -216,6 +216,13 @@ export default function CharacterListScreen() {
   const sharedHeroes = party.sharedHeroes;
   const rollNotes = party.connected ? party.rollNotes : localRollNotes;
   const partyError = party.error ?? serverError;
+
+  // Always look up the freshest shared-hero snapshot from party state so live
+  // HP / stat updates flow through the preview modal automatically.
+  const selectedSharedHero = useMemo(
+    () => sharedHeroes.find((h) => h.id === selectedSharedHeroId) ?? null,
+    [sharedHeroes, selectedSharedHeroId],
+  );
 
   const cycleTheme = () => {
     setThemeMode(mode === "dark" ? "light" : "dark");
@@ -379,7 +386,7 @@ export default function CharacterListScreen() {
   const openCombatantSheet = (combatant: Character) => {
     setGmToolsOpen(false);
     if (sharedHeroes.some((hero) => hero.id === combatant.id)) {
-      setSelectedSharedHero(combatant);
+      setSelectedSharedHeroId(combatant.id);
       return;
     }
     router.push(`/character/${combatant.id}`);
@@ -521,7 +528,7 @@ export default function CharacterListScreen() {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sharedHeroesList}>
             {sharedHeroes.map((hero) => (
-              <Pressable key={hero.id} testID={`shared-hero-${hero.id}`} onPress={() => setSelectedSharedHero(hero)} style={[styles.sharedHeroChip, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
+              <Pressable key={hero.id} testID={`shared-hero-${hero.id}`} onPress={() => setSelectedSharedHeroId(hero.id)} style={[styles.sharedHeroChip, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
                 <Icon name="shield-sword" size={16} color={colors.brandPrimary} />
                 <Text numberOfLines={1} style={[styles.sharedHeroName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{hero.name || "Unnamed hero"}</Text>
               </Pressable>
@@ -1100,12 +1107,12 @@ export default function CharacterListScreen() {
       </Modal>
       <DiceRollModal request={gmRoll} onClose={() => setGmRoll(null)} />
 
-      <Modal transparent visible={selectedSharedHero != null} animationType="slide" onRequestClose={() => setSelectedSharedHero(null)}>
+      <Modal transparent visible={selectedSharedHero != null} animationType="slide" onRequestClose={() => setSelectedSharedHeroId(null)}>
         <View style={styles.helpBackdrop}>
           <View style={[styles.sharedHeroCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
             <View style={styles.helpHeader}>
               <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedSharedHero?.name || "Shared Hero"}</Text>
-              <Pressable testID="shared-hero-close" onPress={() => setSelectedSharedHero(null)} hitSlop={8}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
+              <Pressable testID="shared-hero-close" onPress={() => setSelectedSharedHeroId(null)} hitSlop={8}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
             </View>
             <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>READ ONLY · LIVE LAN VIEW</Text>
             <ScrollView contentContainerStyle={styles.sharedHeroBody}>
