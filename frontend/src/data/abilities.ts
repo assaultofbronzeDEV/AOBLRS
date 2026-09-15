@@ -66,7 +66,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
   {
     id: "shocking-grasp",
     name: "Shocking Grasp",
-    description: "Touch attack — the air cracks with lightning. Metal targets take an extra 1d6 damage.",
+    description: "Touch attack. The air cracks with lightning. Metal targets take an extra 1d6 damage.",
     category: "Starter Spells",
     effectType: "damage",
     effectRoll: "1d6+3",
@@ -253,7 +253,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
   {
     id: "cleave",
     name: "Cleave",
-    description: "One swing at two enemies adjacent to eachother within 5ft. Both get dealt the same damage.",
+    description: "One swing at two enemies adjacent to each other within 5ft. Both take the same damage.",
     category: "Once Per Rest",
     effectType: "damage",
     effectRoll: "2d10",
@@ -282,7 +282,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
   {
     id: "blood-frenzy",
     name: "Blood Frenzy",
-    description: "Deal massive damage to all enemies within 20ft — and drink half of it yourself.",
+    description: "Deal massive damage to all enemies within 20ft and drink half of it yourself.",
     category: "Once Per Rest",
     effectType: "damage",
     effectRoll: "3d10",
@@ -310,7 +310,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
   {
     id: "shield-of-bronze",
     name: "Shield of Bronze",
-    description: "Nullify a single attack at any time. — even one you didn't see coming.",
+    description: "Nullify a single attack at any time, even one you didn't see coming.",
     category: "Once Per Rest",
     effectType: "none",
     linkedStat: STR_VITALITY,
@@ -318,7 +318,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
   {
     id: "ice-wall",
     name: "Ice Wall",
-    description: "Raise a wall of ice — 30 ft long - it lasts until it melts. (Passage denied).",
+    description: "Raise a wall of ice, 30ft long. It lasts until it melts. Passage denied.",
     category: "Once Per Rest",
     effectType: "none",
     linkedStat: INT_MAIN,
@@ -378,7 +378,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
   {
     id: "world-shatter",
     name: "World-Shatter",
-    description: "Slam the earth. It cracks outward — anything standing within 20ft must roll a DEX and on fail is prone.",
+    description: "Slam the earth. It cracks outward. Anything standing within 20ft must roll a DEX check and falls prone on a failure.",
     category: "Hero Abilities",
     effectType: "damage",
     effectRoll: "4d20",
@@ -422,7 +422,7 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
   {
     id: "godslayer",
     name: "Godslayer",
-    description: "One perfect strike. Meant for kings, gods, and monsters — no exceptions.",
+    description: "One perfect strike, meant for kings, gods, and monsters with no exceptions.",
     category: "Hero Abilities",
     effectType: "damage",
     effectRoll: "2d20+10",

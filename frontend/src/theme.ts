@@ -4,6 +4,7 @@
 import { useEffect, useReducer, useMemo } from "react";
 import { Appearance, Platform, StyleSheet, useColorScheme as useSystemColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 
 export type ColorScheme = "light" | "dark";
 export type ThemeMode = "light" | "dark";
@@ -88,9 +89,69 @@ export type ThemeColors = typeof light;
 
 export const themes: { light: ThemeColors; dark: ThemeColors } = { light, dark };
 
+const ageOfWarLight: ThemeColors = {
+  ...light,
+  surface: light.surface,
+  onSurface: "#252B30",
+  surfaceSecondary: "#DDE3E7",
+  onSurfaceSecondary: "#252B30",
+  surfaceTertiary: "#C5CED4",
+  onSurfaceTertiary: "#252B30",
+  surfaceInverse: "#252B30",
+  onSurfaceInverse: "#EEF1F3",
+  muted: "#64727C",
+  brand: "#A84D3A",
+  brandPrimary: "#A84D3A",
+  brandSecondary: "#7D2930",
+  brandTertiary: "#D5A995",
+  onBrandTertiary: "#2B211D",
+  border: "#53636D",
+  borderStrong: "#303D45",
+  divider: "#B8C3CA",
+  info: "#3F637D",
+};
+
+const ageOfWarDark: ThemeColors = {
+  ...dark,
+  surface: "#101821",
+  onSurface: "#D8E1E8",
+  surfaceSecondary: "#172431",
+  onSurfaceSecondary: "#D8E1E8",
+  surfaceTertiary: "#263746",
+  onSurfaceTertiary: "#D8E1E8",
+  surfaceInverse: "#E8EEF2",
+  onSurfaceInverse: "#101821",
+  muted: "#91A5B5",
+  brand: "#7DA9C5",
+  onBrand: "#101821",
+  brandPrimary: "#7DA9C5",
+  onBrandPrimary: "#101821",
+  brandSecondary: "#C35D5B",
+  onBrandSecondary: "#F5E8E4",
+  brandTertiary: "#354C5E",
+  onBrandTertiary: "#D8E1E8",
+  success: "#77B99D",
+  onSuccess: "#0D1A18",
+  warning: "#D5AE69",
+  onWarning: "#1A1711",
+  error: "#D16B69",
+  onError: "#101821",
+  info: "#8AB8D5",
+  onInfo: "#101821",
+  border: "#587286",
+  borderStrong: "#91AFC0",
+  divider: "#263746",
+};
+
+export const ageThemes: Record<AgeId, { light: ThemeColors; dark: ThemeColors }> = {
+  "age-of-magic": themes,
+  "age-of-war": { light: ageOfWarLight, dark: ageOfWarDark },
+};
+
 // ---------- Theme mode preference (light / dark) ----------
 const STORAGE_KEY = "aob:theme-mode";
 let currentMode: ThemeMode = "light";
+let currentAge: AgeId = DEFAULT_AGE_ID;
 let modeLoaded = false;
 const listeners = new Set<() => void>();
 
@@ -120,6 +181,11 @@ export function setThemeMode(mode: ThemeMode) {
   emit();
 }
 
+export function setThemeAge(age: AgeId) {
+  currentAge = age;
+  emit();
+}
+
 export function getThemeMode(): ThemeMode {
   return currentMode;
 }
@@ -137,11 +203,11 @@ function useThemeMode(): ThemeMode {
 }
 
 // ---------- Public useTheme ----------
-export function useTheme(): { scheme: ColorScheme; colors: ThemeColors; mode: ThemeMode } {
+export function useTheme(): { scheme: ColorScheme; colors: ThemeColors; mode: ThemeMode; age: AgeId } {
   const mode = useThemeMode();
   // Only "light" or "dark" now; ignore system preference.
   const scheme: ColorScheme = mode === "dark" ? "dark" : "light";
-  return { scheme, colors: themes[scheme], mode };
+  return { scheme, colors: ageThemes[currentAge][scheme], mode, age: currentAge };
 }
 
 // Backwards-compatible: previously we forced light. Now we respect user pref.

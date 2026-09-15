@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/material-design-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
-import { fonts, useTheme } from "@/src/theme";
+import { fonts, setThemeAge, useTheme } from "@/src/theme";
 import {
   Ability,
   Character,
@@ -25,16 +25,16 @@ import {
   InventoryItem,
   RollHistoryEntry,
   RollMode,
+  RollVerdict,
   StatBlock,
   Weapon,
   ROLL_HISTORY_MAX,
-  HP_MAX,
   createEmptyAbility,
   createEmptyInventoryItem,
   createEmptyWeapon,
   genId,
 } from "@/src/types";
-import { getCharacter, upsertCharacter } from "@/src/storage/characters";
+import { deleteCharacter, getCharacter, upsertCharacter } from "@/src/storage/characters";
 import HpTracker from "@/src/components/HpTracker";
 import StatCard from "@/src/components/StatCard";
 import FlatStatCard, { abbreviateStat } from "@/src/components/FlatStatCard";
@@ -48,11 +48,13 @@ import InventoryList from "@/src/components/InventoryList";
 import RollHistoryList from "@/src/components/RollHistoryList";
 import PickerSheet, { PickerEntry } from "@/src/components/PickerSheet";
 import CurrencyPurse from "@/src/components/CurrencyPurse";
-import { WEAPON_PRESETS } from "@/src/data/weapons";
-import { ITEM_PRESETS, ITEM_CATEGORY_ORDER } from "@/src/data/items";
-import { ABILITY_PRESETS, ABILITY_CATEGORY_ORDER } from "@/src/data/abilities";
+import ExportSheetModal from "@/src/components/ExportSheetModal";
+import ImportEntityModal from "@/src/components/ImportEntityModal";
+import { ExportEntity, ExportEntityType } from "@/src/storage/sheetTransfer";
 import { valueForRef, labelForRef } from "@/src/components/StatPickerModal";
 import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
+import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
+import { getAgeCatalog } from "@/src/ageCatalog";
 
 type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
 
@@ -60,25 +62,60 @@ export default function CharacterSheetScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, age } = useLocalSearchParams<{ id: string; age?: string }>();
+  const characterAge: AgeId = age === "age-of-war" ? "age-of-war" : DEFAULT_AGE_ID;
+  const ageCatalog = getAgeCatalog(characterAge);
+
+  useEffect(() => {
+    setThemeAge(characterAge);
+  }, [characterAge]);
   const [char, setChar] = useState<Character | null>(null);
   const [roll, setRoll] = useState<RollRequest | null>(null);
   const [rollMode, setRollMode] = useState<RollMode>("normal");
   const [boostPending, setBoostPending] = useState(false);
   const [heroPointsWarning, setHeroPointsWarning] = useState<string | null>(null);
+  const [actionMarkers, setActionMarkers] = useState({ movement: false, attackAbility: false, bonus: false });
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [abilityPickerFor, setAbilityPickerFor] = useState<AbilityKey | null>(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [entityToExport, setEntityToExport] = useState<{ type: ExportEntityType; value: ExportEntity } | null>(null);
+  const [entityImportType, setEntityImportType] = useState<ExportEntityType | null>(null);
+  const [deathSaveState, setDeathSaveState] = useState({
+    open: false,
+    failures: 0,
+    successes: 0,
+    dead: false,
+  });
   const keyboardSpace = useKeyboardBottomSpace(320);
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const vitalitySaveTarget = useMemo(() => {
+    if (!char || char.kind !== "hero") return 15;
+    return valueForRef(char.stats, { kind: "sub", statKey: "STR", subIndex: 3 }) ?? 15;
+  }, [char]);
+
+  useEffect(() => {
+    if (!char || char.kind !== "hero") {
+      setDeathSaveState({ open: false, failures: 0, successes: 0, dead: false });
+      return;
+    }
+
+    if (char.hp <= 0) {
+      setDeathSaveState((prev) => (prev.open ? prev : { ...prev, open: true, dead: false }));
+      return;
+    }
+
+    setDeathSaveState({ open: false, failures: 0, successes: 0, dead: false });
+  }, [char]);
 
   useEffect(() => {
     (async () => {
       if (!id) return;
-      const c = await getCharacter(id);
+      const c = await getCharacter(id, characterAge);
       setChar(c);
     })();
-  }, [id]);
+  }, [id, characterAge]);
 
   const update = (patch: Partial<Character>) => {
     setChar((prev) => {
@@ -86,10 +123,22 @@ export default function CharacterSheetScreen() {
       const next = { ...prev, ...patch };
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
       saveTimeout.current = setTimeout(() => {
-        upsertCharacter(next);
+        upsertCharacter(next, next.age);
       }, 400);
       return next;
     });
+  };
+
+  const exportEntity = (type: ExportEntityType, value: ExportEntity) => {
+    setEntityToExport({ type, value });
+  };
+  const importEntity = (entity: ExportEntity) => {
+    if (!char || !entityImportType) return;
+    if (entityImportType === "weapon") update({ weapons: [...char.weapons, entity as Weapon] });
+    if (entityImportType === "item") update({ inventoryItems: [...char.inventoryItems, entity as InventoryItem] });
+    if (entityImportType === "ability" && abilityPickerFor) {
+      setAbilities(abilityPickerFor, [...(char[abilityPickerFor] as Ability[]), entity as Ability]);
+    }
   };
 
   const triggerStatRoll = (label: string, target: number) => {
@@ -149,7 +198,7 @@ export default function CharacterSheetScreen() {
 
   const addPresetAbility = (key: AbilityKey, entry: PickerEntry) => {
     if (!char) return;
-    const preset = ABILITY_PRESETS.find((a) => a.id === entry.id);
+    const preset = ageCatalog.abilities.find((a) => a.id === entry.id);
     if (!preset) return;
     const cur = char[key] as Ability[];
     setAbilities(key, [
@@ -286,14 +335,14 @@ export default function CharacterSheetScreen() {
 
   const addPresetWeapon = (p: PickerEntry) => {
     if (!char) return;
-    const preset = WEAPON_PRESETS.find((w) => w.id === p.id);
+    const preset = ageCatalog.weapons.find((w) => w.id === p.id);
     if (!preset) return;
     update({
       weapons: [
         ...char.weapons,
         {
           id: genId(),
-          name: preset.name,
+          name: `${preset.name} (${preset.price})`,
           description: preset.notes ?? "",
           attackKind: preset.attackKind,
           damageRoll: preset.damageRoll,
@@ -352,7 +401,7 @@ export default function CharacterSheetScreen() {
         rollHistory: [entry, ...prev.rollHistory].slice(0, ROLL_HISTORY_MAX),
       };
       if (saveTimeout.current) clearTimeout(saveTimeout.current);
-      saveTimeout.current = setTimeout(() => upsertCharacter(next), 400);
+      saveTimeout.current = setTimeout(() => upsertCharacter(next, next.age), 400);
       return next;
     });
   };
@@ -363,16 +412,76 @@ export default function CharacterSheetScreen() {
     Haptics.selectionAsync();
   };
 
-  const longRest = () => {
-    if (!char) return;
+  const applyLongRest = (nextChar?: Character) => {
+    const source = nextChar ?? char;
+    if (!source || source.kind !== "hero") return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const clearUsed = (list: Ability[]) => list.map((a) => ({ ...a, used: false }));
     update({
-      hp: HP_MAX,
-      oncePerTurn: clearUsed(char.oncePerTurn),
-      oncePerRest: clearUsed(char.oncePerRest),
-      heroAbilities: clearUsed(char.heroAbilities),
+      hp: source.maxHp,
+      oncePerTurn: clearUsed(source.oncePerTurn),
+      oncePerRest: clearUsed(source.oncePerRest),
+      heroAbilities: clearUsed(source.heroAbilities),
     });
+  };
+
+  const longRest = () => {
+    applyLongRest();
+  };
+
+  const triggerDeathSave = () => {
+    if (!char || char.kind !== "hero") return;
+    setRoll({
+      label: "Vitality Save",
+      target: vitalitySaveTarget,
+      mode: "normal",
+    });
+  };
+
+  const handleDeathSaveResult = (verdict: RollVerdict) => {
+    if (!char || char.kind !== "hero") return;
+
+    setDeathSaveState((prev) => {
+      let failures = prev.failures;
+      let successes = prev.successes;
+
+      if (verdict === "success") {
+        successes += 1;
+      } else if (verdict === "crit-success") {
+        successes += 2;
+      } else if (verdict === "crit-fail") {
+        failures += 2;
+      } else {
+        failures += 1;
+      }
+
+      if (successes >= 3) {
+        update({ hp: 1 });
+        setRoll(null);
+        return { open: false, failures: 0, successes: 0, dead: false };
+      }
+
+      if (failures >= 3) {
+        update({ hp: 0 });
+        setRoll(null);
+        return { open: true, failures: 3, successes: 0, dead: true };
+      }
+
+      return { open: true, failures, successes, dead: false };
+    });
+  };
+
+  const finishDeadCharacter = async () => {
+    if (!char || char.kind !== "hero") return;
+    await deleteCharacter(char.id, char.age);
+    router.replace("/");
+  };
+
+  const recoverFromDeath = () => {
+    if (!char || char.kind !== "hero") return;
+    applyLongRest();
+    setDeathSaveState({ open: false, failures: 0, successes: 0, dead: false });
+    setRoll(null);
   };
 
   const cycleRollMode = () => {
@@ -396,7 +505,7 @@ export default function CharacterSheetScreen() {
 
   const addPresetItem = (p: PickerEntry) => {
     if (!char) return;
-    const preset = ITEM_PRESETS.find((it) => it.id === p.id);
+    const preset = ageCatalog.items.find((it) => it.id === p.id);
     if (!preset) return;
     const label = preset.price ? `${preset.name} (${preset.price})` : preset.name;
     update({
@@ -411,7 +520,7 @@ export default function CharacterSheetScreen() {
 
   const useInventoryItem = (item: InventoryItem) => {
     if (!char || !item.description) return;
-    const diceMatch = item.description.match(/\b(\d+\s*[xX*]?\s*d\s*\d+(?:\s*[+-]\s*\d+)?)\b/i);
+    const diceMatch = item.description.match(/\b(\d+\s*[xX*]?\s*d\s*\d+(?:(?:\s*[+-]\s*)(?:\d+\s*[xX*]?\s*d\s*\d+|\d+))*)\b/i);
     if (!diceMatch) return;
     const type = /\b(heal|heals|healing|healed|restore|restores|restored)\b/i.test(item.description)
       ? "healing"
@@ -514,7 +623,18 @@ export default function CharacterSheetScreen() {
           <Icon name="chevron-left" size={28} color={colors.onSurface} />
         </Pressable>
         <View style={{ flex: 1 }} />
-        <View style={{ width: 32 }} />
+        <Pressable
+          testID="export-sheet-btn"
+          onPress={() => setExportModalOpen(true)}
+          hitSlop={12}
+          style={({ pressed }) => [
+            styles.headerActionBtn,
+            { backgroundColor: pressed ? colors.brandTertiary : "transparent" },
+          ]}
+          accessibilityLabel="Export Sheet"
+        >
+          <Icon name="file-export-outline" size={22} color={colors.brandPrimary} />
+        </Pressable>
       </View>
 
       <KeyboardAvoidingView
@@ -722,6 +842,60 @@ export default function CharacterSheetScreen() {
             Tap the stat or skill name to roll a d20 against it.
           </Text>
 
+          {char.kind === "hero" && (
+            <View style={[styles.actionMarkers, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+              <View style={styles.actionMarkersHeader}>
+                <View style={styles.actionMarkersHeading}>
+                  <Text style={[styles.actionMarkersTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>ACTION MARKERS</Text>
+                  <Text style={[styles.actionMarkersDescription, { color: colors.muted, fontFamily: fonts.display }]}>During combat, use these markers to keep track of the actions you still have left.</Text>
+                </View>
+                <Pressable
+                  testID="new-turn-btn"
+                  onPress={() => setActionMarkers({ movement: false, attackAbility: false, bonus: false })}
+                  style={({ pressed }) => [
+                    styles.newTurnButton,
+                    {
+                      borderColor: colors.borderStrong,
+                      backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.newTurnText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>New Turn</Text>
+                </Pressable>
+              </View>
+              <View style={styles.actionMarkersRow}>
+                {([
+                  ["movement", "Movement Action"],
+                  ["attackAbility", "Attack / Ability Action"],
+                  ["bonus", "Bonus Action"],
+                ] as const).map(([key, label]) => (
+                  <Pressable
+                    key={key}
+                    testID={`action-marker-${key}`}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: actionMarkers[key] }}
+                    onPress={() => setActionMarkers((current) => ({ ...current, [key]: !current[key] }))}
+                    style={styles.actionMarker}
+                  >
+                    <Text
+                      style={[
+                        styles.actionMarkerLabel,
+                        {
+                          color: colors.onSurface,
+                          fontFamily: fonts.display,
+                          textDecorationLine: actionMarkers[key] ? "line-through" : "none",
+                          opacity: actionMarkers[key] ? 0.6 : 1,
+                        },
+                      ]}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
+
           <CollapsibleSection
             title="Weapons"
             keyName="weapons"
@@ -730,6 +904,7 @@ export default function CharacterSheetScreen() {
             addTestID="add-weapon"
             addLabel="Add Weapon"
             onAdd={addWeapon}
+            onImport={() => setEntityImportType("weapon")}
           >
             {char.weapons.map((w, i) => (
               <WeaponCard
@@ -740,6 +915,7 @@ export default function CharacterSheetScreen() {
                 onChange={(next) => updateWeapon(i, next)}
                 onDelete={() => deleteWeapon(i)}
                 onUse={useWeapon}
+                onExport={(weapon) => exportEntity("weapon", weapon)}
               />
             ))}
           </CollapsibleSection>
@@ -753,6 +929,8 @@ export default function CharacterSheetScreen() {
             onChange={(i, a) => updateAbility("oncePerTurn", i, a)}
             onDelete={(i) => deleteAbility("oncePerTurn", i)}
             onUse={useAbility}
+            onExport={(ability) => exportEntity("ability", ability)}
+            onImport={() => { setAbilityPickerFor("oncePerTurn"); setEntityImportType("ability"); }}
           />
 
           <AbilitySection
@@ -764,6 +942,8 @@ export default function CharacterSheetScreen() {
             onChange={(i, a) => updateAbility("oncePerRest", i, a)}
             onDelete={(i) => deleteAbility("oncePerRest", i)}
             onUse={useAbility}
+            onExport={(ability) => exportEntity("ability", ability)}
+            onImport={() => { setAbilityPickerFor("oncePerRest"); setEntityImportType("ability"); }}
           />
 
           <HeroSection
@@ -775,6 +955,8 @@ export default function CharacterSheetScreen() {
             onChange={(i, a) => updateAbility("heroAbilities", i, a)}
             onDelete={(i) => deleteAbility("heroAbilities", i)}
             onUse={useAbility}
+            onExport={(ability) => exportEntity("ability", ability)}
+            onImport={() => { setAbilityPickerFor("heroAbilities"); setEntityImportType("ability"); }}
             onSpendBoost={spendBoost}
             boostPending={boostPending}
             hidden={char.kind === "monster"}
@@ -805,6 +987,8 @@ export default function CharacterSheetScreen() {
               onChange={setInventoryItems}
               onAdd={addInventoryItem}
               onUse={useInventoryItem}
+              onExport={(item) => exportEntity("item", item)}
+              onImport={() => setEntityImportType("item")}
             />
           </CollapsibleSection>
           <LabeledField
@@ -859,7 +1043,152 @@ export default function CharacterSheetScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <DiceRollModal request={roll} onClose={() => setRoll(null)} onLog={logRoll} />
+      <DiceRollModal
+        request={roll}
+        onClose={() => setRoll(null)}
+        onLog={logRoll}
+        onResolve={(verdict) => {
+          if (char?.kind === "hero" && char.hp <= 0) {
+            handleDeathSaveResult(verdict);
+          }
+        }}
+      />
+
+      <Modal
+        transparent
+        visible={char?.kind === "hero" && char.hp <= 0 && deathSaveState.open && deathSaveState.dead}
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <Pressable style={styles.warnBackdrop} onPress={() => {}}>
+          <Pressable
+            style={[
+              styles.warnCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderStrong },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Icon name="skull-outline" size={36} color={colors.brandSecondary} />
+            <Text style={[styles.warnTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}> 
+              you died!!
+            </Text>
+            <Text style={[styles.warnText, { color: colors.muted, fontFamily: fonts.display }]}> 
+              Your hero has fallen.
+            </Text>
+            <View style={[styles.deathSaveTrack, { marginBottom: 6 }]}>
+              {Array.from({ length: 3 }, (_, i) => (
+                <View
+                  key={`dead-fail-${i}`}
+                  style={[
+                    styles.deathSaveBox,
+                    {
+                      backgroundColor: i < 3 ? "rgba(220,70,75,0.78)" : colors.surfaceSecondary,
+                      borderColor: colors.borderStrong,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+            <Pressable
+              testID="death-save-delete"
+              onPress={finishDeadCharacter}
+              style={({ pressed }) => [
+                styles.warnBtn,
+                {
+                  borderColor: colors.borderStrong,
+                  backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
+                },
+              ]}
+            >
+              <Text style={[styles.warnBtnText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}> 
+                Delete Character
+              </Text>
+            </Pressable>
+            <Pressable
+              testID="death-save-recover"
+              onPress={recoverFromDeath}
+              style={({ pressed }) => [
+                styles.warnBtn,
+                {
+                  marginTop: 8,
+                  borderColor: colors.borderStrong,
+                  backgroundColor: pressed ? colors.surfaceSecondary : colors.surface,
+                },
+              ]}
+            >
+              <Text style={[styles.warnBtnText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}> 
+                I'm not ready!
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={char?.kind === "hero" && char.hp <= 0 && deathSaveState.open && !deathSaveState.dead}
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <Pressable style={styles.warnBackdrop} onPress={() => {}}>
+          <Pressable
+            style={[
+              styles.warnCard,
+              { backgroundColor: colors.surface, borderColor: colors.borderStrong },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Icon name="alert-circle-outline" size={36} color={colors.brandSecondary} />
+            <Text style={[styles.warnTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}> 
+              You are unconscious!
+            </Text>
+            <Text style={[styles.warnText, { color: colors.muted, fontFamily: fonts.display }]}> 
+              Roll Vitality save.
+            </Text>
+            <View style={styles.deathSaveTrack}>
+              {Array.from({ length: 3 }, (_, i) => (
+                <View
+                  key={`fail-${i}`}
+                  style={[
+                    styles.deathSaveBox,
+                    {
+                      backgroundColor: i < deathSaveState.failures ? "rgba(220,70,75,0.78)" : colors.surfaceSecondary,
+                      borderColor: colors.borderStrong,
+                    },
+                  ]}
+                />
+              ))}
+              {Array.from({ length: 3 }, (_, i) => (
+                <View
+                  key={`success-${i}`}
+                  style={[
+                    styles.deathSaveBox,
+                    {
+                      backgroundColor: i < deathSaveState.successes ? "rgba(70,190,105,0.78)" : colors.surfaceSecondary,
+                      borderColor: colors.borderStrong,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+            <Pressable
+              testID="death-save-roll"
+              onPress={triggerDeathSave}
+              style={({ pressed }) => [
+                styles.warnBtn,
+                {
+                  borderColor: colors.borderStrong,
+                  backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
+                },
+              ]}
+            >
+              <Text style={[styles.warnBtnText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}> 
+                Roll Vitality Save
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal
         transparent
@@ -914,11 +1243,12 @@ export default function CharacterSheetScreen() {
         title="Weapon Library"
         subtitle="Tap a weapon to add it — or forge your own."
         customLabel="Create custom weapon"
-        presets={WEAPON_PRESETS.map((w) => ({
+        presets={ageCatalog.weapons.map((w) => ({
           id: w.id,
           name: w.name,
           category: w.category,
           meta: `${w.attackKind === "ranged" ? "↦" : "×"} ${w.damageRoll}`,
+          price: w.price,
           notes: w.notes,
           icon: w.attackKind === "ranged" ? "bow-arrow" : "sword",
         }))}
@@ -934,14 +1264,14 @@ export default function CharacterSheetScreen() {
         title="Item Library"
         subtitle="Prices in gold (g), silver (s), bronze (b). Edit anytime."
         customLabel="Create custom item"
-        presets={ITEM_PRESETS.map((it) => ({
+        presets={ageCatalog.items.map((it) => ({
           id: it.id,
           name: it.name,
           category: it.category,
           meta: it.price,
           notes: it.notes,
         }))}
-        categoryOrder={ITEM_CATEGORY_ORDER}
+        categoryOrder={ageCatalog.itemCategoryOrder}
         onClose={() => setItemPickerOpen(false)}
         onSelect={addPresetItem}
         onCustom={addCustomInventoryItem}
@@ -965,7 +1295,7 @@ export default function CharacterSheetScreen() {
               : "Cantrip-tier spells and class signatures — safe to reuse each turn."
         }
         customLabel="Create custom ability"
-        presets={ABILITY_PRESETS.filter((a) => {
+        presets={ageCatalog.abilities.filter((a) => {
           if (abilityPickerFor === "heroAbilities") return a.category === "Hero Abilities";
           if (abilityPickerFor === "oncePerRest") return a.category === "Once Per Rest";
           // oncePerTurn: starter spells + class specials
@@ -983,7 +1313,7 @@ export default function CharacterSheetScreen() {
                 ? "sword-cross"
                 : "sparkles",
         }))}
-        categoryOrder={ABILITY_CATEGORY_ORDER}
+        categoryOrder={ageCatalog.abilityCategoryOrder}
         onClose={() => setAbilityPickerFor(null)}
         onSelect={(entry) => {
           if (abilityPickerFor) addPresetAbility(abilityPickerFor, entry);
@@ -991,6 +1321,24 @@ export default function CharacterSheetScreen() {
         onCustom={() => {
           if (abilityPickerFor) addCustomAbility(abilityPickerFor);
         }}
+      />
+
+      <ExportSheetModal
+        visible={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        character={char}
+      />
+      <ExportSheetModal
+        visible={entityToExport != null}
+        onClose={() => setEntityToExport(null)}
+        entity={entityToExport}
+        age={characterAge}
+      />
+      <ImportEntityModal
+        visible={entityImportType != null}
+        expectedType={entityImportType}
+        onClose={() => { setEntityImportType(null); setAbilityPickerFor(null); }}
+        onImport={importEntity}
       />
     </View>
   );
@@ -1005,6 +1353,8 @@ function AbilitySection({
   onChange,
   onDelete,
   onUse,
+  onExport,
+  onImport,
 }: {
   title: string;
   keyName: AbilityKey;
@@ -1014,6 +1364,8 @@ function AbilitySection({
   onChange: (i: number, a: Ability) => void;
   onDelete: (i: number) => void;
   onUse: (a: Ability) => void;
+  onExport: (ability: Ability) => void;
+  onImport: () => void;
 }) {
   const { colors } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
@@ -1071,10 +1423,11 @@ function AbilitySection({
                 onChange={(next) => onChange(i, next)}
                 onDelete={() => onDelete(i)}
                 onUse={onUse}
+                onExport={onExport}
               />
             ))}
           </View>
-          <AddButton testID={`add-${keyName}`} onPress={onAdd} label="Add Ability" />
+          <AddButton testID={`add-${keyName}`} onPress={onAdd} onImport={onImport} label="Add Ability" />
         </View>
       )}
     </View>
@@ -1084,30 +1437,27 @@ function AbilitySection({
 function AddButton({
   testID,
   onPress,
+  onImport,
   label,
 }: {
   testID: string;
   onPress: () => void;
+  onImport?: () => void;
   label: string;
 }) {
   const { colors } = useTheme();
   return (
-    <Pressable
-      testID={testID}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.addBtn,
-        {
-          borderColor: colors.borderStrong,
-          backgroundColor: pressed ? colors.brandTertiary : "transparent",
-        },
-      ]}
-    >
-      <Icon name="plus" size={18} color={colors.brandPrimary} />
-      <Text style={[styles.addText, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
-        {label}
-      </Text>
-    </Pressable>
+    <View style={onImport ? styles.addButtonRow : undefined}>
+      <Pressable
+        testID={testID}
+        onPress={onPress}
+        style={({ pressed }) => [styles.addBtn, onImport && styles.addButtonFlex, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : "transparent" }]}
+      >
+        <Icon name="plus" size={18} color={colors.brandPrimary} />
+        <Text style={[styles.addText, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>{label}</Text>
+      </Pressable>
+      {onImport && <Pressable testID={`${testID}-import`} onPress={onImport} style={[styles.importBtn, { borderColor: colors.borderStrong }]} accessibilityLabel="Import JSON"><Icon name="file-import-outline" size={18} color={colors.brandPrimary} /></Pressable>}
+    </View>
   );
 }
 
@@ -1119,6 +1469,7 @@ function CollapsibleSection({
   addTestID,
   addLabel,
   onAdd,
+  onImport,
   hideAdd,
   children,
 }: {
@@ -1129,6 +1480,7 @@ function CollapsibleSection({
   addTestID: string;
   addLabel: string;
   onAdd: () => void;
+  onImport?: () => void;
   hideAdd?: boolean;
   children: React.ReactNode;
 }) {
@@ -1179,7 +1531,7 @@ function CollapsibleSection({
             </Text>
           )}
           <View style={{ gap: 10 }}>{children}</View>
-          {!hideAdd && <AddButton testID={addTestID} onPress={onAdd} label={addLabel} />}
+          {!hideAdd && <AddButton testID={addTestID} onPress={onAdd} onImport={onImport} label={addLabel} />}
         </View>
       )}
     </View>
@@ -1195,6 +1547,8 @@ function HeroSection({
   onChange,
   onDelete,
   onUse,
+  onExport,
+  onImport,
   onSpendBoost,
   boostPending,
   hidden,
@@ -1207,6 +1561,8 @@ function HeroSection({
   onChange: (i: number, a: Ability) => void;
   onDelete: (i: number) => void;
   onUse: (a: Ability) => void;
+  onExport: (ability: Ability) => void;
+  onImport: () => void;
   onSpendBoost: () => void;
   boostPending: boolean;
   hidden?: boolean;
@@ -1335,10 +1691,11 @@ function HeroSection({
                 onChange={(next) => onChange(i, next)}
                 onDelete={() => onDelete(i)}
                 onUse={onUse}
+                onExport={onExport}
               />
             ))}
           </View>
-          <AddButton testID="add-heroAbilities" onPress={onAdd} label="Add Hero Ability" />
+          <AddButton testID="add-heroAbilities" onPress={onAdd} onImport={onImport} label="Add Hero Ability" />
         </View>
       )}
     </View>
@@ -1357,6 +1714,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 3,
   },
   backBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  headerActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   headerCenter: { flex: 1, alignItems: "center" },
   headerTitle: { fontSize: 18, letterSpacing: 2, fontWeight: "700" },
   headerSub: { fontSize: 10, letterSpacing: 2.5, textTransform: "uppercase" },
@@ -1418,6 +1782,20 @@ const styles = StyleSheet.create({
 
   statRow: { flexDirection: "row", gap: 10 },
   tapHint: { fontSize: 12, fontStyle: "italic", textAlign: "center", marginTop: -4 },
+  actionMarkers: {
+    borderWidth: 2,
+    padding: 10,
+    gap: 8,
+  },
+  actionMarkersHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  actionMarkersHeading: { flex: 1, gap: 3 },
+  actionMarkersTitle: { fontSize: 12, letterSpacing: 1.2 },
+  actionMarkersDescription: { fontSize: 11, lineHeight: 16 },
+  newTurnButton: { borderWidth: 2, paddingHorizontal: 10, paddingVertical: 8, minHeight: 36, justifyContent: "center" },
+  newTurnText: { fontSize: 12 },
+  actionMarkersRow: { gap: 7 },
+  actionMarker: { flexDirection: "row", alignItems: "center", gap: 7, minHeight: 30 },
+  actionMarkerLabel: { flex: 1, fontSize: 14 },
 
   actionRow: {
     flexDirection: "row",
@@ -1530,6 +1908,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginTop: 2,
   },
+  addButtonRow: { flexDirection: "row", gap: 8, alignItems: "stretch" },
+  addButtonFlex: { flex: 1 },
+  importBtn: {
+    width: 42,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
   addText: { fontSize: 14, fontWeight: "700", letterSpacing: 0.5 },
 
   addSectionBtn: {
@@ -1561,6 +1948,19 @@ const styles = StyleSheet.create({
   },
   warnTitle: { fontSize: 20, fontWeight: "700", letterSpacing: 1, textAlign: "center" },
   warnText: { fontSize: 14, textAlign: "center" },
+  deathSaveTrack: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    width: "100%",
+    marginTop: 6,
+  },
+  deathSaveBox: {
+    width: 22,
+    height: 22,
+    borderWidth: 2,
+    borderRadius: 4,
+  },
   warnBtn: {
     marginTop: 6,
     paddingHorizontal: 30,

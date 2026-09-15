@@ -13,7 +13,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/material-design-icons";
 
-import { fonts, useTheme, ThemeColors } from "@/src/theme";
+import { fonts, setThemeAge, useTheme, ThemeColors } from "@/src/theme";
 import {
   createEmptyCharacter,
   createEmptyInventoryItem,
@@ -26,8 +26,9 @@ import {
 } from "@/src/types";
 import { upsertCharacter } from "@/src/storage/characters";
 import { CLASSES, RACES, Race, CharClass, TraitRef, traitKey } from "@/src/data/lineages";
-import { ITEM_CATEGORY_ORDER, ITEM_PRESETS } from "@/src/data/items";
 import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
+import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
+import { getAgeCatalog } from "@/src/ageCatalog";
 
 // ---------- Steps ----------
 type Step = 0 | 1 | 2 | 3 | 4;
@@ -71,6 +72,7 @@ type MonsterType = {
   tagline: string;
   lore: string;
   health: number;
+  armour: number;
   attackRoll: string;
   attackName?: string;
   specialAbility?: string;
@@ -91,20 +93,21 @@ type MonsterType = {
 
 const CUSTOM_MONSTER: MonsterType = {
   id: "custom-monster",
-  name: "Custom Monster",
+  name: "Custom Enemy",
   tagline: "A blank slate for the GM.",
-  lore: "Roll and assign five stats, then customize the finished monster sheet.",
+  lore: "Roll and assign five stats, then customize the finished enemy sheet.",
   health: 15,
+  armour: 10,
   attackRoll: "1d6",
 };
 
 const MONSTER_TYPES: MonsterType[] = [
-  { id: "average-npc", name: "Average NPC", tagline: "A capable everyday opponent.", lore: "HP 15. STR 10, DEX 10, Melee 10, Ranged 10. Once per turn: 1d6 damage.", health: 15, attackRoll: "1d6", statValues: [10, 10, 10, 10, 0], weaponName: "Club", weaponDamageRoll: "1d6", oncePerTurnName: "Basic Strike", oncePerTurnDescription: "A straightforward attack.", oncePerTurnRoll: "1d6", oncePerRestName: "Second Wind", oncePerRestDescription: "Regain a little strength.", oncePerRestRoll: "1d6", oncePerRestType: "healing" },
-  { id: "strong-npc", name: "Strong NPC", tagline: "A hardened and dangerous foe.", lore: "HP 15. STR 8, DEX 9, Melee 8, Ranged 9. Once per turn: 1d8 damage.", health: 15, attackRoll: "1d8", statValues: [8, 9, 8, 9, 0], weaponName: "Greatclub", weaponDamageRoll: "1d8", oncePerTurnName: "Heavy Blow", oncePerTurnDescription: "A punishing strike that leaves room for no mistake.", oncePerTurnRoll: "1d8", oncePerRestName: "Bloodied Surge", oncePerRestDescription: "Fight harder when cornered.", oncePerRestRoll: "1d8+2" },
-  { id: "goblin", name: "Goblin (Basic)", tagline: "Small, scrappy, and spiteful.", lore: "HP 10. STR 12, DEX 10, Melee 12, Ranged 10. Once per turn: 1d8 damage.", health: 10, attackRoll: "1d8", statValues: [12, 10, 12, 10, 0], weaponName: "Rusty Dagger", weaponDamageRoll: "1d4", oncePerTurnName: "Quick Stab", oncePerTurnDescription: "A darting opportunistic attack.", oncePerTurnRoll: "1d6", oncePerRestName: "Scurry Away", oncePerRestDescription: "Disengage and vanish into cover." },
-  { id: "fire-goblin", name: "Fire Goblin", tagline: "A goblin with a taste for flame.", lore: "HP 12. STR 11, DEX 10, Melee 9, Ranged 8. Attack: 1d8 damage.", health: 12, attackRoll: "1d8", specialAbility: "1d8+2 Fire Damage. Roll Vitality; on fail, take 1d4 damage next turn.", specialRoll: "1d8+2", statValues: [11, 10, 9, 8, 11], weaponName: "Firebrand", weaponDamageRoll: "1d6", oncePerTurnName: "Flame Lash", oncePerTurnDescription: "A whip of burning air.", oncePerTurnRoll: "1d8+2", oncePerRestName: "Ignite", oncePerRestDescription: "Set the battlefield alight.", oncePerRestRoll: "2d8" },
-  { id: "orc", name: "Orc", tagline: "Strong, direct, and relentless.", lore: "HP 30. STR 7, DEX 14, Melee 6, Ranged 12. Sword of Dread: 1d12+3 damage.", health: 30, attackRoll: "1d12+3", attackName: "Sword of Dread", specialAbility: "Thundering Stomp: 1d12+6 damage within 10ft; all within radius make a DEX save.", specialRoll: "1d12+6", statValues: [7, 14, 6, 12, 8], weaponName: "Sword of Dread", weaponDamageRoll: "1d12+3", oncePerTurnName: "Thundering Stomp", oncePerTurnDescription: "All within 10ft make a DEX save or take the damage.", oncePerTurnRoll: "1d12+6", oncePerRestName: "War Cry", oncePerRestDescription: "A terrifying roar that shakes the battlefield.", oncePerRestRoll: "2d12" },
-  { id: "mage", name: "Mage", tagline: "A fragile body with dangerous magic.", lore: "HP 14. STR 14, DEX 7, Melee 14, Ranged 6. Once per turn: 1d12+2 damage.", health: 14, attackRoll: "1d12+2", specialAbility: "Chosen Spell", oncePerRest: "Quick Teleport: burst of light to an unknown location within 1000ft.", statValues: [14, 7, 14, 6, 6], weaponName: "Arcane Staff", weaponDamageRoll: "1d6", weaponAttackKind: "melee", oncePerTurnName: "Chosen Spell", oncePerTurnDescription: "A focused bolt of destructive magic.", oncePerTurnRoll: "1d12+2", oncePerRestName: "Quick Teleport", oncePerRestDescription: "Teleport in a burst of light to an unknown location within 1000ft." },
+  { id: "average-npc", name: "Average NPC", tagline: "A capable everyday opponent.", lore: "A trained fighter following simple orders, dangerous in numbers and unremarkable alone.", health: 15, armour: 2, attackRoll: "1d6", statValues: [10, 10, 10, 10, 0], weaponName: "Club", weaponDamageRoll: "1d6", oncePerTurnName: "Basic Strike", oncePerTurnDescription: "A straightforward attack.", oncePerTurnRoll: "1d6", oncePerRestName: "Second Wind", oncePerRestDescription: "Regain a little strength.", oncePerRestRoll: "1d6", oncePerRestType: "healing" },
+  { id: "strong-npc", name: "Strong NPC", tagline: "A hardened and dangerous foe.", lore: "Battle-scarred and unyielding, hitting harder than most and refusing to go down easy.", health: 15, armour: 4, attackRoll: "1d8", statValues: [8, 9, 8, 9, 0], weaponName: "Greatclub", weaponDamageRoll: "1d8", oncePerTurnName: "Heavy Blow", oncePerTurnDescription: "A punishing strike that leaves room for no mistake.", oncePerTurnRoll: "1d8", oncePerRestName: "Bloodied Surge", oncePerRestDescription: "Fight harder when cornered.", oncePerRestRoll: "1d8+2" },
+  { id: "goblin", name: "Goblin (Basic)", tagline: "Small, scrappy, and spiteful.", lore: "Fast and sneaky, always looking for an opening to strike and flee.", health: 10, armour: 1, attackRoll: "1d8", statValues: [12, 10, 12, 10, 0], weaponName: "Rusty Dagger", weaponDamageRoll: "1d4", oncePerTurnName: "Quick Stab", oncePerTurnDescription: "A darting opportunistic attack.", oncePerTurnRoll: "1d6", oncePerRestName: "Scurry Away", oncePerRestDescription: "Disengage and vanish into cover." },
+  { id: "fire-goblin", name: "Fire Goblin", tagline: "A goblin with a taste for flame.", lore: "Wreathed in embers, lashing out with searing strikes that leave lingering burns.", health: 12, armour: 2, attackRoll: "1d8", specialAbility: "1d8+2 Fire Damage. Roll Vitality; on fail, take 1d4 damage next turn.", specialRoll: "1d8+2", statValues: [11, 10, 9, 8, 11], weaponName: "Firebrand", weaponDamageRoll: "1d6", oncePerTurnName: "Flame Lash", oncePerTurnDescription: "A whip of burning air.", oncePerTurnRoll: "1d8+2", oncePerRestName: "Ignite", oncePerRestDescription: "Set the battlefield alight.", oncePerRestRoll: "2d8" },
+  { id: "orc", name: "Orc", tagline: "Strong, direct, and relentless.", lore: "A brutal warlord whose blade and stomping fury shatter formations.", health: 30, armour: 6, attackRoll: "1d12+3", attackName: "Sword of Dread", specialAbility: "Thundering Stomp: 1d12+6 damage within 10ft; all within radius make a DEX save.", specialRoll: "1d12+6", statValues: [7, 14, 6, 12, 8], weaponName: "Sword of Dread", weaponDamageRoll: "1d12+3", oncePerTurnName: "Thundering Stomp", oncePerTurnDescription: "All within 10ft make a DEX save or take the damage.", oncePerTurnRoll: "1d12+6", oncePerRestName: "War Cry", oncePerRestDescription: "A terrifying roar that shakes the battlefield.", oncePerRestRoll: "2d12" },
+  { id: "mage", name: "Mage", tagline: "A fragile body with dangerous magic.", lore: "Frail in body but devastating in magic, favouring ranged spellfire over melee.", health: 14, armour: 1, attackRoll: "1d12+2", specialAbility: "Chosen Spell", oncePerRest: "Quick Teleport: burst of light to an unknown location within 1000ft.", statValues: [14, 7, 14, 6, 6], weaponName: "Arcane Staff", weaponDamageRoll: "1d6", weaponAttackKind: "melee", oncePerTurnName: "Chosen Spell", oncePerTurnDescription: "A focused bolt of destructive magic.", oncePerTurnRoll: "1d12+2", oncePerRestName: "Quick Teleport", oncePerRestDescription: "Teleport in a burst of light to an unknown location within 1000ft." },
 ];
 
 const MONSTER_LOOT = [
@@ -114,7 +117,7 @@ const MONSTER_LOOT = [
   { name: "Bloodied Coin", description: "A tarnished coin stamped with a crude enemy mark." },
   { name: "Monster Fang", description: "A sharp trophy from something that wanted you dead." },
   { name: "Goblin Trinket", description: "A lucky scrap of metal tied to a fraying cord." },
-  { name: "Charred Emberstone", description: "Still warm. It smells faintly of smoke and sulfur." },
+  { name: "Charred Power-Stone", description: "Still warm, a powerful magical conduit. It smells faintly of smoke and sulfur." },
   { name: "Orc War Token", description: "A heavy bone token carved with a brutal victory mark." },
   { name: "Strange Spell Component", description: "A piece of something unnatural, useful to the right mage." },
   { name: "Black Feathers", description: "Too dark and too clean to belong to any ordinary bird." },
@@ -164,7 +167,13 @@ export default function CreateHeroScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { kind } = useLocalSearchParams<{ kind?: string }>();
+  const { kind, age } = useLocalSearchParams<{ kind?: string; age?: string }>();
+  const activeAge: AgeId = age === "age-of-war" ? "age-of-war" : DEFAULT_AGE_ID;
+  const ageCatalog = getAgeCatalog(activeAge);
+
+  useEffect(() => {
+    setThemeAge(activeAge);
+  }, [activeAge]);
   const styles = getStyles(colors);
 
   const isMonsterRequest = kind === "monster";
@@ -375,16 +384,17 @@ export default function CreateHeroScreen() {
       }
       const monster = {
         ...base,
+        age: activeAge,
         name: name.trim() || monsterType.name,
         className: monsterType.name,
         hp: monsterType.health,
         maxHp: monsterType.health,
         stats,
         meleeDmg: monsterType.weaponDamageRoll ?? monsterType.attackRoll,
-        armour: "10",
+        armour: String(monsterType.armour),
         weapons: [{
           id: genId(),
-          name: monsterType.weaponName ?? "Monster weapon",
+          name: monsterType.weaponName ?? "Enemy weapon",
           attackKind: monsterType.weaponAttackKind ?? "melee",
           damageRoll: monsterType.weaponDamageRoll ?? monsterType.attackRoll,
         }],
@@ -408,8 +418,8 @@ export default function CreateHeroScreen() {
         inventoryItems: randomMonsterLoot(),
         backstory: `${monsterType.name}. ${monsterType.tagline} ${monsterType.lore}`,
       };
-      await upsertCharacter(monster);
-      router.replace(`/character/${monster.id}`);
+      await upsertCharacter(monster, activeAge);
+      router.replace(`/character/${monster.id}?age=${activeAge}`);
       return;
     }
     if (!race || !charClass || !allAssigned) return;
@@ -425,8 +435,8 @@ export default function CreateHeroScreen() {
       });
     }
     const trimmedName = name.trim() || `${race.name.split(" / ")[0]} ${charClass.name}`;
-    const starterItems = ITEM_CATEGORY_ORDER.map((category) => {
-      const options = ITEM_PRESETS.filter((item) => item.category === category);
+    const starterItems = ageCatalog.itemCategoryOrder.map((category) => {
+      const options = ageCatalog.items.filter((item) => item.category === category);
       const preset = options[Math.floor(Math.random() * options.length)];
       const label = preset.price ? `${preset.name} (${preset.price})` : preset.name;
       return createEmptyInventoryItem(label, preset.notes ?? "");
@@ -450,16 +460,18 @@ export default function CreateHeroScreen() {
       inventoryItems: starterItems,
       backstory: `${race.name} ${charClass.name}. ${charClass.tagline}`,
     };
-    await upsertCharacter(hero);
-    router.replace(`/character/${hero.id}`);
+    await upsertCharacter(hero, activeAge);
+    router.replace(`/character/${hero.id}?age=${activeAge}`);
   };
 
   const startCustom = async () => {
     setSaving(true);
     const character = isMonsterRequest ? createEmptyMonster() : createEmptyCharacter();
-    character.name = isMonsterRequest ? "New Monster" : "New Hero";
+    character.age = activeAge;
+    character.name = isMonsterRequest ? "New Enemy" : "New Hero";
     await upsertCharacter(character);
-    router.replace(`/character/${character.id}`);
+    await upsertCharacter(character, activeAge);
+    router.replace(`/character/${character.id}?age=${activeAge}`);
   };
 
   return (
@@ -477,7 +489,7 @@ export default function CreateHeroScreen() {
           <Icon name="close" size={22} color={colors.onSurface} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {mode == null ? (isMonsterRequest ? "New Monster" : "New Hero") : isMonster ? "Forge a Monster" : "Forge a Hero"}
+          {mode == null ? (isMonsterRequest ? "New Enemy" : "New Hero") : isMonster ? "Forge an Enemy" : "Forge a Hero"}
         </Text>
         <View style={{ width: 36 }} />
       </View>
@@ -616,7 +628,7 @@ export default function CreateHeroScreen() {
           >
             <Icon name="shield-sword" size={18} color={colors.onBrandPrimary} />
             <Text style={[styles.footerBtnText, { color: colors.onBrandPrimary }]}>
-              {saving ? "Forging…" : isMonster ? "Forge Monster" : "Forge Hero"}
+              {saving ? "Forging…" : isMonster ? "Forge Enemy" : "Forge Hero"}
             </Text>
           </Pressable>
         )}
@@ -643,10 +655,10 @@ function ModePicker({
   const styles = getStyles(colors);
   return (
     <ScrollView contentContainerStyle={styles.modeBody}>
-      <Text style={styles.stepHeading}>{monster ? "How shall we forge this monster?" : "How shall we begin?"}</Text>
+      <Text style={styles.stepHeading}>{monster ? "How shall we forge this enemy?" : "How shall we begin?"}</Text>
       <Text style={styles.stepSubHeading}>
         {monster
-          ? "Choose a guided monster profile or start with a blank monster sheet."
+          ? "Choose a guided enemy profile or start with a blank enemy sheet."
           : "Choose your path. You can always tweak everything on the sheet afterwards."}
       </Text>
 
@@ -665,11 +677,11 @@ function ModePicker({
         <View style={styles.modeIconWrap}>
           <Icon name="auto-fix" size={30} color={colors.brandPrimary} />
         </View>
-        <Text style={styles.modeTitle}>{monster ? "Basic Monster" : "Easy Creation"}</Text>
+        <Text style={styles.modeTitle}>{monster ? "Basic Enemy" : "Easy Creation"}</Text>
         <Text style={styles.modeSub}>
           {monster
-            ? "Pick a monster type, roll five stats, and assign them to the creature's core abilities."
-            : "A guided 5-step forge — pick a race and class, roll 20 dice, tap them into place. Great for a first hero or players new to the system."}
+            ? "Pick an enemy type, roll five stats, and assign them to the creature's core abilities."
+            : "A guided 5-step forge. Pick a race and class, roll 20 dice, and tap them into place. Great for a first hero or players new to the system."}
         </Text>
         <View style={styles.modeMetaRow}>
           <View style={styles.modeMetaChip}>
@@ -687,7 +699,7 @@ function ModePicker({
         </View>
         <View style={[styles.modeCta, { backgroundColor: colors.brandPrimary }]}>
           <Text style={[styles.modeCtaText, { color: colors.onBrandPrimary }]}>
-            {monster ? "Start monster forge" : "Start guided forge"}
+            {monster ? "Start enemy forge" : "Start guided forge"}
           </Text>
           <Icon name="chevron-right" size={16} color={colors.onBrandPrimary} />
         </View>
@@ -709,11 +721,11 @@ function ModePicker({
         <View style={styles.modeIconWrap}>
           <Icon name="pencil-outline" size={30} color={colors.onSurface} />
         </View>
-        <Text style={styles.modeTitle}>{monster ? "Custom Monster" : "Custom Creation"}</Text>
+        <Text style={styles.modeTitle}>{monster ? "Custom Enemy" : "Custom Creation"}</Text>
         <Text style={styles.modeSub}>
           {monster
-            ? "Skip the wizard and open a blank monster sheet. Add the name, stats, loot, weapons, and abilities yourself."
-            : "Skip the wizard entirely and land on a blank sheet. Fill in name, class, stats, weapons and abilities by hand — perfect for veterans porting an existing hero."}
+            ? "Skip the wizard and open a blank enemy sheet. Add the name, stats, loot, weapons, and abilities yourself."
+            : "Skip the wizard entirely and land on a blank sheet. Fill in name, class, stats, weapons and abilities by hand. Perfect for veterans porting an existing hero."}
         </Text>
         <View style={styles.modeMetaRow}>
           <View style={styles.modeMetaChip}>
@@ -723,7 +735,7 @@ function ModePicker({
         </View>
         <View style={[styles.modeCta, { backgroundColor: colors.surfaceSecondary, borderWidth: 2, borderColor: colors.borderStrong }]}>
           <Text style={[styles.modeCtaText, { color: colors.onSurface }]}>
-            {saving ? "Preparing…" : monster ? "Blank monster sheet" : "Straight to sheet"}
+            {saving ? "Preparing…" : monster ? "Blank enemy sheet" : "Straight to sheet"}
           </Text>
           <Icon name="chevron-right" size={16} color={colors.onSurface} />
         </View>
@@ -798,7 +810,7 @@ function RaceStep({
     <ScrollView contentContainerStyle={styles.stepBody}>
       <Text style={styles.stepHeading}>Choose your bloodline</Text>
       <Text style={styles.stepSubHeading}>
-        Green traits are natural strengths — place a LOW roll there. Red traits are weak spots — place a HIGH roll there.
+        Green traits are natural strengths. Place a LOW roll there. Red traits are weak spots. Place a HIGH roll there.
       </Text>
       {RACES.map((r) => (
         <PickerCard
@@ -883,9 +895,9 @@ function MonsterTypeStep({
   const styles = getStyles(colors);
   return (
     <ScrollView contentContainerStyle={styles.stepBody}>
-      <Text style={styles.stepHeading}>Choose a monster type</Text>
+      <Text style={styles.stepHeading}>Choose an enemy type</Text>
       <Text style={styles.stepSubHeading}>
-        Pick a shape for the threat. You can rename and customize the monster once it is forged.
+        Pick a shape for the threat. You can rename and customize the enemy once it is forged.
       </Text>
       <Pressable
         testID="new-monster-preset"
@@ -900,7 +912,7 @@ function MonsterTypeStep({
         ]}
       >
         <Icon name="dice-multiple" size={16} color={colors.onBrandPrimary} />
-        <Text style={[styles.modeCtaText, { color: colors.onBrandPrimary }]}>New Monster — Randomized Stats</Text>
+        <Text style={[styles.modeCtaText, { color: colors.onBrandPrimary }]}>New Enemy, Randomized Stats</Text>
         <Icon name="chevron-right" size={16} color={colors.onBrandPrimary} />
       </Pressable>
       {MONSTER_TYPES.map((type) => (
@@ -1035,7 +1047,7 @@ function RollStep({ pool, onReroll, monster = false }: { pool: number[]; onRerol
 
   return (
     <ScrollView contentContainerStyle={styles.stepBody}>
-      <Text style={styles.stepHeading}>{monster ? "Roll the monster's stats" : "The bones are cast"}</Text>
+      <Text style={styles.stepHeading}>{monster ? "Roll the enemy's stats" : "The bones are cast"}</Text>
       <Text style={styles.stepSubHeading}>
         {monster
           ? "Five d20s rolled (clamped to 6–18). Assign them to Strength, Dexterity, Melee, Ranged, and Special Ability."
@@ -1279,7 +1291,7 @@ function MonsterAssignStep({
 
   return (
     <ScrollView contentContainerStyle={styles.stepBody} keyboardShouldPersistTaps="handled">
-      <Text style={styles.stepHeading}>Assign monster stats</Text>
+      <Text style={styles.stepHeading}>Assign enemy stats</Text>
       <Text style={styles.stepSubHeading}>
         Tap a die, then tap a stat. Lower numbers are stronger in this system. Auto-fill assigns only the remaining stats.
       </Text>
@@ -1425,7 +1437,7 @@ function FinalizeStep({
     >
       <Text style={styles.stepHeading}>Name your hero</Text>
       <Text style={styles.stepSubHeading}>
-        Nearly done — one last mark on the ledger.
+        Nearly done. One last mark on the ledger.
       </Text>
       <View style={styles.finalCard}>
         <Text style={styles.finalLabel}>NAME</Text>
@@ -1470,7 +1482,7 @@ function MonsterFinalizeStep({
       contentContainerStyle={[styles.stepBody, { paddingBottom: 32 + keyboardSpace }]}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.stepHeading}>Name your monster</Text>
+      <Text style={styles.stepHeading}>Name your enemy</Text>
       <Text style={styles.stepSubHeading}>Choose a name for the encounter. You can edit every field after forging.</Text>
       <View style={styles.finalCard}>
         <Text style={styles.finalLabel}>NAME</Text>

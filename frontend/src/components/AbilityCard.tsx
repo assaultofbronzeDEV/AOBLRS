@@ -11,6 +11,7 @@ type Props = {
   onChange: (next: Ability) => void;
   onDelete: () => void;
   onUse: (ability: Ability) => void;
+  onExport: (ability: Ability) => void;
   testID?: string;
 };
 
@@ -26,7 +27,7 @@ function cycleEffect(cur: EffectType): EffectType {
   return "none";
 }
 
-export default function AbilityCard({ ability, stats, onChange, onDelete, onUse, testID }: Props) {
+export default function AbilityCard({ ability, stats, onChange, onDelete, onUse, onExport, testID }: Props) {
   const { colors } = useTheme();
   const [pickerOpen, setPickerOpen] = useState(false);
   const linkedLabel = labelForRef(stats, ability.linkedStat);
@@ -48,6 +49,15 @@ export default function AbilityCard({ ability, stats, onChange, onDelete, onUse,
           disableFullscreenUI
           style={[styles.titleInput, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
         />
+        <Pressable
+          testID={`${testID}-export`}
+          onPress={() => onExport(ability)}
+          hitSlop={8}
+          style={styles.iconBtn}
+          accessibilityLabel="Export ability"
+        >
+          <Icon name="file-export-outline" size={20} color={colors.brandPrimary} />
+        </Pressable>
         <Pressable
           testID={`${testID}-delete`}
           onPress={onDelete}

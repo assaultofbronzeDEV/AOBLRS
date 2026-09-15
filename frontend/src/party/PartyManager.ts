@@ -53,6 +53,7 @@ export type PartyState = {
   hostPort: number | null;
   peers: PeerInfo[]; // includes self
   sharedHeroes: Character[];
+  selectedCharacterIds: string[];
   rollNotes: Record<string, string>;
 };
 
@@ -66,6 +67,7 @@ const initialState: PartyState = {
   hostPort: null,
   peers: [],
   sharedHeroes: [],
+  selectedCharacterIds: [],
   rollNotes: {},
 };
 
@@ -145,6 +147,7 @@ class PartyManager {
       connecting: true,
       error: null,
       peers: [],
+      selectedCharacterIds: this.heroesOnly(this.myCharacters).map((character) => character.id),
       sharedHeroes: [],
       rollNotes: {},
     });
@@ -215,6 +218,7 @@ class PartyManager {
       hostIp: null,
       hostPort: null,
       peers: [],
+      selectedCharacterIds: [],
       sharedHeroes: [],
       rollNotes: {},
     });
@@ -280,13 +284,36 @@ class PartyManager {
   // Called by the UI whenever the device's local characters change.
   updateMyCharacters(chars: Character[]): void {
     this.myCharacters = chars ?? [];
+    const validIds = new Set(this.heroesOnly(this.myCharacters).map((character) => character.id));
+    const selectedCharacterIds = this.state.selectedCharacterIds.filter((id) => validIds.has(id));
+    if (selectedCharacterIds.length !== this.state.selectedCharacterIds.length) {
+      this.setState({ selectedCharacterIds });
+    }
     if (this.state.role === "host") {
       this.recomputeSharedHeroes();
     } else if (this.state.role === "client" && this.clientSocket) {
       this.send(this.clientSocket, {
         t: "CHARACTER_UPDATE",
         from: this.myPeerId,
-        characters: this.heroesOnly(this.myCharacters),
+        characters: this.selectedHeroes(),
+      });
+    }
+  }
+
+  toggleCharacterForParty(characterId: string): void {
+    if (this.state.role !== "client") return;
+    const character = this.myCharacters.find((item) => item.id === characterId && item.kind !== "monster");
+    if (!character) return;
+    const selected = new Set(this.state.selectedCharacterIds);
+    if (selected.has(characterId)) selected.delete(characterId);
+    else selected.add(characterId);
+    const selectedCharacterIds = Array.from(selected);
+    this.setState({ selectedCharacterIds });
+    if (this.clientSocket) {
+      this.send(this.clientSocket, {
+        t: "CHARACTER_UPDATE",
+        from: this.myPeerId,
+        characters: this.selectedHeroes(selectedCharacterIds),
       });
     }
   }
@@ -442,6 +469,11 @@ class PartyManager {
 
   private heroesOnly(chars: Character[]): Character[] {
     return (chars ?? []).filter((c) => c && c.kind !== "monster");
+  }
+
+  private selectedHeroes(ids = this.state.selectedCharacterIds): Character[] {
+    const selected = new Set(ids);
+    return this.heroesOnly(this.myCharacters).filter((character) => selected.has(character.id));
   }
 
   private broadcastState(): void {
@@ -638,7 +670,7 @@ class PartyManager {
         this.send(socket, {
           t: "CHARACTER_UPDATE",
           from: this.myPeerId,
-          characters: this.heroesOnly(this.myCharacters),
+          characters: this.selectedHeroes(),
         });
         // Start heartbeat.
         if (this.clientHeartbeat) clearInterval(this.clientHeartbeat);

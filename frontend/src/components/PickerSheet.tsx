@@ -1,15 +1,5 @@
-import React, { useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  Pressable,
-  ScrollView,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import React, { useMemo } from "react";
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/material-design-icons";
 import { fonts, useTheme, ThemeColors } from "@/src/theme";
@@ -19,6 +9,7 @@ export type PickerEntry = {
   name: string;
   category: string;
   meta?: string; // secondary info shown on the right (e.g. "1d6", "5s")
+  price?: string;
   notes?: string;
   icon?: string; // material-design-icons name
 };
@@ -52,19 +43,10 @@ export default function PickerSheet({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = getStyles(colors);
-  const [query, setQuery] = useState("");
 
   const grouped = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const filtered = presets.filter(
-      (p) =>
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        (p.notes?.toLowerCase().includes(q) ?? false) ||
-        p.category.toLowerCase().includes(q),
-    );
     const map = new Map<string, PickerEntry[]>();
-    for (const p of filtered) {
+    for (const p of presets) {
       const arr = map.get(p.category) ?? [];
       arr.push(p);
       map.set(p.category, arr);
@@ -80,7 +62,7 @@ export default function PickerSheet({
       keys.sort();
     }
     return keys.map((k) => ({ key: k, items: map.get(k)! }));
-  }, [presets, query, categoryOrder]);
+  }, [presets, categoryOrder]);
 
   return (
     <Modal
@@ -91,11 +73,7 @@ export default function PickerSheet({
     >
       <View style={styles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={insets.top}
-          style={styles.keyboardAvoiding}
-        >
+        <View style={styles.keyboardAvoiding}>
           <View style={[styles.sheet, { paddingTop: insets.top, paddingBottom: 12 + insets.bottom }]}>
           {/* Header */}
           <View style={styles.header}>
@@ -144,35 +122,13 @@ export default function PickerSheet({
                 {customLabel}
               </Text>
             </Pressable>
-
-            {/* Search */}
-            <View style={styles.searchWrap}>
-              <Icon name="magnify" size={16} color={colors.muted} />
-              <TextInput
-                testID={`${testIDPrefix}-search`}
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Search library…"
-                placeholderTextColor={colors.muted}
-                style={styles.searchInput}
-              />
-              {query.length > 0 && (
-                <Pressable onPress={() => setQuery("")} hitSlop={8}>
-                  <Icon name="close-circle" size={16} color={colors.muted} />
-                </Pressable>
-              )}
-            </View>
           </View>
 
           {/* Body */}
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={styles.body}
-            keyboardShouldPersistTaps="handled"
-          >
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.body}>
             {grouped.length === 0 && (
               <Text style={styles.emptyText}>
-                Nothing matches — try a different word or hit &quot;{customLabel}&quot; above.
+                Nothing here yet — hit &quot;{customLabel}&quot; above.
               </Text>
             )}
             {grouped.map(({ key, items }) => (
@@ -219,6 +175,12 @@ export default function PickerSheet({
                         <Text style={styles.metaChipText}>{p.meta}</Text>
                       </View>
                     ) : null}
+                    {p.price ? (
+                      <View style={styles.priceChip}>
+                        <Icon name="cash" size={13} color={colors.onBrandPrimary} />
+                        <Text style={styles.priceChipText}>{p.price}</Text>
+                      </View>
+                    ) : null}
                     <Icon name="plus-circle-outline" size={20} color={colors.brandPrimary} />
                   </Pressable>
                 ))}
@@ -226,7 +188,7 @@ export default function PickerSheet({
             ))}
           </ScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
     </Modal>
   );
@@ -300,23 +262,6 @@ const getStyles = (colors: ThemeColors) =>
       fontFamily: fonts.displayBold,
       letterSpacing: 1,
     },
-    searchWrap: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      borderWidth: 1.5,
-      borderColor: colors.borderStrong,
-      backgroundColor: colors.surface,
-      paddingHorizontal: 8,
-      paddingVertical: 6,
-    },
-    searchInput: {
-      flex: 1,
-      fontSize: 14,
-      color: colors.onSurface,
-      fontFamily: fonts.display,
-      padding: 0,
-    },
     body: { padding: 12, gap: 14, paddingBottom: 24 },
     emptyText: {
       fontSize: 13,
@@ -369,6 +314,24 @@ const getStyles = (colors: ThemeColors) =>
     metaChipText: {
       fontSize: 12,
       color: colors.onSurface,
+      fontFamily: fonts.displayBold,
+      letterSpacing: 0.5,
+    },
+    priceChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      borderWidth: 1.5,
+      borderColor: colors.brandPrimary,
+      backgroundColor: colors.brandPrimary,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      minWidth: 42,
+      justifyContent: "center",
+    },
+    priceChipText: {
+      fontSize: 12,
+      color: colors.onBrandPrimary,
       fontFamily: fonts.displayBold,
       letterSpacing: 0.5,
     },

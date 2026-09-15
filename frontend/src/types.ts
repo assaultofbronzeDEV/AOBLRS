@@ -1,3 +1,6 @@
+import { normalizeDiceNotation } from "@/src/utils/dice";
+import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
+
 export type SubSkill = {
   name: string;
   value: number;
@@ -88,6 +91,7 @@ export type Currency = {
 
 export type Character = {
   id: string;
+  age: AgeId;
   kind: EntityKind;
   name: string;
   className: string;
@@ -183,10 +187,7 @@ export const genId = () =>
 
 export const normalizeDice = (raw: unknown): string | undefined => {
   if (typeof raw !== "string") return undefined;
-  const m = raw.match(/^\s*(\d+)\s*[xX*]?\s*[dD]\s*(\d+)\s*([+\-]\s*\d+)?\s*$/);
-  if (!m) return raw;
-  const mod = m[3] ? m[3].replace(/\s+/g, "") : "";
-  return `${m[1]}d${m[2]}${mod}`;
+  return normalizeDiceNotation(raw) ?? raw;
 };
 
 export const createEmptyAbility = (): Ability => ({
@@ -220,6 +221,7 @@ const createBase = (kind: EntityKind): Character => {
   const stats = kind === "monster" ? defaultMonsterStats() : defaultHeroStats();
   return {
     id: genId(),
+    age: DEFAULT_AGE_ID,
     kind,
     name: "",
     className: "",
@@ -297,6 +299,7 @@ export const migrateCharacter = (raw: any): Character => {
   const maxHp = typeof raw.maxHp === "number" && raw.maxHp > 0 ? raw.maxHp : HP_MAX;
   return {
     id: raw.id ?? genId(),
+    age: raw.age === "age-of-war" ? "age-of-war" : DEFAULT_AGE_ID,
     kind,
     name: raw.name ?? "",
     className: raw.className ?? "",

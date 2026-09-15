@@ -50,7 +50,7 @@ export default function RootLayout() {
       }).start(({ finished }) => {
         if (finished) setShowIntro(false);
       });
-    }, 2200);
+    }, 6200);
 
     return () => {
       clearTimeout(introTimer);
@@ -87,7 +87,7 @@ export default function RootLayout() {
             ]}
           />
           <View style={styles.introShade} />
-          <View style={styles.introContent}>
+          <View style={styles.introContent} pointerEvents="none">
             <Image source={require("../assets/images/aob-logo.png")} resizeMode="contain" style={styles.introLogo} />
             <Text style={styles.introCredit}>AOBLRS created by Jordan Cowley</Text>
             <Text style={styles.introCredit}>In Development</Text>
@@ -109,30 +109,52 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   introMap: {
-    ...StyleSheet.absoluteFill,
-    width: "120%",
-    left: "-10%",
+    position: "absolute",
+    top: "0%",
+    left: "-8%",
+    right: "-8%",
+    bottom: "0%",
+    width: undefined,
+    height: undefined,
     opacity: 0.72,
+    borderRadius: 28,
+    zIndex: 1,
+    elevation: 1,
   },
   introShade: {
     ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(7, 9, 13, 0.48)",
-  },
-  introContent: {
-    alignItems: "center",
-    paddingHorizontal: 20,
-    position: "relative",
     zIndex: 2,
     elevation: 2,
   },
+  introContent: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    zIndex: 5,
+    elevation: 5,
+  },
   introLogo: {
-    width: "90%",
-    height: 200,
+    width: "78%",
+    maxWidth: 420,
+    height: 180,
+    marginBottom: 12,
+    opacity: 1,
+    shadowColor: "#ffffff",
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
   },
   introCredit: {
     color: "#ffffff",
     fontSize: 15,
     lineHeight: 24,
     textAlign: "center",
+    letterSpacing: 0.5,
   },
 });

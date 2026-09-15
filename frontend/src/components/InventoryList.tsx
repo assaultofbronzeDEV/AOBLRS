@@ -9,9 +9,11 @@ type Props = {
   onChange: (items: InventoryItem[]) => void;
   onAdd: () => void;
   onUse: (item: InventoryItem) => void;
+  onExport: (item: InventoryItem) => void;
+  onImport: () => void;
 };
 
-export default function InventoryList({ items, onChange, onAdd, onUse }: Props) {
+export default function InventoryList({ items, onChange, onAdd, onUse, onExport, onImport }: Props) {
   const { colors } = useTheme();
 
   const update = (i: number, patch: Partial<InventoryItem>) => {
@@ -32,18 +34,18 @@ export default function InventoryList({ items, onChange, onAdd, onUse }: Props) 
           testID={`inv-item-${i}`}
           style={[styles.row, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}
         >
-          <Pressable
-            testID={`inv-item-${i}-used`}
-            onPress={() => {
-              update(i, { used: !it.used });
-              if (!it.used) onUse(it);
-            }}
-            hitSlop={6}
-            style={[styles.check, { borderColor: colors.borderStrong }]}
-          >
-            {it.used && <Icon name="check" size={14} color={colors.brandPrimary} />}
-          </Pressable>
-          <View style={styles.itemDetails}>
+          <View style={styles.itemTopRow}>
+            <Pressable
+              testID={`inv-item-${i}-used`}
+              onPress={() => {
+                update(i, { used: !it.used });
+                if (!it.used) onUse(it);
+              }}
+              hitSlop={6}
+              style={[styles.check, { borderColor: colors.borderStrong }]}
+            >
+              {it.used && <Icon name="check" size={14} color={colors.brandPrimary} />}
+            </Pressable>
             <TextInput
               testID={`inv-item-${i}-name`}
               value={it.name}
@@ -61,68 +63,47 @@ export default function InventoryList({ items, onChange, onAdd, onUse }: Props) 
                 },
               ]}
             />
-            <TextInput
-              testID={`inv-item-${i}-description`}
-              value={it.description ?? ""}
-              onChangeText={(t) => update(i, { description: t })}
-              placeholder=""
-              placeholderTextColor={colors.muted}
-              multiline
-              disableFullscreenUI
-              style={[styles.description, { color: colors.muted, fontFamily: fonts.body }]}
-            />
-          </View>
-          <View style={styles.qtyGroup}>
-            <Pressable
-              testID={`inv-item-${i}-qty-minus`}
-              onPress={() => update(i, { qty: Math.max(0, it.qty - 1) })}
-              hitSlop={6}
-              style={[styles.qtyBtn, { borderColor: colors.borderStrong }]}
-            >
-              <Icon name="minus" size={12} color={colors.onSurface} />
+            <View style={styles.qtyGroup}>
+              <Pressable testID={`inv-item-${i}-qty-minus`} onPress={() => update(i, { qty: Math.max(0, it.qty - 1) })} hitSlop={6} style={[styles.qtyBtn, { borderColor: colors.borderStrong }]}>
+                <Icon name="minus" size={12} color={colors.onSurface} />
+              </Pressable>
+              <Text testID={`inv-item-${i}-qty`} numberOfLines={1} style={[styles.qty, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{it.qty}</Text>
+              <Pressable testID={`inv-item-${i}-qty-plus`} onPress={() => update(i, { qty: Math.min(999, it.qty + 1) })} hitSlop={6} style={[styles.qtyBtn, { borderColor: colors.borderStrong }]}>
+                <Icon name="plus" size={12} color={colors.onSurface} />
+              </Pressable>
+            </View>
+            <Pressable testID={`inv-item-${i}-export`} onPress={() => onExport(it)} hitSlop={6} style={styles.trashBtn} accessibilityLabel="Export item">
+              <Icon name="file-export-outline" size={16} color={colors.brandPrimary} />
             </Pressable>
-            <Text
-              testID={`inv-item-${i}-qty`}
-              numberOfLines={1}
-              style={[styles.qty, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
-            >
-              {it.qty}
-            </Text>
-            <Pressable
-              testID={`inv-item-${i}-qty-plus`}
-              onPress={() => update(i, { qty: Math.min(999, it.qty + 1) })}
-              hitSlop={6}
-              style={[styles.qtyBtn, { borderColor: colors.borderStrong }]}
-            >
-              <Icon name="plus" size={12} color={colors.onSurface} />
+            <Pressable testID={`inv-item-${i}-delete`} onPress={() => remove(i)} hitSlop={6} style={styles.trashBtn}>
+              <Icon name="trash-can-outline" size={16} color={colors.muted} />
             </Pressable>
           </View>
-          <Pressable
-            testID={`inv-item-${i}-delete`}
-            onPress={() => remove(i)}
-            hitSlop={6}
-            style={styles.trashBtn}
-          >
-            <Icon name="trash-can-outline" size={16} color={colors.muted} />
-          </Pressable>
+          <TextInput
+            testID={`inv-item-${i}-description`}
+            value={it.description ?? ""}
+            onChangeText={(t) => update(i, { description: t })}
+            placeholder=""
+            placeholderTextColor={colors.muted}
+            multiline
+            disableFullscreenUI
+            style={[styles.description, { color: colors.muted, fontFamily: fonts.body }]}
+          />
         </View>
       ))}
-      <Pressable
-        testID="add-inv-item"
-        onPress={onAdd}
-        style={({ pressed }) => [
-          styles.addBtn,
-          {
-            borderColor: colors.borderStrong,
-            backgroundColor: pressed ? colors.brandTertiary : "transparent",
-          },
-        ]}
-      >
-        <Icon name="plus" size={18} color={colors.brandPrimary} />
-        <Text style={[styles.addText, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
-          Add Item
-        </Text>
-      </Pressable>
+      <View style={styles.actionRow}>
+        <Pressable
+          testID="add-inv-item"
+          onPress={onAdd}
+          style={({ pressed }) => [styles.addBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : "transparent" }]}
+        >
+          <Icon name="plus" size={18} color={colors.brandPrimary} />
+          <Text style={[styles.addText, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>Add Item</Text>
+        </Pressable>
+        <Pressable testID="import-inv-item" onPress={onImport} style={[styles.importBtn, { borderColor: colors.borderStrong }]} accessibilityLabel="Import item JSON">
+          <Icon name="file-import-outline" size={18} color={colors.brandPrimary} />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -130,14 +111,13 @@ export default function InventoryList({ items, onChange, onAdd, onUse }: Props) 
 const styles = StyleSheet.create({
   empty: { fontStyle: "italic", fontSize: 14 },
   row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 6,
     borderWidth: 1.5,
     paddingHorizontal: 8,
     paddingVertical: 6,
     overflow: "hidden",
+    gap: 2,
   },
+  itemTopRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   check: {
     width: 20,
     height: 20,
@@ -146,14 +126,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flexShrink: 0,
   },
-  itemDetails: { flex: 1, minWidth: 0 },
   name: {
+    flex: 1,
     minWidth: 0,
     fontSize: 15,
     paddingVertical: 4,
     paddingHorizontal: 2,
   },
   description: {
+    alignSelf: "stretch",
+    width: "100%",
     minHeight: 18,
     fontSize: 11,
     lineHeight: 15,
@@ -185,6 +167,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   addBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -194,5 +177,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginTop: 2,
   },
+  actionRow: { flexDirection: "row", gap: 8, marginTop: 2 },
+  importBtn: { width: 42, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
   addText: { fontSize: 14, fontWeight: "700", letterSpacing: 0.5 },
 });

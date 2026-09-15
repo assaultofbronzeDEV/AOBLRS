@@ -13,7 +13,9 @@ import {
   Image,
   ScrollView,
   TextInput,
+  Animated,
 } from "react-native";
+import { PanGestureHandler, PinchGestureHandler, State } from "react-native-gesture-handler";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -23,7 +25,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import Icon from "@react-native-vector-icons/material-design-icons";
 
-import { fonts, setThemeMode, useTheme } from "@/src/theme";
+import { fonts, setThemeAge, setThemeMode, useTheme } from "@/src/theme";
 
 import { Character, RollHistoryEntry } from "@/src/types";
 
@@ -32,22 +34,25 @@ import { deleteCharacter, loadAllCharacters, upsertCharacter } from "@/src/stora
 import { genId } from "@/src/types";
 
 import DiceRollModal, { RollRequest } from "@/src/components/DiceRollModal";
+import ExportSheetModal from "@/src/components/ExportSheetModal";
+import ImportSheetModal from "@/src/components/ImportSheetModal";
 
 import { partyManager } from "@/src/party/PartyManager";
 
 import { usePartyState } from "@/src/party/usePartyState";
+import { AGE_DEFINITIONS, AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 
 const HELP_TABS = [
   {
     key: "overview",
     label: "Overview",
     title: "Assault of Bronze",
-    body: "Create heroes and monsters, then open their sheets to manage stats, equipment, abilities, health, and rolls. Open Lore to explore Aryndos, or Party to create and join a local Wi-Fi room. GM Tools includes a quick dice roller, weapon-roll shortcuts, and an initiative tracker for heroes, monsters, and connected party members.",
+    body: "Welcome to Assault of Bronze, a lightweight, narrative-first roleplay system built with one priority in mind: accessibility. Whether you're a first-time adventurer or a seasoned Game Master, AoB is designed to be intuitive, flexible, and fast-paced, putting the focus on storytelling, decision-making, and character immersion rather than constant rule-checking. With a streamlined dice system, stat-based action resolution, and easy-to-learn mechanics, AoB makes jumping into the game world quick and seamless.\n\nWith minimal math, clear success/fail mechanics, and storytelling at its core, Assault of Bronze empowers players and GMs alike to focus on what matters most - fun, creativity, and epic storytelling.\n\nThis help window will walk you through the core components of the system, from Character Creation, to Combat Mechanics, Special Abilities, Hero Points. You'll begin by building a character identity through race, class, and unique abilities. This help panel covers how to handle ability checks, how combat flows without constant reference to DCs and you will soon discover that this app was built with absolute ease of use in mind.\n\nI hope this is a capable tool and game system that can be used widely and easily, I sincerely hope you enjoy.\n\n- Jordan - creator of AOBLRS.",
   },
   {
     key: "dice",
     label: "Dice",
-    title: "Dice and Stat Checks",
+    title: "Stats and Dice",
     body: `STAT CHECKS
 
 Stat checks do not work like typical D&D rules in the AoB system. The stats on the Character Sheet equal the number you have to roll or higher with a D20 to succeed at any task. The lower the number in a stat, the better you are at that skill and the more often the character will succeed.
@@ -100,7 +105,7 @@ Combat typically begins with the enemies' first attack unless the players perfor
 
 INITIATIVE
 
-Initiative decides who acts when during combat. At the start of a fight, everyone rolls a d20 for turn order. Players, enemies, and NPCs act from the highest roll to the lowest. If the enemy attacked first, its initiative is 20; if it was sneaked upon, its initiative is 0. For identical creatures such as a pack of drones or guards, the GM rolls once for the entire group and they act on the same turn.
+Initiative decides who acts when during combat. At the start of a fight, everyone rolls a d20 to figure out turn order. Players, enemies, and NPCs act from the highest roll to the lowest. If the enemy attacked first, its initiative is 20; if it was sneaked upon, its initiative is 0. For identical creatures such as a pack of drones or guards, the GM rolls once for the entire group and they act on the same turn.
 
 During combat, players may take one action, such as a once-per-turn or once-per-rest ability, move, and take a bonus action such as drinking a potion, pressing a button, or pulling a lever. These can be performed in any order. Some targets have stronger armour or defensive abilities at higher levels to balance a higher-level party's improved ATK checks.
 
@@ -109,6 +114,10 @@ WEAPONS AND DAMAGE
 To damage an enemy, a player may need to roll a d20 based on their attack. They can use a once-per-turn action, a once-per-rest action, or a Melee ATK or Ranged ATK stat roll with a weapon they possess. Weapon modifiers are typically added to damage rolls: a basic dagger might deal 1d4, while a better dagger might deal 1d4+5. The +5 guarantees at least 5 damage on every successful ATK roll.
 
 Modifiers are never added to stat rolls. Instead, use Advantage or Disadvantage. See Dice and Stat Checks for more detail, and Weapon Table for a premade weapon list.
+
+ARMOUR
+
+Armour is a flat number subtracted from any damage a hero or enemy takes. It's always applied — you don't roll for it, and it works the same on every hit, no matter the source. The only exception is when the attacking weapon or effect specifically says it ignores armour (for example, an "IGNORES ARMOUR" weapon note); in that case the full damage goes through untouched.
 
 REMEMBER THE HERO DIE
 
@@ -130,7 +139,21 @@ Combat ends when the last enemy is defeated or surrenders. Remove the initiative
     key: "creation",
     label: "Creation",
     title: "Creating characters",
-    body: "Easy Creation guides you through a profile, rolls, and assignment. Custom Creation opens a blank sheet so you can enter everything yourself.",
+    body: `HEROES AND ENEMIES
+
+  From the main screen, tap the create button to start a new Hero or Enemy. Easy Creation walks you through a profile, guided stat rolls, and lineage/class assignment — the fastest way to get playing. Custom Creation opens a blank sheet so you can hand-enter every stat, name, and detail yourself, useful for converting an existing character or building something the guided flow doesn't cover.
+
+Either way, you end up on the same full character sheet afterward, so nothing is locked in by the mode you picked — you can keep adjusting stats, portrait, lineage, and class at any time.
+
+WEAPONS, ITEMS, AND ABILITIES ARE JUST A STARTING POINT
+
+Every weapon, item, and ability picker (opened from the + buttons on a character sheet) shows a library of premade options grouped by category. These presets exist to get you moving quickly, not to box you in. At the top of every picker is a "Create custom weapon / item / ability" button — use it to build your own gear and powers from scratch with your own name, damage dice, effects, and notes.
+
+Don't hesitate to reskin or completely reinvent a preset: duplicate its stats under a new name, tweak the damage die, or invent an ability that fits your character's story better than anything in the list. The presets are a springboard, not the rulebook.
+
+SAVE YOUR HOMEBREW WITH EXPORT
+
+Once you've built custom weapons, items, or abilities on a sheet, use the export icon (top right of a character sheet, or the export action on a row in the main list) to save that hero or enemy out as a shareable sheet file. This is the best way to preserve your homebrew creations — export a finished character so you always have a backup, and import it back in (or share it with another player) whenever you need it. Duplicate a sheet first if you want to experiment without touching the original.`,
   },
   {
     key: "party",
@@ -173,6 +196,22 @@ The forest-dwelling peoples of Aryndos benefited most. Elves quickly mastered ma
 Humans paid little attention to the Power Stones or the godlike entity that had changed their world. They focused instead on expansion, building, and mining. Their colonies eventually united into a nation in the eastern half of the continent.`,
   },
   {
+    key: "age-of-war",
+    label: "The Age of War",
+    title: "The Age of War",
+    body: `The Age of War began when a trifecta of intense magical energy was performed. Magical balance was permanently shaken and a prophecy was set in motion.
+
+The Humans, after years of technological advancement due to the discovery of the Power Stones and the subsequent invention of the Power-Harness, finally had the upper hand.
+
+Weapons that the Magi would never have even considered possible were invented and the march to the Wall began. The Humans wanted more land, and thought that the Wall had stood in place for far too long.
+
+Through the torture of many Dwarves, the Humans now knew that they could access the Wall using the Dwarven tunnels that ran underneath the entire length of the Wall.
+
+While the battle took place, the human commander, ARCHIBALD STELLARK, used a device to bleed the line of pure Power-Stone that ran along the Wall, permanently damaging it, breaking the elven enchantment that Niirmata had sacrificed his life for centuries before, and unleashing all manner of curses onto the tunnel due to years of corrupted Power-Stone energy.
+
+Once the underground attack was complete, the Humans crossed the Wall and the Age of War began.`,
+  },
+  {
     key: "the-wall",
     label: "The Wall",
     title: "Niirmata and the Wall",
@@ -185,9 +224,110 @@ Unable to understand the magic preventing them from crossing the seemingly insig
       { after: "Niirmata placed a line of pure Power Stones beneath its entire length.", source: require("@/assets/images/Aryndos map Political divide.png") },
     ],
   },
+  {
+    key: "power-stones",
+    label: "Power-Stones",
+    title: "Power-Stones",
+    body: `In the Assault of Bronze universe, old magic used ingredients until the Power-Stones were introduced to the world. It was a day of reckoning: a meteor shower unlike any other. The power these stones held was second to none.
+
+Power-Stones are the most powerful magical conduits when harvested and used in their pure form. The elves quickly became adept at making jewellery, wands, staffs, and other items with Power-Stones inside them, allowing the casting of spells without ingredients or the need to draw from one's own lifeforce.
+
+All spellcasters must have some sort of magical conduit to perform spells in AOB lore.
+
+In later ages, approximately 500 years after the Age of Magic, the Power-Stones eventually set off an arms race and a space race that would decimate the planet of Aryndos entirely.`,
+  },
+  {
+    key: "map",
+    label: "Map",
+    title: "Aryndos Map Explorer",
+    body: "Use pinch and drag gestures to zoom in and explore the full Aryndos continent map.",
+  },
 ] as const;
 
+function LoreMapExplorer({ colors }: { colors: ReturnType<typeof useTheme>["colors"] }) {
+  const [zoom, setZoom] = React.useState(1);
+  const [offset, setOffset] = React.useState({ x: 0, y: 0 });
+
+  const clampZoom = (next: number) => Math.min(3, Math.max(1, next));
+  const clampOffset = (value: number, limit: number) => Math.min(limit, Math.max(-limit, value));
+
+  const zoomIn = () => setZoom((current) => clampZoom(current + 0.35));
+  const zoomOut = () => setZoom((current) => clampZoom(current - 0.35));
+
+  const moveMap = (dx: number, dy: number) => {
+    if (zoom <= 1) return;
+    setOffset((current) => ({
+      x: clampOffset(current.x + dx, 120 * zoom),
+      y: clampOffset(current.y + dy, 120 * zoom),
+    }));
+  };
+
+  const resetMap = () => {
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+  };
+
+  return (
+    <View style={styles.mapExplorerContainer}>
+      <Text style={[styles.helpSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Aryndos Map Explorer</Text>
+      <Text style={[styles.helpText, { color: colors.onSurface, fontFamily: fonts.body }]}>Use the zoom buttons and direction controls to inspect the map.</Text>
+
+      <View style={styles.mapControlRow}>
+        <Pressable onPress={zoomOut} style={[styles.mapControlButton, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+          <Text style={[styles.mapControlText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>-</Text>
+        </Pressable>
+        <Pressable onPress={zoomIn} style={[styles.mapControlButton, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+          <Text style={[styles.mapControlText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>+</Text>
+        </Pressable>
+        <Pressable onPress={resetMap} style={[styles.mapResetButton, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+          <Text style={[styles.mapControlText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Reset</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.mapZoomContainer}>
+        <View style={styles.mapZoomContent}>
+          <Image
+            source={require("@/assets/images/Aryndos map.png")}
+            style={[
+              styles.mapDetailImage,
+              {
+                transform: [{ scale: zoom }, { translateX: offset.x }, { translateY: offset.y }],
+              },
+            ]}
+            resizeMode="contain"
+          />
+        </View>
+
+        <View style={styles.compassPanel}>
+          <View style={styles.dPadRow}>
+            <Pressable onPress={() => moveMap(0, 30)} style={[styles.dPadButton, { borderColor: colors.borderStrong, backgroundColor: "rgba(14,18,22,0.82)" }]} accessibilityLabel="Pan north">
+              <Icon name="chevron-up" size={26} color="#F2F4F7" />
+            </Pressable>
+          </View>
+          <View style={styles.dPadMiddleRow}>
+            <Pressable onPress={() => moveMap(30, 0)} style={[styles.dPadButton, { borderColor: colors.borderStrong, backgroundColor: "rgba(14,18,22,0.82)" }]} accessibilityLabel="Pan west">
+              <Icon name="chevron-left" size={26} color="#F2F4F7" />
+            </Pressable>
+            <View style={[styles.dPadCenter, { borderColor: colors.borderStrong, backgroundColor: colors.brandPrimary }]} pointerEvents="none">
+              <Icon name="crosshairs-gps" size={18} color={colors.onBrandPrimary} />
+            </View>
+            <Pressable onPress={() => moveMap(-30, 0)} style={[styles.dPadButton, { borderColor: colors.borderStrong, backgroundColor: "rgba(14,18,22,0.82)" }]} accessibilityLabel="Pan east">
+              <Icon name="chevron-right" size={26} color="#F2F4F7" />
+            </Pressable>
+          </View>
+          <View style={styles.dPadRow}>
+            <Pressable onPress={() => moveMap(0, -30)} style={[styles.dPadButton, { borderColor: colors.borderStrong, backgroundColor: "rgba(14,18,22,0.82)" }]} accessibilityLabel="Pan south">
+              <Icon name="chevron-down" size={26} color="#F2F4F7" />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 const ROTATION_PREFERENCE_KEY = "aob:allow-tablet-rotation";
+const ACTIVE_AGE_KEY = "aob:active-age";
 
 type PartyRollEntry = RollHistoryEntry & { characterId: string; characterName: string };
 type PartyRollGroup = { key: string; timestamp: string; entries: PartyRollEntry[] };
@@ -232,7 +372,11 @@ export default function CharacterListScreen() {
   const [joinCode, setJoinCode] = useState("");
   const [joinedRoom, setJoinedRoom] = useState<string | null>(null);
   const [sharedHeroes, setSharedHeroes] = useState<Character[]>([]);
-  const [selectedSharedHero, setSelectedSharedHero] = useState<Character | null>(null);
+  const [selectedSharedHeroId, setSelectedSharedHeroId] = useState<string | null>(null);
+  const selectedSharedHero = useMemo(
+    () => sharedHeroes.find((hero) => hero.id === selectedSharedHeroId) ?? null,
+    [sharedHeroes, selectedSharedHeroId],
+  );
   const [gmToolsOpen, setGmToolsOpen] = useState(false);
   const [gmRoll, setGmRoll] = useState<RollRequest | null>(null);
   const [gmNotation, setGmNotation] = useState("");
@@ -245,6 +389,10 @@ export default function CharacterListScreen() {
   const [collapsedRollHistoryGroups, setCollapsedRollHistoryGroups] = useState<Record<string, boolean>>({});
   const [groupLabels, setGroupLabels] = useState<Record<string, string>>({});
   const [renamingGroupKey, setRenamingGroupKey] = useState<string | null>(null);
+  const [exportTarget, setExportTarget] = useState<Character | null>(null);
+  const [exportAllOpen, setExportAllOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [activeAge, setActiveAge] = useState<AgeId>(DEFAULT_AGE_ID);
   useEffect(() => {
     setSharedHeroes(party.sharedHeroes);
     setJoinedRoom(party.roomCode);
@@ -257,15 +405,25 @@ export default function CharacterListScreen() {
     partyManager.updateMyCharacters(characters);
   }, [characters]);
 
+  useEffect(() => {
+    AsyncStorage.getItem(ACTIVE_AGE_KEY).then((value) => {
+      if (value === "age-of-war" || value === "age-of-magic") setActiveAge(value);
+    });
+  }, []);
+
+  useEffect(() => {
+    setThemeAge(activeAge);
+  }, [activeAge]);
+
   const cycleTheme = () => {
     setThemeMode(mode === "dark" ? "light" : "dark");
   };
 
   const refresh = useCallback(async () => {
-    const list = await loadAllCharacters();
+    const list = await loadAllCharacters(activeAge);
     setCharacters(list);
     setLoading(false);
-  }, []);
+  }, [activeAge]);
 
   useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
   useEffect(() => { refresh(); }, [refresh]);
@@ -288,24 +446,36 @@ export default function CharacterListScreen() {
   };
 
   const createHero = () => {
-    router.push("/create-hero");
+    router.push(`/create-hero?age=${activeAge}`);
   };
-  const createMonster = () => router.push("/create-hero?kind=monster");
+  const createMonster = () => router.push(`/create-hero?kind=monster&age=${activeAge}`);
+
+  const changeAge = (direction: -1 | 1) => {
+    const currentIndex = AGE_DEFINITIONS.findIndex((age) => age.id === activeAge);
+    const nextAge = AGE_DEFINITIONS[(currentIndex + direction + AGE_DEFINITIONS.length) % AGE_DEFINITIONS.length];
+    setActiveAge(nextAge.id);
+    setLoading(true);
+    AsyncStorage.setItem(ACTIVE_AGE_KEY, nextAge.id).catch(() => undefined);
+  };
 
   const confirmDelete = (c: Character) => setPendingDelete(c);
   const performDelete = async () => {
     if (!pendingDelete) return;
-    const next = await deleteCharacter(pendingDelete.id);
+    const next = await deleteCharacter(pendingDelete.id, activeAge);
     setCharacters(next);
     setPendingDelete(null);
   };
 
   const duplicateCharacter = async (character: Character) => {
     const now = new Date().toISOString();
+    const baseName = (character.name || "Unnamed").replace(/\s\d+$/, "");
+    const existingNames = new Set(characters.map((c) => c.name));
+    let n = 1;
+    while (existingNames.has(`${baseName} ${n}`)) n++;
     const copy: Character = {
       ...JSON.parse(JSON.stringify(character)),
       id: genId(),
-      name: `${character.name || "Unnamed"} Copy`,
+      name: `${baseName} ${n}`,
       createdAt: now,
       updatedAt: now,
       oncePerTurn: character.oncePerTurn.map((ability) => ({ ...ability, id: genId() })),
@@ -315,7 +485,7 @@ export default function CharacterListScreen() {
       customSections: character.customSections.map((section) => ({ ...section, id: genId() })),
       weapons: character.weapons.map((weapon) => ({ ...weapon, id: genId() })),
     };
-    const next = await upsertCharacter(copy);
+    const next = await upsertCharacter(copy, activeAge);
     setCharacters(next);
   };
 
@@ -331,7 +501,7 @@ export default function CharacterListScreen() {
         data: heroesCollapsed ? [] : heroes,
       },
       {
-        title: "Monsters",
+        title: "Enemies",
         key: "monster" as const,
         total: monsters.length,
         collapsed: monstersCollapsed,
@@ -419,10 +589,10 @@ export default function CharacterListScreen() {
   const openCombatantSheet = (combatant: Character) => {
     setGmToolsOpen(false);
     if (sharedHeroes.some((hero) => hero.id === combatant.id)) {
-      setSelectedSharedHero(combatant);
+      setSelectedSharedHeroId(combatant.id);
       return;
     }
-    router.push(`/character/${combatant.id}`);
+    router.push(`/character/${combatant.id}?age=${activeAge}`);
   };
 
   const quickRoll = (notation: string, damage?: string) => {
@@ -478,12 +648,28 @@ export default function CharacterListScreen() {
             <Icon name="book-open-page-variant-outline" size={18} color={colors.onSurface} />
           </Pressable>
         </View>
-        <Image
-          source={require("@/assets/images/aob-logo.png")}
-          resizeMode="contain"
-          style={styles.logo}
-          accessibilityLabel="Assault of Bronze — Lightweight Roleplay System"
-        />
+        <View style={styles.logoBlock}>
+          <Image
+            source={require("@/assets/images/aob-logo.png")}
+            resizeMode="contain"
+            style={styles.logo}
+            accessibilityLabel="Assault of Bronze — Lightweight Roleplay System"
+          />
+          <View style={styles.ageSwitcher}>
+            <Pressable testID="age-previous" onPress={() => changeAge(-1)} hitSlop={8} accessibilityLabel="Previous age">
+              <Icon name="chevron-left" size={20} color={colors.brandPrimary} />
+            </Pressable>
+            <View style={styles.ageSwitcherText}>
+              <Text style={[styles.ageLabel, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>AGE</Text>
+              <Text style={[styles.ageName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+                {AGE_DEFINITIONS.find((age) => age.id === activeAge)?.label}
+              </Text>
+            </View>
+            <Pressable testID="age-next" onPress={() => changeAge(1)} hitSlop={8} accessibilityLabel="Next age">
+              <Icon name="chevron-right" size={20} color={colors.brandPrimary} />
+            </Pressable>
+          </View>
+        </View>
         <Pressable
           testID="theme-toggle"
           onPress={cycleTheme}
@@ -527,7 +713,7 @@ export default function CharacterListScreen() {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sharedHeroesList}>
             {sharedHeroes.map((hero) => (
-              <Pressable key={hero.id} testID={`shared-hero-${hero.id}`} onPress={() => setSelectedSharedHero(hero)} style={[styles.sharedHeroChip, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
+              <Pressable key={hero.id} testID={`shared-hero-${hero.id}`} onPress={() => setSelectedSharedHeroId(hero.id)} style={[styles.sharedHeroChip, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
                 <Icon name="shield-sword" size={16} color={colors.brandPrimary} />
                 <Text numberOfLines={1} style={[styles.sharedHeroName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{hero.name || "Unnamed hero"}</Text>
               </Pressable>
@@ -541,7 +727,7 @@ export default function CharacterListScreen() {
         sections={sections}
         keyExtractor={(c) => c.id}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.brandPrimary} />}
-        contentContainerStyle={{ padding: 16, paddingBottom: 120 + insets.bottom, gap: 8 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 155 + insets.bottom, gap: 8 }}
         stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) => (
           <Pressable
@@ -576,7 +762,7 @@ export default function CharacterListScreen() {
         renderSectionFooter={({ section }) =>
           !section.collapsed && section.total === 0 ? (
             <Text style={[styles.emptyLine, { color: colors.muted, fontFamily: fonts.display }]}>
-              {section.key === "monster" ? "No monsters yet. Add one below." : "No heroes yet. Roll a new one below."}
+              {section.key === "monster" ? "No enemies yet. Add one below." : "No heroes yet. Roll a new one below."}
             </Text>
           ) : null
         }
@@ -590,7 +776,7 @@ export default function CharacterListScreen() {
           >
             <Pressable
               testID={`character-row-${item.id}-open`}
-              onPress={() => router.push(`/character/${item.id}`)}
+              onPress={() => router.push(`/character/${item.id}?age=${activeAge}`)}
               onLongPress={() => confirmDelete(item)}
               style={({ pressed }) => [
                 styles.rowMain,
@@ -609,7 +795,7 @@ export default function CharacterListScreen() {
                   {item.name || "Unnamed"}
                 </Text>
                 <Text numberOfLines={1} style={[styles.rowMeta, { color: colors.muted, fontFamily: fonts.display }]}>
-                  {item.className || (item.kind === "monster" ? "Monster" : "No class")} • Lvl {item.level || "1"}
+                  {item.className || (item.kind === "monster" ? "Enemy" : "No class")} • Lvl {item.level || "1"}
                 </Text>
                 <View style={styles.hpRow}>
                   <Icon name="cards-heart" size={14} color={colors.brandSecondary} />
@@ -620,71 +806,141 @@ export default function CharacterListScreen() {
               </View>
               <Icon name="chevron-right" size={26} color={colors.muted} />
             </Pressable>
-            <Pressable
-              testID={`character-row-${item.id}-duplicate`}
-              onPress={() => duplicateCharacter(item)}
-              hitSlop={6}
-              style={({ pressed }) => [
-                styles.rowAction,
-                {
-                  borderLeftColor: colors.borderStrong,
-                  backgroundColor: pressed ? colors.brandTertiary : "transparent",
-                },
-              ]}
-            >
-              <Icon name="content-copy" size={20} color={colors.brandPrimary} />
-            </Pressable>
-            <Pressable
-              testID={`character-row-${item.id}-delete`}
-              onPress={() => confirmDelete(item)}
-              hitSlop={6}
-              style={({ pressed }) => [
-                styles.rowDelete,
-                {
-                  borderLeftColor: colors.borderStrong,
-                  backgroundColor: pressed ? colors.brandSecondary : "transparent",
-                },
-              ]}
-            >
-              <Icon name="trash-can-outline" size={20} color={colors.brandSecondary} />
-            </Pressable>
+            <View style={[styles.rowActions, { borderTopColor: colors.borderStrong }]}>
+              {party.role === "client" && joinedRoom && item.kind !== "monster" && (
+                <Pressable
+                  testID={`character-row-${item.id}-party`}
+                  onPress={() => partyManager.toggleCharacterForParty(item.id)}
+                  hitSlop={6}
+                  style={({ pressed }) => [
+                    styles.rowActionSmall,
+                    { backgroundColor: pressed ? colors.brandTertiary : "transparent" },
+                  ]}
+                  accessibilityLabel={`${party.selectedCharacterIds.includes(item.id) ? "Remove" : "Add"} ${item.name || "hero"} ${party.selectedCharacterIds.includes(item.id) ? "from" : "to"} party`}
+                >
+                  <Icon
+                    name={party.selectedCharacterIds.includes(item.id) ? "account-check" : "account-plus-outline"}
+                    size={16}
+                    color={party.selectedCharacterIds.includes(item.id) ? colors.success : colors.brandPrimary}
+                  />
+                </Pressable>
+              )}
+              <Pressable
+                testID={`character-row-${item.id}-export`}
+                onPress={() => setExportTarget(item)}
+                hitSlop={6}
+                style={({ pressed }) => [
+                  styles.rowActionSmall,
+                  { backgroundColor: pressed ? colors.brandTertiary : "transparent" },
+                ]}
+                accessibilityLabel={`Export ${item.name || "sheet"}`}
+              >
+                <Icon name="file-export-outline" size={16} color={colors.brandPrimary} />
+              </Pressable>
+              <Pressable
+                testID={`character-row-${item.id}-duplicate`}
+                onPress={() => duplicateCharacter(item)}
+                hitSlop={6}
+                style={({ pressed }) => [
+                  styles.rowActionSmall,
+                  { backgroundColor: pressed ? colors.brandTertiary : "transparent" },
+                ]}
+                accessibilityLabel={`Duplicate ${item.name || "sheet"}`}
+              >
+                <Icon name="content-copy" size={16} color={colors.brandPrimary} />
+              </Pressable>
+              <Pressable
+                testID={`character-row-${item.id}-delete`}
+                onPress={() => confirmDelete(item)}
+                hitSlop={6}
+                style={({ pressed }) => [
+                  styles.rowActionSmall,
+                  { backgroundColor: pressed ? colors.brandSecondary : "transparent" },
+                ]}
+                accessibilityLabel={`Delete ${item.name || "sheet"}`}
+              >
+                <Icon name="trash-can-outline" size={16} color={colors.brandSecondary} />
+              </Pressable>
+            </View>
           </View>
         )}
       />
 
-      <View style={[styles.fabBar, { bottom: 20 + insets.bottom }]} pointerEvents="box-none">
-        <Pressable
-          testID="create-character-fab"
-          onPress={createHero}
-          style={({ pressed }) => [
-            styles.fab,
-            {
-              backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
-              borderColor: colors.borderStrong,
-            },
-          ]}
-        >
-          <Icon name="shield-sword" size={20} color={colors.onBrandPrimary} />
-          <Text style={[styles.fabText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
-            New Hero
-          </Text>
-        </Pressable>
-        <Pressable
-          testID="create-monster-fab"
-          onPress={createMonster}
-          style={({ pressed }) => [
-            styles.fab,
-            {
-              backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
-              borderColor: colors.borderStrong,
-            },
-          ]}
-        >
-          <Icon name="spider" size={20} color={colors.brandSecondary} />
-          <Text style={[styles.fabText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-            New Monster
-          </Text>
-        </Pressable>
+      <View style={[styles.fabBar, { bottom: 12 + insets.bottom }]} pointerEvents="box-none">
+        <View style={styles.utilityRow}>
+          <Pressable
+            testID="import-sheets-btn"
+            onPress={() => setImportOpen(true)}
+            style={({ pressed }) => [
+              styles.utilityBtn,
+              {
+                borderColor: colors.borderStrong,
+                backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
+              },
+            ]}
+            accessibilityLabel="Import hero or enemy sheets"
+          >
+            <Icon name="file-import-outline" size={15} color={colors.brandPrimary} />
+            <Text style={[styles.utilityBtnText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+              Import Sheet
+            </Text>
+          </Pressable>
+
+          <Pressable
+            testID="backup-all-sheets-btn"
+            disabled={characters.length === 0}
+            onPress={() => setExportAllOpen(true)}
+            style={({ pressed }) => [
+              styles.utilityBtn,
+              {
+                borderColor: colors.borderStrong,
+                backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
+                opacity: characters.length === 0 ? 0.4 : 1,
+              },
+            ]}
+            accessibilityLabel="Backup all sheets"
+          >
+            <Icon name="archive-arrow-down-outline" size={15} color={colors.brandPrimary} />
+            <Text style={[styles.utilityBtnText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+              Backup All ({characters.length})
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.fabRow}>
+          <Pressable
+            testID="create-character-fab"
+            onPress={createHero}
+            style={({ pressed }) => [
+              styles.fab,
+              {
+                backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
+                borderColor: colors.borderStrong,
+              },
+            ]}
+          >
+            <Icon name="shield-sword" size={20} color={colors.onBrandPrimary} />
+            <Text style={[styles.fabText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
+              New Hero
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="create-monster-fab"
+            onPress={createMonster}
+            style={({ pressed }) => [
+              styles.fab,
+              {
+                backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
+                borderColor: colors.borderStrong,
+              },
+            ]}
+          >
+            <Icon name="spider" size={20} color={colors.brandSecondary} />
+            <Text style={[styles.fabText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+              New Enemy
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <Modal transparent visible={pendingDelete != null} animationType="fade" onRequestClose={() => setPendingDelete(null)}>
@@ -699,7 +955,7 @@ export default function CharacterListScreen() {
           >
             <Icon name="alert-circle-outline" size={36} color={colors.brandSecondary} />
             <Text style={[styles.confirmTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-              Delete {pendingDelete?.kind === "monster" ? "monster" : "hero"}?
+              Delete {pendingDelete?.kind === "monster" ? "enemy" : "hero"}?
             </Text>
             <Text style={[styles.confirmText, { color: colors.muted, fontFamily: fonts.display }]}>
               This permanently removes "{pendingDelete?.name || "Unnamed"}" and all their data.
@@ -857,13 +1113,23 @@ export default function CharacterListScreen() {
               </View>
               </ScrollView>
             )}
-            {(helpMode === "lore" || helpTab !== "party") && <ScrollView contentContainerStyle={styles.helpBody}>
+            {(helpMode === "lore" || helpTab !== "party") && <ScrollView
+              contentContainerStyle={
+                helpMode === "lore" && loreTab === "map"
+                  ? [styles.helpBody, styles.mapHelpBody]
+                  : styles.helpBody
+              }
+              scrollEnabled={!(helpMode === "lore" && loreTab === "map")}
+            >
               {(() => {
                 if (helpMode === "help") {
                   const tab = HELP_TABS.find((entry) => entry.key === helpTab) ?? HELP_TABS[0];
                   return <Text style={[styles.helpText, { color: colors.onSurface, fontFamily: fonts.body }]}>{tab.body}</Text>;
                 }
                 const tab = LORE_TABS.find((entry) => entry.key === loreTab) ?? LORE_TABS[0];
+                if (tab.key === "map") {
+                  return <LoreMapExplorer colors={colors} />;
+                }
                 const blocks = tab.body.split(/\n\n+/);
                 return (
                   <>
@@ -968,7 +1234,7 @@ export default function CharacterListScreen() {
                   <Text style={[styles.gmButtonText, { color: colors.onSuccess, fontFamily: fonts.displayBold }]}>Next Turn</Text>
                 </Pressable>
               </View>
-              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Higher numbers act first. Tap a monster to open its sheet.</Text>
+              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Higher numbers act first. Tap an enemy to open its sheet.</Text>
               {initiativeRows.map((entry, index) => (
                 <View key={entry.id} style={[styles.initiativeRow, { borderColor: index === turnIndex ? colors.success : colors.borderStrong, backgroundColor: index === turnIndex ? "rgba(46,111,64,0.14)" : colors.surfaceSecondary }]}>
                   <Pressable testID={`gm-initiative-open-${entry.id}`} onPress={() => openCombatantSheet(entry.combatant)} style={styles.initiativeName}>
@@ -1030,7 +1296,7 @@ export default function CharacterListScreen() {
                 <Pressable key={combatant.id} testID={`gm-add-combatant-${combatant.id}`} onPress={() => addToInitiative(combatant)} style={[styles.addInitiativeBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
                   <Icon name={combatant.kind === "monster" ? "spider" : "shield-sword"} size={16} color={colors.brandPrimary} />
                   <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{combatant.name || "Unnamed combatant"}</Text>
-                  <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{combatant.kind === "monster" ? "Monster" : "Hero"}</Text>
+                  <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{combatant.kind === "monster" ? "Enemy" : "Hero"}</Text>
                 </Pressable>
               ))}
 
@@ -1106,12 +1372,12 @@ export default function CharacterListScreen() {
       </Modal>
       <DiceRollModal request={gmRoll} onClose={() => setGmRoll(null)} />
 
-      <Modal transparent visible={selectedSharedHero != null} animationType="slide" onRequestClose={() => setSelectedSharedHero(null)}>
+      <Modal transparent visible={selectedSharedHero != null} animationType="slide" onRequestClose={() => setSelectedSharedHeroId(null)}>
         <View style={styles.helpBackdrop}>
           <View style={[styles.sharedHeroCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
             <View style={styles.helpHeader}>
               <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedSharedHero?.name || "Shared Hero"}</Text>
-              <Pressable testID="shared-hero-close" onPress={() => setSelectedSharedHero(null)} hitSlop={8}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
+              <Pressable testID="shared-hero-close" onPress={() => setSelectedSharedHeroId(null)} hitSlop={8}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
             </View>
             <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>READ ONLY · LIVE LAN VIEW</Text>
             <ScrollView contentContainerStyle={styles.sharedHeroBody}>
@@ -1128,6 +1394,25 @@ export default function CharacterListScreen() {
           </View>
         </View>
       </Modal>
+
+      <ExportSheetModal
+        visible={exportTarget != null}
+        onClose={() => setExportTarget(null)}
+        character={exportTarget}
+      />
+
+      <ExportSheetModal
+        visible={exportAllOpen}
+        onClose={() => setExportAllOpen(false)}
+        characters={characters}
+      />
+
+      <ImportSheetModal
+        visible={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImportSuccess={() => refresh()}
+        age={activeAge}
+      />
     </View>
   );
 }
@@ -1167,7 +1452,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  logo: { width: "100%", maxWidth: 320, height: 80 },
+  logoBlock: { alignItems: "center", width: "100%" },
+  logo: { width: "100%", maxWidth: 384, height: 96 },
+  ageSwitcher: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: -4,
+    marginBottom: 2,
+  },
+  ageSwitcherText: { alignItems: "center", minWidth: 150 },
+  ageLabel: { fontSize: 9, letterSpacing: 2 },
+  ageName: { fontSize: 16, letterSpacing: 1 },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1180,29 +1477,25 @@ const styles = StyleSheet.create({
   sectionCount: { fontSize: 14 },
   emptyLine: { fontStyle: "italic", fontSize: 14, textAlign: "center", paddingVertical: 8 },
   row: {
-    flexDirection: "row",
-    alignItems: "stretch",
     borderWidth: 2.5,
     overflow: "hidden",
   },
   rowMain: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     padding: 12,
   },
-  rowDelete: {
-    width: 52,
-    borderLeftWidth: 2,
+  rowActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
     alignItems: "center",
-    justifyContent: "center",
+    borderTopWidth: 1.5,
+    paddingHorizontal: 4,
   },
-  rowAction: {
-    width: 52,
-    borderLeftWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
+  rowActionSmall: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
   avatar: {
     width: 54,
@@ -1220,6 +1513,28 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 16,
     right: 16,
+    gap: 8,
+  },
+  utilityRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  utilityBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderWidth: 2,
+    borderRadius: 6,
+  },
+  utilityBtnText: {
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  fabRow: {
     flexDirection: "row",
     gap: 10,
   },
@@ -1273,6 +1588,7 @@ const styles = StyleSheet.create({
     width: "100%",
     flex: 1,
     maxHeight: "100%",
+    minHeight: "100%",
     height: "100%",
     borderWidth: 3,
     padding: 16,
@@ -1316,6 +1632,7 @@ const styles = StyleSheet.create({
   rotationSetting: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, borderWidth: 1.5, padding: 10, marginTop: 10 },
   rotationSettingText: { flex: 1, gap: 2 },
   helpBody: { paddingVertical: 22, gap: 10 },
+  mapHelpBody: { paddingBottom: 40, paddingTop: 16 },
   helpSectionTitle: { fontSize: 20, letterSpacing: 1 },
   helpText: { fontSize: 15, lineHeight: 23 },
   helpImagePlaceholder: {
@@ -1326,6 +1643,60 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 8,
     gap: 8,
+  },
+  mapExplorerContainer: { gap: 12 },
+  mapControlRow: { flexDirection: "row", gap: 8, alignItems: "center" },
+  mapControlButton: { minWidth: 52, minHeight: 42, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  mapResetButton: { flex: 1, minHeight: 42, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  mapControlText: { fontSize: 18 },
+  mapZoomContainer: {
+    width: "100%",
+    height: 420,
+    borderWidth: 2,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#0b1015",
+  },
+  mapZoomContent: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  mapDetailImage: { width: 520, height: 520, maxWidth: "180%", maxHeight: "180%" },
+  compassPanel: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 12,
+    alignSelf: "center",
+    width: 126,
+    gap: 2,
+    pointerEvents: "box-none",
+  },
+  dPadRow: { flexDirection: "row", justifyContent: "center" },
+  dPadMiddleRow: { flexDirection: "row", justifyContent: "space-between" },
+  dPadButton: {
+    width: 40,
+    height: 40,
+    borderWidth: 2,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    backgroundColor: "rgba(14,18,22,0.82)",
+  },
+  dPadCenter: {
+    width: 40,
+    height: 40,
+    borderWidth: 2,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
   },
   helpImage: { width: "100%", height: 180 },
   helpImageLabel: { fontSize: 12, textAlign: "center" },

@@ -39,7 +39,7 @@ export const ITEM_PRESETS: ItemPreset[] = [
   { id: "manacles", name: "Manacles", price: "2g", category: "Tools" },
 
   // ── Medical ───────────────────────────────────────
-  { id: "bandages", name: "Bandages", price: "5s", category: "Medical", notes: "Roll of clean linen - Advantage on First Aid." },
+  { id: "bandages", name: "Bandages", price: "5s", category: "Medical", notes: "Roll of clean linen. Advantage on First Aid." },
   { id: "healing-salve", name: "Healing Salve", price: "10g", category: "Medical", notes: "Restores 1d4 HP on use." },
   { id: "antidote", name: "Antidote", price: "25g", category: "Medical", notes: "Neutralises common poisons." },
   { id: "herb-bundle", name: "Herb Bundle", price: "3g", category: "Medical", notes: "For poultices and steeping." },
@@ -50,7 +50,7 @@ export const ITEM_PRESETS: ItemPreset[] = [
   { id: "potion-healing", name: "Potion of Healing", price: "50g", category: "Consumables", notes: "Heals 2d8+2 HP." },
   { id: "potion-vigor", name: "Potion of Vigour", price: "75g", category: "Consumables", notes: "Advantage on next Vitality roll." },
   { id: "smoke-bomb", name: "Smoke Bomb", price: "10g", category: "Consumables", notes: "Fills a 20ft cube. One escape." },
-  { id: "alchemist-fire", name: "Alchemist's Fire", price: "50g", category: "Consumables", notes: "Thrown flask. 2d10 fire damage, burns permenantly." },
+  { id: "alchemist-fire", name: "Alchemist's Fire", price: "50g", category: "Consumables", notes: "Thrown flask. Deals 2d10 fire damage and burns permanently." },
   { id: "acid-vial", name: "Vial of Acid", price: "25g", category: "Consumables", notes: "Eats through most locks. Slowly." },
   { id: "holy-water", name: "Holy Water", price: "25g", category: "Consumables", notes: "Blessed. Damages the unholy." },
 
@@ -58,7 +58,7 @@ export const ITEM_PRESETS: ItemPreset[] = [
   { id: "playing-cards", name: "Playing Cards", price: "5s", category: "Misc", notes: "Loaded, obviously." },
   { id: "dice-set", name: "Dice Set", price: "5s", category: "Misc" },
   { id: "lucky-charm", name: "Lucky Charm", price: "1g", category: "Misc", notes: "It's working, isn't it?" },
-  { id: "signet-ring", name: "Signet Ring", price: "5g", category: "Misc", notes: "Marks correspondence — and enemies." },
+  { id: "signet-ring", name: "Signet Ring", price: "5g", category: "Misc", notes: "Marks correspondence and enemies." },
   { id: "perfume", name: "Perfume Vial", price: "5g", category: "Misc" },
   { id: "coin-pouch", name: "Coin Pouch", price: "5s", category: "Misc" },
   { id: "journal", name: "Journal & Quill", price: "3g", category: "Misc", notes: "Blank pages. Ink and worries." },

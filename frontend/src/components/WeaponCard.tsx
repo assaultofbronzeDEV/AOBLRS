@@ -10,6 +10,7 @@ type Props = {
   onChange: (next: Weapon) => void;
   onDelete: () => void;
   onUse: (weapon: Weapon) => void;
+  onExport: (weapon: Weapon) => void;
   testID?: string;
 };
 
@@ -31,7 +32,7 @@ export function getAttackTarget(
   return { label: sub?.name ?? subName, target: sub?.value ?? dex.value };
 }
 
-export default function WeaponCard({ weapon, stats, onChange, onDelete, onUse, testID }: Props) {
+export default function WeaponCard({ weapon, stats, onChange, onDelete, onUse, onExport, testID }: Props) {
   const { colors } = useTheme();
   const attackInfo = getAttackTarget(stats, weapon.attackKind);
 
@@ -57,6 +58,15 @@ export default function WeaponCard({ weapon, stats, onChange, onDelete, onUse, t
           disableFullscreenUI
           style={[styles.titleInput, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
         />
+        <Pressable
+          testID={`${testID}-export`}
+          onPress={() => onExport(weapon)}
+          hitSlop={8}
+          style={styles.iconBtn}
+          accessibilityLabel="Export weapon"
+        >
+          <Icon name="file-export-outline" size={20} color={colors.brandPrimary} />
+        </Pressable>
         <Pressable
           testID={`${testID}-delete`}
           onPress={onDelete}
@@ -120,7 +130,7 @@ export default function WeaponCard({ weapon, stats, onChange, onDelete, onUse, t
           placeholderTextColor={colors.muted}
           autoCapitalize="none"
           autoCorrect={false}
-          maxLength={12}
+          maxLength={48}
           disableFullscreenUI
           style={[
             styles.rollInput,

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Assault of Bronze - Lightweight Roleplay System",
-    "slug": "aoblrs",
+    "slug": "aobjoey",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
@@ -75,9 +75,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "e79b358a-6690-46f6-84f3-deeffcd62cd5"
+        "projectId": "78fdcb0e-6eb4-4713-a02c-16384242cfc7"
       }
     },
-    "owner": "emergent-em-user-d3843c6e-9ac7-4207-ad6d-c7c2af131a88"
+    "owner": "aobdevs-team"
   }
 }

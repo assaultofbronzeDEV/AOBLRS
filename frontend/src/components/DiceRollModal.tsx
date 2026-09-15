@@ -26,6 +26,7 @@ type Props = {
   request: RollRequest | null;
   onClose: () => void;
   onLog?: (entry: RollHistoryEntry) => void;
+  onResolve?: (verdict: RollVerdict) => void;
 };
 
 type Verdict = RollVerdict;
@@ -36,7 +37,7 @@ function verdictFor(rolled: number, target: number): Verdict {
   return rolled >= target ? "success" : "fail";
 }
 
-export default function DiceRollModal({ request, onClose, onLog }: Props) {
+export default function DiceRollModal({ request, onClose, onLog, onResolve }: Props) {
   const { colors } = useTheme();
   const [rolled, setRolled] = useState<number | null>(null);
   const [tickValue, setTickValue] = useState<number>(0);
@@ -148,6 +149,7 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
         } else {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }
+        onResolve?.(v);
         // Roll effect on success/crit-success only
         let eff: DiceRollResult | null = null;
         if (request.effect && (v === "success" || v === "crit-success")) {
@@ -312,7 +314,7 @@ export default function DiceRollModal({ request, onClose, onLog }: Props) {
                   marginTop: -6,
                 }}
               >
-                Could not roll "{invalidNotation}". Try a format like "1d6" or "2d8+3".
+                Could not roll "{invalidNotation}". Try a format like "1d6", "2d8+3", or "1d20+1d10".
               </Text>
             )}
 

@@ -75,7 +75,7 @@ export const RACES: Race[] = [
     name: "Dwarf",
     tagline: "Stone-hearted. Forge-forged. Unmoved.",
     lore:
-      "Stout and hardy, dwarves are master craftsmen and miners who typically dwell in mountain strongholds or far underground. These Dwarven strongholds are accessible through secret entryways and tunnel systems scattered across Aryndos. Renowned for their resilience, loyalty, and love of gold, they are unmatched in forging weapons and armor. .",
+      "Stout and hardy, dwarves are master craftsmen and miners who typically dwell in mountain strongholds or far underground. These Dwarven strongholds are accessible through secret entryways and tunnel systems scattered across Aryndos. Renowned for their resilience, loyalty, and love of gold, they are unmatched in forging weapons and armour.",
     high: [
       { statKey: "STR", subIndex: 0 }, // Lifting
       { statKey: "STR", subIndex: 3 }, // Vitality
@@ -105,7 +105,7 @@ export const RACES: Race[] = [
     name: "Dragonborn",
     tagline: "Scaled kin. Proud voice. Old blood.",
     lore:
-      "The reason for the Dragonborn's existence is largely unknown and debated, they are hatched from True-Dragon eggs when the egg has been abandoned by its True-Dragon Parent and cared for by any humanoid Magi until hatching. The Dragonborn are proud, imposing beings with scales that shimmer in a variety of colors. They possess the elemental breath of their True-Dragon kin and a deep connection to them, often embodying their strength and honor, though True-Dragons are rare, there are historical instances of Dragonborn and True Dragons being an extremely powerful pairing.",
+      "The reason for the Dragonborn's existence is largely unknown and debated, they are hatched from True-Dragon eggs when the egg has been abandoned by its True-Dragon Parent and cared for by any humanoid Magi until hatching. The Dragonborn are proud, imposing beings with scales that shimmer in a variety of colours. They possess the elemental breath of their True-Dragon kin and a deep connection to them, often embodying their strength and honour, though True-Dragons are rare, there are historical instances of Dragonborn and True Dragons being an extremely powerful pairing.",
     high: [
       { statKey: "STR", subIndex: 2 }, // Intimidation
       { statKey: "CHA", subIndex: 0 }, // Persuasion
@@ -148,7 +148,7 @@ export const RACES: Race[] = [
     name: "Orc / Half-Orc",
     tagline: "Battle-born. Loud. Loyal to the last.",
     lore:
-      "Fierce and resilient, orcs are a warrior race that thrives on strength and determination. Once feared raiders, many orcs have embraced a more honorable path, becoming skilled blacksmiths, shamans, or even heroes. Their culture values loyalty, courage, and the will to overcome any challenge, most Magi cultures accept Orcs within their ranks.",
+      "Fierce and resilient, orcs are a warrior race that thrives on strength and determination. Once feared raiders, many orcs have embraced a more honourable path, becoming skilled blacksmiths, shamans, or even heroes. Their culture values loyalty, courage, and the will to overcome any challenge, most Magi cultures accept Orcs within their ranks.",
     high: [
       { statKey: "STR", subIndex: 2 }, // Intimidation
       { statKey: "DEX", subIndex: 0 }, // Melee Attack
@@ -181,7 +181,7 @@ export const CLASSES: CharClass[] = [
     name: "Warrior",
     tagline: "First through the door. Last one standing.",
     lore:
-      "A soldier of any banner or none. Warriors read a fight like a book they wrote themselves.",
+      "A frontline fighter who thrives in the thick of battle, relying on raw strength and skill in hand-to-hand combat to overwhelm foes. Warriors hit hard with powerful melee attacks but lack subtlety, preferring direct confrontation over stealth. Their sturdy armour provides solid protection, allowing them to stand firm and trade blows where others would fall.",
     baseArmour: 3,
     weapons: [{ name: "Short Sword", attackKind: "melee", damageRoll: "1d6" }],
     high: [
@@ -197,7 +197,7 @@ export const CLASSES: CharClass[] = [
     name: "Ranger",
     tagline: "Loose the arrow. Vanish. Repeat.",
     lore:
-      "The wilds obey no laws but a ranger has learned to move like they wrote the rules themselves.",
+      "A master of ranged combat who strikes from afar with precision and speed. Rangers excel at picking off targets before they can close the distance, using keen aim and quick reflexes to stay ahead of the fight. Their light armour offers minimal protection, so they rely on distance, agility, and positioning rather than brute force in melee.",
     baseArmour: 2,
     weapons: [
       { name: "Shortbow", attackKind: "ranged", damageRoll: "1d6" },
@@ -216,7 +216,7 @@ export const CLASSES: CharClass[] = [
     name: "Battle-Mage",
     tagline: "Steel in one hand. Fire in the other.",
     lore:
-      "Half scholar, half brawler. Battle-mages weave hurried cantrips between sword-strokes and count it a good day.",
+      "A warrior who channels destructive magic as their primary weapon. Battle-Mages endure the rigours of combat through sheer vitality, allowing them to unleash devastating spells while withstanding enemy assaults. Lacking physical strength and any form of armour, they depend on their spells and resilience to carry them through the fray.\n\nTypically, Mages of any sort will channel their magic through an item containing a Power-Stone, otherwise casting spells would draw from components or the caster's own life force.",
     baseArmour: 2,
     weapons: [{ name: "Runed Staff", attackKind: "melee", damageRoll: "1d6" }],
     high: [
@@ -232,12 +232,12 @@ export const CLASSES: CharClass[] = [
     name: "Alchemist",
     tagline: "Boil, distil, throw the flask.",
     lore:
-      "Alchemists make the unlikely inevitable. Their pockets clink with vials that could heal you — or dissolve a door.",
+      "A vital ally on the battlefield, skilled in healing wounds, brewing potions, and keeping their companions in fighting shape. Alchemists excel at first aid and restorative magic, ensuring the party can endure prolonged conflicts. While their melee capabilities are limited, their moderate armour offers some protection as they move between allies, mending injuries and bolstering morale.",
     baseArmour: 1,
     weapons: [{ name: "Dagger", attackKind: "melee", damageRoll: "1d4" }],
     high: [
       { statKey: "INT", subIndex: 3 }, // First Aid
-      { statKey: "INT", subIndex: 1 }, // Investigation
+      { statKey: "INT", subIndex: null }, // Main Intelligence
     ],
     low: [
       { statKey: "STR", subIndex: 3 }, // Vitality
@@ -248,7 +248,7 @@ export const CLASSES: CharClass[] = [
     name: "Rogue",
     tagline: "The lock. The purse. The window.",
     lore:
-      "Rogues walk the roofs and back-alleys of the world. Doors open for them — usually without asking.",
+      "Rogues are masters of shadows, precision, and opportunity. They strike when foes are unaware, weaving between danger and vanishing before a counterattack lands. Their advantage lies not in durability but in cunning and finesse. Lightly armoured and quick on their feet, Rogues excel at infiltration, ambushes, critical strikes, and disabling enemies before they know the fight has begun.",
     baseArmour: 1,
     weapons: [
       { name: "Dagger", attackKind: "melee", damageRoll: "1d4" },
@@ -257,6 +257,7 @@ export const CLASSES: CharClass[] = [
     high: [
       { statKey: "DEX", subIndex: 2 }, // Sleight of Hand
       { statKey: "DEX", subIndex: 3 }, // Stealth
+      { statKey: "DEX", subIndex: 0 }, // melee attack 
     ],
     low: [
       { statKey: "STR", subIndex: 2 }, // Intimidation
@@ -265,14 +266,15 @@ export const CLASSES: CharClass[] = [
   {
     id: "warden",
     name: "Warden",
-    tagline: "Beast-friend. Grove-keeper. Quiet oath.",
+    tagline: "Beast-friend. Grove-keeper. Shield of the party.",
     lore:
-      "Wardens keep the border between wilderness and everything else. Creatures they meet listen a little longer.",
+      "Wardens are shields made flesh, stalwart protectors who anchor the battlefield. Whether towering in heavy armour or bracing with reinforced shields, Wardens specialise in controlling enemy movement, guarding allies, and enduring attacks that would fell lesser fighters. They thrive when they can hold a position and force enemies to come to them.",
     baseArmour: 4,
     weapons: [{ name: "Spear", attackKind: "melee", damageRoll: "1d6" }],
     high: [
       { statKey: "CHA", subIndex: 3 }, // Creature Handling
       { statKey: "INT", subIndex: 0 }, // Perception
+      { statKey: "STR", subIndex: null }, // main Strength
     ],
     low: [
       { statKey: "CHA", subIndex: 2 }, // Haggling
@@ -283,12 +285,13 @@ export const CLASSES: CharClass[] = [
     name: "Scrapper",
     tagline: "Fists first. Questions never.",
     lore:
-      "Grew up in the pits, the docks, or somewhere worse. A scrapper punches through problems most people negotiate around.",
+      "Scrappers are unpredictable street-fighters who rely on raw grit, chaotic momentum, and improvised techniques. Whether brawlers, pit-fighters, or alley survivors, Scrappers excel when chaos erupts. Their blows are wild but fast, overwhelming foes with relentless pressure. Their lack of formal training means they often miss, but when they land a hit, it hurts.",
     baseArmour: 2,
     weapons: [{ name: "Bare Fists", attackKind: "melee", damageRoll: "1d4" }],
     high: [
       { statKey: "STR", subIndex: 0 }, // Lifting
       { statKey: "STR", subIndex: 2 }, // Intimidation
+      { statKey: "DEX", subIndex: 0 }, // melee attack  
     ],
     low: [
       { statKey: "INT", subIndex: 2 }, // History
@@ -299,12 +302,13 @@ export const CLASSES: CharClass[] = [
     name: "Sorcerer",
     tagline: "Magic in the blood. Consequences in the room.",
     lore:
-      "Sorcerers don't study — they simply are. Their power leaks around the edges: candles snuff, coins spin, fate flinches.",
+      "Sorcerers wield raw, untamed power typically born from innate talent rather than study or ritual. While unmatched in offensive spellcraft, Sorcerers are physically fragile, relying on distance, cunning, and magical control to stay alive. Their lack of armour and martial skill forces them to strike hard and avoid being struck in return.\n\nTypically, Mages of any sort will channel their magic through an item containing a Power-Stone, otherwise casting spells would draw from components or the caster's own life force.",
     baseArmour: 1,
     weapons: [{ name: "Focus Wand", attackKind: "ranged", damageRoll: "1d6" }],
     high: [
       { statKey: "INT", subIndex: null }, // intelligence (main)
       { statKey: "DEX", subIndex: 1 }, // Ranged Attack
+      { statKey: "INT", subIndex: 0 }, // Perception
     ],
     low: [
       { statKey: "DEX", subIndex: 0 }, // Melee Attack
