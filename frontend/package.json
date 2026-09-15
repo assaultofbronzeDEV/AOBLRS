@@ -10,6 +10,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:apk": "eas build --platform android --profile preview",
+    "build:web:pages": "EXPO_BASE_URL=AOBLRS expo export --platform web",
     "lint": "expo lint"
   },
   "dependencies": {
