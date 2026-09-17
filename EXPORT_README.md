@@ -10,7 +10,7 @@ npm install
 npx expo start
 ```
 
-Use a native Android or iOS development build for the local Wi-Fi Party feature. The Party host runs on the GM device using local TCP/UDP sockets; no cloud server, Emergent service, or MongoDB connection is required.
+Use a native Android or iOS development build for the local Wi-Fi Party feature. The Party host runs on the GM device using local TCP/UDP sockets; no cloud server or MongoDB connection is required.
 
 To make an installable Android APK through EAS:
 

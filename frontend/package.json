@@ -10,7 +10,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:apk": "eas build --platform android --profile preview",
-    "build:web:pages": "EXPO_BASE_URL=AOBLRS expo export --platform web",
+      "build:web:pages": "node -e \"const { status } = require('node:child_process').spawnSync(process.execPath, ['./node_modules/expo/bin/cli', 'export', '--platform', 'web'], { env: { ...process.env, EXPO_BASE_URL: 'AOBLRS' }, stdio: 'inherit' }); process.exit(status ?? 1)\"",
     "lint": "expo lint"
   },
   "dependencies": {
