@@ -63,11 +63,13 @@ function SheetPane({
   wide,
   style,
   contentContainerStyle,
+  keyboardBottomSpace = 0,
   children,
 }: {
   wide: boolean;
   style?: React.ComponentProps<typeof View>["style"];
   contentContainerStyle?: React.ComponentProps<typeof View>["style"];
+  keyboardBottomSpace?: number;
   children: React.ReactNode;
 }) {
   if (!wide) {
@@ -79,7 +81,7 @@ function SheetPane({
       nestedScrollEnabled
       keyboardShouldPersistTaps="handled"
       style={style}
-      contentContainerStyle={contentContainerStyle}
+      contentContainerStyle={[contentContainerStyle, { paddingBottom: 24 + keyboardBottomSpace }]}
     >
       {children}
     </ScrollView>
@@ -722,7 +724,7 @@ export default function CharacterSheetScreen() {
           style={isWideScreen && styles.sheetScrollWide}
           contentContainerStyle={[
             styles.sheetContent,
-            { paddingBottom: 40 + insets.bottom + keyboardSpace },
+            { paddingBottom: 40 + insets.bottom + (isWideScreen ? 0 : keyboardSpace) },
             isWideScreen && styles.sheetContentWide,
           ]}
         >
@@ -731,6 +733,7 @@ export default function CharacterSheetScreen() {
               wide={isWideScreen}
               style={[styles.overviewColumn, isWideScreen && styles.overviewColumnWide]}
               contentContainerStyle={styles.overviewContent}
+              keyboardBottomSpace={keyboardSpace}
             >
               <Image
                 source={require("@/assets/images/aob-logo.png")}
@@ -985,6 +988,7 @@ export default function CharacterSheetScreen() {
               wide={isWideScreen}
               style={[styles.detailColumn, isWideScreen && styles.detailColumnWide]}
               contentContainerStyle={styles.detailContent}
+              keyboardBottomSpace={keyboardSpace}
             >
           <CollapsibleSection
             title="Weapons"
