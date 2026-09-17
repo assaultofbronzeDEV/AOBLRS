@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Modal,
+  useWindowDimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -60,8 +61,10 @@ type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
 
 export default function CharacterSheetScreen() {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const isWideScreen = width >= 768;
   const { id, age } = useLocalSearchParams<{ id: string; age?: string }>();
   const characterAge: AgeId = age === "age-of-war" ? "age-of-war" : DEFAULT_AGE_ID;
   const ageCatalog = getAgeCatalog(characterAge);
@@ -737,12 +740,13 @@ export default function CharacterSheetScreen() {
             </View>
           </View>
 
-          <View style={styles.actionRow}>
+          <View style={[styles.actionRow, isWideScreen && styles.actionRowWide]}>
             <Pressable
               testID="roll-mode-toggle"
               onPress={cycleRollMode}
               style={({ pressed }) => [
                 styles.actionChip,
+                isWideScreen && styles.actionChipWide,
                 {
                   borderColor: colors.borderStrong,
                   backgroundColor:
@@ -786,6 +790,7 @@ export default function CharacterSheetScreen() {
               onPress={longRest}
               style={({ pressed }) => [
                 styles.actionChip,
+                isWideScreen && styles.actionChipWide,
                 {
                   borderColor: colors.borderStrong,
                   backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary,
@@ -1801,6 +1806,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
+  actionRowWide: {
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+  },
   actionChip: {
     flex: 1,
     flexDirection: "row",
@@ -1810,6 +1819,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     paddingVertical: 10,
     paddingHorizontal: 10,
+  },
+  actionChipWide: {
+    flexGrow: 0,
+    flexBasis: 240,
+    maxWidth: 300,
   },
   actionText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
 
