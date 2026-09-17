@@ -648,6 +648,7 @@ export default function CharacterSheetScreen() {
           testID="character-scroll"
           keyboardShouldPersistTaps="handled"
           scrollEnabled={!isWideScreen}
+          style={isWideScreen && styles.sheetScrollWide}
           contentContainerStyle={[
             styles.sheetContent,
             { paddingBottom: 40 + insets.bottom + keyboardSpace },
@@ -1765,13 +1766,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sheetContentWide: {
+    flexGrow: 1,
+    minHeight: 0,
+  },
+  sheetScrollWide: {
     flex: 1,
+    minHeight: 0,
   },
   sheetColumns: {
     gap: 12,
   },
   sheetColumnsWide: {
     flex: 1,
+    minHeight: 0,
     flexDirection: "row",
     alignItems: "stretch",
     gap: 16,
@@ -1782,6 +1789,7 @@ const styles = StyleSheet.create({
   },
   overviewColumnWide: {
     flex: 1,
+    minHeight: 0,
   },
   overviewContent: {
     gap: 12,
@@ -1792,6 +1800,7 @@ const styles = StyleSheet.create({
   },
   detailColumnWide: {
     flex: 1,
+    minHeight: 0,
   },
   detailContent: {
     gap: 12,
