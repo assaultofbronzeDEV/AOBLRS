@@ -2,6 +2,7 @@ import { AgeId } from "@/src/ages";
 import { ABILITY_CATEGORY_ORDER, ABILITY_PRESETS } from "@/src/data/abilities";
 import { ITEM_CATEGORY_ORDER, ITEM_PRESETS } from "@/src/data/items";
 import { WEAPON_PRESETS } from "@/src/data/weapons";
+import { ARMOUR_CATEGORY_ORDER, ARMOUR_PRESETS } from "@/src/data/armour";
 import {
   AGE_OF_WAR_ABILITIES,
   AGE_OF_WAR_ITEMS,
@@ -16,6 +17,8 @@ export type AgeCatalog = {
   items: typeof ITEM_PRESETS;
   itemCategoryOrder: typeof ITEM_CATEGORY_ORDER;
   weapons: typeof WEAPON_PRESETS;
+  armour: typeof ARMOUR_PRESETS;
+  armourCategoryOrder: typeof ARMOUR_CATEGORY_ORDER;
 };
 
 const AGE_CATALOGS: Record<AgeId, AgeCatalog> = {
@@ -26,6 +29,8 @@ const AGE_CATALOGS: Record<AgeId, AgeCatalog> = {
     items: ITEM_PRESETS,
     itemCategoryOrder: ITEM_CATEGORY_ORDER,
     weapons: WEAPON_PRESETS,
+    armour: ARMOUR_PRESETS,
+    armourCategoryOrder: ARMOUR_CATEGORY_ORDER,
   },
   // Kept as a separate catalog boundary so Age of War content can evolve independently.
   "age-of-war": {
@@ -34,6 +39,8 @@ const AGE_CATALOGS: Record<AgeId, AgeCatalog> = {
     items: AGE_OF_WAR_ITEMS,
     itemCategoryOrder: ITEM_CATEGORY_ORDER,
     weapons: [...AGE_OF_WAR_STANDARD_MELEE, ...AGE_OF_WAR_WEAPONS, AGE_OF_WAR_WEAPON_OF_KHALIIK],
+    armour: ARMOUR_PRESETS,
+    armourCategoryOrder: ARMOUR_CATEGORY_ORDER,
   },
 };
 

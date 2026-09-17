@@ -18,6 +18,7 @@ import {
   createEmptyCharacter,
   createEmptyInventoryItem,
   createEmptyMonster,
+  createEmptyArmour,
   defaultHeroStats,
   defaultMonsterStats,
   genId,
@@ -392,6 +393,12 @@ export default function CreateHeroScreen() {
         stats,
         meleeDmg: monsterType.weaponDamageRoll ?? monsterType.attackRoll,
         armour: String(monsterType.armour),
+        equippedArmour: {
+          ...createEmptyArmour(),
+          name: monsterType.armour > 0 ? "Natural Armour" : "Unarmoured",
+          description: monsterType.armour > 0 ? "Natural protection." : "No armour equipped. Move up to 30ft.",
+          damageReduction: String(monsterType.armour),
+        },
         weapons: [{
           id: genId(),
           name: monsterType.weaponName ?? "Enemy weapon",
@@ -449,6 +456,12 @@ export default function CreateHeroScreen() {
       hp: HP_MAX,
       maxHp: HP_MAX,
       armour: String(charClass.baseArmour),
+      equippedArmour: {
+        ...createEmptyArmour(),
+        name: "Starting Armour",
+        description: "Starting protection from your class.",
+        damageReduction: String(charClass.baseArmour),
+      },
       meleeDmg: charClass.weapons[0]?.damageRoll ?? "1d6",
       stats,
       weapons: charClass.weapons.map((w) => ({

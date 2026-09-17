@@ -21,6 +21,7 @@ import * as Haptics from "expo-haptics";
 import { fonts, setThemeAge, setThemeMode, useTheme } from "@/src/theme";
 import {
   Ability,
+  Armour,
   Character,
   CustomSection,
   InventoryItem,
@@ -31,6 +32,7 @@ import {
   Weapon,
   ROLL_HISTORY_MAX,
   createEmptyAbility,
+  createEmptyArmour,
   createEmptyInventoryItem,
   createEmptyWeapon,
   genId,
@@ -44,6 +46,7 @@ import AbilityCard from "@/src/components/AbilityCard";
 import CustomSectionCard from "@/src/components/CustomSectionCard";
 import DiceRollModal, { RollRequest } from "@/src/components/DiceRollModal";
 import MeleeDmgCell from "@/src/components/MeleeDmgCell";
+import ArmourCard from "@/src/components/ArmourCard";
 import WeaponCard, { getAttackTarget } from "@/src/components/WeaponCard";
 import InventoryList from "@/src/components/InventoryList";
 import RollHistoryList from "@/src/components/RollHistoryList";
@@ -113,6 +116,7 @@ export default function CharacterSheetScreen() {
   const [heroPointsWarning, setHeroPointsWarning] = useState<string | null>(null);
   const [actionMarkers, setActionMarkers] = useState({ movement: false, attackAbility: false, bonus: false });
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
+  const [armourPickerOpen, setArmourPickerOpen] = useState(false);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [abilityPickerFor, setAbilityPickerFor] = useState<AbilityKey | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -362,6 +366,15 @@ export default function CharacterSheetScreen() {
     if (!char) return;
     Haptics.selectionAsync();
     setWeaponPickerOpen(true);
+  };
+
+  const equipArmour = (armour: Armour) => update({ equippedArmour: armour, armour: armour.damageReduction });
+
+  const equipPresetArmour = (entry: PickerEntry) => {
+    const preset = ageCatalog.armour.find((armour) => armour.id === entry.id);
+    if (!preset) return;
+    equipArmour({ ...preset, id: genId() });
+    Haptics.selectionAsync();
   };
 
   const addCustomWeapon = () => {
@@ -798,19 +811,7 @@ export default function CharacterSheetScreen() {
             />
             <View style={[styles.divider, { backgroundColor: colors.borderStrong }]} />
             <View style={styles.combatRow}>
-              <View style={[styles.combatCell, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
-                <Text style={[styles.combatLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>
-                  ARMOUR
-                </Text>
-                <TextInput
-                  testID="input-armour"
-                  value={char.armour}
-                  onChangeText={(t) => update({ armour: t.replace(/\D/g, "").slice(0, 3) })}
-                  style={[styles.combatValue, { color: colors.onSurface, borderColor: colors.border, fontFamily: fonts.displayBold }]}
-                  keyboardType="number-pad"
-                  maxLength={3}
-                />
-              </View>
+              <ArmourCard armour={char.equippedArmour} onChange={equipArmour} onChoose={() => setArmourPickerOpen(true)} />
               <MeleeDmgCell
                 value={char.meleeDmg}
                 onChange={(t) => update({ meleeDmg: t })}
@@ -1332,6 +1333,27 @@ export default function CharacterSheetScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <PickerSheet
+        visible={armourPickerOpen}
+        testIDPrefix="armour-picker"
+        title="Armoury"
+        subtitle="Equip one armour set. Heavier armour slows movement."
+        customLabel="Create custom armour"
+        presets={ageCatalog.armour.map((armour) => ({
+          id: armour.id,
+          name: armour.name,
+          category: armour.category,
+          meta: `${armour.movementSpeed}ft`,
+          price: `DR ${armour.damageReduction}`,
+          notes: armour.description,
+          icon: "shield-outline",
+        }))}
+        categoryOrder={ageCatalog.armourCategoryOrder}
+        onClose={() => setArmourPickerOpen(false)}
+        onSelect={equipPresetArmour}
+        onCustom={() => equipArmour(createEmptyArmour())}
+      />
 
       <PickerSheet
         visible={weaponPickerOpen}

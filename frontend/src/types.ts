@@ -49,6 +49,14 @@ export type Weapon = {
   damageRoll: string;
 };
 
+export type Armour = {
+  id: string;
+  name: string;
+  description: string;
+  movementSpeed: string;
+  damageReduction: string;
+};
+
 export type InventoryItem = {
   id: string;
   name: string;
@@ -100,6 +108,7 @@ export type Character = {
   hp: number;
   maxHp: number;
   armour: string;
+  equippedArmour: Armour;
   meleeDmg: string;
   stats: StatBlock[];
   oncePerTurn: Ability[];
@@ -208,6 +217,14 @@ export const createEmptyWeapon = (description = ""): Weapon => ({
   damageRoll: "1d6",
 });
 
+export const createEmptyArmour = (): Armour => ({
+  id: genId(),
+  name: "Unarmoured",
+  description: "No armour equipped. Move up to 30ft.",
+  movementSpeed: "30",
+  damageReduction: "0",
+});
+
 export const createEmptyInventoryItem = (name = "", description = ""): InventoryItem => ({
   id: genId(),
   name,
@@ -230,6 +247,7 @@ const createBase = (kind: EntityKind): Character => {
     hp: HP_MAX,
     maxHp: HP_MAX,
     armour: "10",
+    equippedArmour: createEmptyArmour(),
     meleeDmg: "1d6",
     stats,
     oncePerTurn: [],
@@ -297,6 +315,20 @@ export const migrateCharacter = (raw: any): Character => {
   const kind: EntityKind = raw.kind === "monster" ? "monster" : "hero";
   const defaultForKind = kind === "monster" ? defaultMonsterStats : defaultHeroStats;
   const maxHp = typeof raw.maxHp === "number" && raw.maxHp > 0 ? raw.maxHp : HP_MAX;
+  const equippedArmour: Armour = raw.equippedArmour && typeof raw.equippedArmour === "object"
+    ? {
+        id: raw.equippedArmour.id ?? genId(),
+        name: raw.equippedArmour.name ?? "Unarmoured",
+        description: raw.equippedArmour.description ?? "",
+        movementSpeed: String(raw.equippedArmour.movementSpeed ?? "30"),
+        damageReduction: String(raw.equippedArmour.damageReduction ?? raw.armour ?? "0"),
+      }
+    : {
+        ...createEmptyArmour(),
+        name: raw.armour && raw.armour !== "0" ? "Current Armour" : "Unarmoured",
+        description: raw.armour && raw.armour !== "0" ? "Migrated from your previous armour value." : "No armour equipped. Move up to 30ft.",
+        damageReduction: String(raw.armour ?? "0"),
+      };
   return {
     id: raw.id ?? genId(),
     age: raw.age === "age-of-war" ? "age-of-war" : DEFAULT_AGE_ID,
@@ -308,6 +340,7 @@ export const migrateCharacter = (raw: any): Character => {
     hp: typeof raw.hp === "number" ? Math.max(0, Math.min(maxHp, raw.hp)) : maxHp,
     maxHp,
     armour: raw.armour ?? "10",
+    equippedArmour,
     meleeDmg: normalizeDice(raw.meleeDmg) ?? "1d6",
     stats: Array.isArray(raw.stats) && raw.stats.length > 0 ? raw.stats : defaultForKind(),
     oncePerTurn,
