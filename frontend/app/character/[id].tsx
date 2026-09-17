@@ -647,19 +647,22 @@ export default function CharacterSheetScreen() {
         <ScrollView
           testID="character-scroll"
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            padding: 12,
-            paddingBottom: 40 + insets.bottom + keyboardSpace,
-            gap: 12,
-          }}
+          scrollEnabled={!isWideScreen}
+          contentContainerStyle={[
+            styles.sheetContent,
+            { paddingBottom: 40 + insets.bottom + keyboardSpace },
+            isWideScreen && styles.sheetContentWide,
+          ]}
         >
-          <Image
-            source={require("@/assets/images/aob-logo.png")}
-            resizeMode="contain"
-            style={styles.sheetLogo}
-            accessibilityLabel="Assault of Bronze — Lightweight Roleplay System"
-          />
-          <View style={styles.topRow}>
+          <View style={[styles.sheetColumns, isWideScreen && styles.sheetColumnsWide]}>
+            <View style={[styles.overviewColumn, isWideScreen && styles.overviewColumnWide]}>
+              <Image
+                source={require("@/assets/images/aob-logo.png")}
+                resizeMode="contain"
+                style={styles.sheetLogo}
+                accessibilityLabel="Assault of Bronze — Lightweight Roleplay System"
+              />
+              <View style={styles.topRow}>
             <Pressable
               testID="portrait-picker"
               onPress={pickPortrait}
@@ -847,7 +850,7 @@ export default function CharacterSheetScreen() {
             Tap the stat or skill name to roll a d20 against it.
           </Text>
 
-          {char.kind === "hero" && (
+              {char.kind === "hero" && (
             <View style={[styles.actionMarkers, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
               <View style={styles.actionMarkersHeader}>
                 <View style={styles.actionMarkersHeading}>
@@ -901,6 +904,14 @@ export default function CharacterSheetScreen() {
             </View>
           )}
 
+            </View>
+            <ScrollView
+              nestedScrollEnabled
+              scrollEnabled={isWideScreen}
+              keyboardShouldPersistTaps="handled"
+              style={[styles.detailColumn, isWideScreen && styles.detailColumnWide]}
+              contentContainerStyle={styles.detailContent}
+            >
           <CollapsibleSection
             title="Weapons"
             keyName="weapons"
@@ -1045,6 +1056,8 @@ export default function CharacterSheetScreen() {
               Add Custom Section
             </Text>
           </Pressable>
+            </ScrollView>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -1740,6 +1753,39 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginTop: 4,
     marginBottom: -4,
+  },
+  sheetContent: {
+    padding: 12,
+    gap: 12,
+  },
+  sheetContentWide: {
+    flexGrow: 1,
+  },
+  sheetColumns: {
+    gap: 12,
+  },
+  sheetColumnsWide: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 16,
+  },
+  overviewColumn: {
+    gap: 12,
+  },
+  overviewColumnWide: {
+    flex: 1,
+    minWidth: 0,
+  },
+  detailColumn: {
+    minWidth: 0,
+  },
+  detailColumnWide: {
+    flex: 1,
+  },
+  detailContent: {
+    gap: 12,
+    paddingBottom: 24,
   },
 
   topRow: { flexDirection: "row", gap: 10 },
