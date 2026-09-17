@@ -354,7 +354,7 @@ export default function CharacterListScreen() {
   const { colors, mode } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { panel } = useLocalSearchParams<{ panel?: "help" | "lore" | "gm" }>();
+  const { panel, returnTo, age } = useLocalSearchParams<{ panel?: "help" | "lore" | "gm"; returnTo?: string; age?: string }>();
   const party = usePartyState();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
@@ -608,6 +608,14 @@ export default function CharacterListScreen() {
       return;
     }
     router.push(`/character/${combatant.id}?age=${activeAge}`);
+  };
+
+  const closeHeaderPanel = () => {
+    setHelpOpen(false);
+    setGmToolsOpen(false);
+    if (!returnTo) return;
+    const returnAge: AgeId = age === "age-of-war" ? "age-of-war" : DEFAULT_AGE_ID;
+    router.replace({ pathname: "/character/[id]", params: { id: returnTo, age: returnAge } });
   };
 
   const quickRoll = (notation: string, damage?: string) => {
@@ -1005,7 +1013,7 @@ export default function CharacterListScreen() {
         </Pressable>
       </Modal>
 
-      <Modal transparent visible={helpOpen} animationType="slide" onRequestClose={() => setHelpOpen(false)}>
+      <Modal transparent visible={helpOpen} animationType="slide" onRequestClose={closeHeaderPanel}>
         <View style={styles.helpBackdropTop}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -1015,7 +1023,7 @@ export default function CharacterListScreen() {
           <View style={[styles.helpCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}> 
             <View style={styles.helpHeader}>
               <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{helpMode === "lore" ? "Lore" : "Help"}</Text>
-              <Pressable testID="help-close" onPress={() => setHelpOpen(false)} hitSlop={8}>
+              <Pressable testID="help-close" onPress={closeHeaderPanel} hitSlop={8}>
                 <Icon name="close" size={22} color={colors.onSurface} />
               </Pressable>
             </View>
@@ -1171,7 +1179,7 @@ export default function CharacterListScreen() {
         </View>
       </Modal>
 
-      <Modal transparent visible={gmToolsOpen} animationType="slide" onRequestClose={() => setGmToolsOpen(false)}>
+      <Modal transparent visible={gmToolsOpen} animationType="slide" onRequestClose={closeHeaderPanel}>
         <View style={styles.helpBackdrop}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -1181,7 +1189,7 @@ export default function CharacterListScreen() {
           <View style={[styles.gmCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong, paddingTop: insets.top, paddingBottom: insets.bottom + 12 }]}> 
             <View style={styles.helpHeader}>
               <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>GM Tools</Text>
-              <Pressable testID="gm-tools-close" onPress={() => setGmToolsOpen(false)} hitSlop={8}>
+              <Pressable testID="gm-tools-close" onPress={closeHeaderPanel} hitSlop={8}>
                 <Icon name="close" size={22} color={colors.onSurface} />
               </Pressable>
             </View>

@@ -663,7 +663,7 @@ export default function CharacterSheetScreen() {
           </Pressable>
           <Pressable
             testID="sheet-help-btn"
-            onPress={() => router.push({ pathname: "/", params: { age: characterAge, panel: "help" } })}
+            onPress={() => router.push({ pathname: "/", params: { age: characterAge, panel: "help", returnTo: id } })}
             hitSlop={8}
             style={({ pressed }) => [styles.headerToolBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
             accessibilityLabel="Open help"
@@ -672,7 +672,7 @@ export default function CharacterSheetScreen() {
           </Pressable>
           <Pressable
             testID="sheet-lore-btn"
-            onPress={() => router.push({ pathname: "/", params: { age: characterAge, panel: "lore" } })}
+            onPress={() => router.push({ pathname: "/", params: { age: characterAge, panel: "lore", returnTo: id } })}
             hitSlop={8}
             style={({ pressed }) => [styles.headerToolBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
             accessibilityLabel="Open lore"
@@ -690,7 +690,7 @@ export default function CharacterSheetScreen() {
           </Pressable>
           <Pressable
             testID="sheet-gm-tools-btn"
-            onPress={() => router.push({ pathname: "/", params: { age: characterAge, panel: "gm" } })}
+            onPress={() => router.push({ pathname: "/", params: { age: characterAge, panel: "gm", returnTo: id } })}
             hitSlop={8}
             style={({ pressed }) => [styles.headerToolBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
             accessibilityLabel="Open GM tools"
