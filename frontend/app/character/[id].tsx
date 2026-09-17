@@ -655,7 +655,13 @@ export default function CharacterSheetScreen() {
           ]}
         >
           <View style={[styles.sheetColumns, isWideScreen && styles.sheetColumnsWide]}>
-            <View style={[styles.overviewColumn, isWideScreen && styles.overviewColumnWide]}>
+            <ScrollView
+              nestedScrollEnabled
+              scrollEnabled={isWideScreen}
+              keyboardShouldPersistTaps="handled"
+              style={[styles.overviewColumn, isWideScreen && styles.overviewColumnWide]}
+              contentContainerStyle={styles.overviewContent}
+            >
               <Image
                 source={require("@/assets/images/aob-logo.png")}
                 resizeMode="contain"
@@ -904,7 +910,7 @@ export default function CharacterSheetScreen() {
             </View>
           )}
 
-            </View>
+            </ScrollView>
             <ScrollView
               nestedScrollEnabled
               scrollEnabled={isWideScreen}
@@ -1759,7 +1765,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sheetContentWide: {
-    flexGrow: 1,
+    flex: 1,
   },
   sheetColumns: {
     gap: 12,
@@ -1772,10 +1778,14 @@ const styles = StyleSheet.create({
   },
   overviewColumn: {
     gap: 12,
+    minWidth: 0,
   },
   overviewColumnWide: {
     flex: 1,
-    minWidth: 0,
+  },
+  overviewContent: {
+    gap: 12,
+    paddingBottom: 24,
   },
   detailColumn: {
     minWidth: 0,
