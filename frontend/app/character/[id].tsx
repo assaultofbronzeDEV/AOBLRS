@@ -783,7 +783,7 @@ export default function CharacterSheetScreen() {
                 placeholder="1"
               />
             </View>
-          </SheetColumns>
+          </View>
 
           <View style={[styles.combatBox, { borderColor: colors.borderStrong }]}>
             <HpTracker
@@ -1131,7 +1131,7 @@ export default function CharacterSheetScreen() {
             </Text>
           </Pressable>
             </SheetPane>
-          </View>
+          </SheetColumns>
         </ScrollView>
       </KeyboardAvoidingView>
 

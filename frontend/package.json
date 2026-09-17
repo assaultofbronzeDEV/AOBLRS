@@ -10,12 +10,13 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:apk": "eas build --platform android --profile preview",
-      "build:web:pages": "node -e \"const { status } = require('node:child_process').spawnSync(process.execPath, ['./node_modules/expo/bin/cli', 'export', '--platform', 'web'], { env: { ...process.env, EXPO_BASE_URL: 'AOBLRS' }, stdio: 'inherit' }); process.exit(status ?? 1)\"",
+    "build:web:pages": "node -e \"const { status } = require('node:child_process').spawnSync(process.execPath, ['./node_modules/expo/bin/cli', 'export', '--platform', 'web'], { env: { ...process.env, EXPO_BASE_URL: 'AOBLRS' }, stdio: 'inherit' }); process.exit(status ?? 1)\"",
     "lint": "expo lint"
   },
   "dependencies": {
     "@expo/metro-runtime": "57.0.15",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-vector-icons/get-image": "13.0.1",
     "@react-native-vector-icons/material-design-icons": "13.1.4",
     "@tanstack/react-query": "5.102.8",
     "date-fns": "4.1.0",
