@@ -810,7 +810,7 @@ export default function CharacterSheetScreen() {
               onMaxChange={(maxHp) => update({ maxHp, hp: Math.min(char.hp, maxHp) })}
             />
             <View style={[styles.divider, { backgroundColor: colors.borderStrong }]} />
-            <View style={styles.combatRow}>
+            <View style={[styles.combatRow, !isWideScreen && styles.combatRowNarrow]}>
               <ArmourCard armour={char.equippedArmour} onChange={equipArmour} onChoose={() => setArmourPickerOpen(true)} />
               <QuickDiceRoller
                 onRoll={(notation, label) => {
@@ -828,7 +828,6 @@ export default function CharacterSheetScreen() {
               style={({ pressed }) => [
                 styles.actionChip,
                 isWideScreen && styles.actionChipWide,
-                isWideScreen && styles.longRestChipWide,
                 {
                   borderColor: colors.borderStrong,
                   backgroundColor:
@@ -873,6 +872,7 @@ export default function CharacterSheetScreen() {
               style={({ pressed }) => [
                 styles.actionChip,
                 isWideScreen && styles.actionChipWide,
+                isWideScreen && styles.longRestChipWide,
                 {
                   borderColor: colors.borderStrong,
                   backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary,
@@ -1930,6 +1930,7 @@ const styles = StyleSheet.create({
   },
   divider: { height: 1.5, marginVertical: 2 },
   combatRow: { flexDirection: "row", gap: 10 },
+  combatRowNarrow: { flexDirection: "column" },
   combatCell: {
     flex: 1,
     minWidth: 0,
