@@ -17,6 +17,7 @@ export type RollRequest = {
   label: string;
   target?: number; // if omitted, only rolls effect (no d20 check)
   effect?: { notation: string; type: "damage" | "healing" };
+  standaloneRoll?: string;
   resultLabel?: string;
   mode?: RollMode; // advantage / disadvantage on the d20 check
   boost?: boolean; // add 1d6 to the d20 roll for this check
@@ -75,14 +76,15 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // If no target, we're only rolling an effect
-    if (request.target == null && request.effect) {
+    // If no target, roll an effect or a standalone dice notation.
+    const notation = request.effect?.notation ?? request.standaloneRoll;
+    if (request.target == null && notation) {
       const start = Date.now();
       const interval = setInterval(() => {
-        setTickValue(1 + Math.floor(Math.random() * (request.effect?.notation ? 10 : 20)));
+        setTickValue(1 + Math.floor(Math.random() * 20));
         if (Date.now() - start > 700) {
           clearInterval(interval);
-          const r = rollDice(request.effect!.notation);
+          const r = rollDice(notation);
           if (r) {
             setEffect(r);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -90,16 +92,12 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
               id: genId(),
               at: new Date().toISOString(),
               label: request.label,
-              effect: {
-                notation: r.notation,
-                type: request.effect!.type,
-                total: r.total,
-                rolls: r.rolls,
-                modifier: r.modifier,
-              },
+              ...(request.effect
+                ? { effect: { notation: r.notation, type: request.effect.type, total: r.total, rolls: r.rolls, modifier: r.modifier } }
+                : { rolled: r.total }),
             });
           } else {
-            setInvalidNotation(request.effect!.notation);
+            setInvalidNotation(notation);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           }
         }
@@ -201,7 +199,7 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
     if (invalidNotation) return colors.error;
     if (onlyEffect) {
       if (!effect) return colors.onSurface;
-      return request.effect?.type === "healing" ? colors.success : colors.brandSecondary;
+      return request.effect?.type === "healing" ? colors.success : request.effect ? colors.brandSecondary : colors.brandPrimary;
     }
     if (verdict === "crit-success") return colors.warning;
     if (verdict === "crit-fail") return colors.brandSecondary;
@@ -214,7 +212,7 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
     if (invalidNotation) return "INVALID DICE NOTATION";
     if (onlyEffect) {
       if (!effect) return "Rolling…";
-      return request.resultLabel ?? (request.effect?.type === "healing" ? "HEALING" : "DAMAGE");
+      return request.resultLabel ?? (request.effect?.type === "healing" ? "HEALING" : request.effect ? "DAMAGE" : "RESULT");
     }
     if (!verdict) return "Rolling…";
     if (verdict === "crit-success") return "CRITICAL SUCCESS!";

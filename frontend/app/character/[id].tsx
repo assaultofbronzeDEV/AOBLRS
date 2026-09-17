@@ -45,8 +45,8 @@ import LabeledField from "@/src/components/LabeledField";
 import AbilityCard from "@/src/components/AbilityCard";
 import CustomSectionCard from "@/src/components/CustomSectionCard";
 import DiceRollModal, { RollRequest } from "@/src/components/DiceRollModal";
-import MeleeDmgCell from "@/src/components/MeleeDmgCell";
 import ArmourCard from "@/src/components/ArmourCard";
+import QuickDiceRoller from "@/src/components/QuickDiceRoller";
 import WeaponCard, { getAttackTarget } from "@/src/components/WeaponCard";
 import InventoryList from "@/src/components/InventoryList";
 import RollHistoryList from "@/src/components/RollHistoryList";
@@ -812,12 +812,10 @@ export default function CharacterSheetScreen() {
             <View style={[styles.divider, { backgroundColor: colors.borderStrong }]} />
             <View style={styles.combatRow}>
               <ArmourCard armour={char.equippedArmour} onChange={equipArmour} onChoose={() => setArmourPickerOpen(true)} />
-              <MeleeDmgCell
-                value={char.meleeDmg}
-                onChange={(t) => update({ meleeDmg: t })}
-                onRoll={(notation) => {
+              <QuickDiceRoller
+                onRoll={(notation, label) => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setRoll({ label: "Melee Damage", effect: { notation, type: "damage" } });
+                  setRoll({ label, standaloneRoll: notation });
                 }}
               />
             </View>
@@ -830,6 +828,7 @@ export default function CharacterSheetScreen() {
               style={({ pressed }) => [
                 styles.actionChip,
                 isWideScreen && styles.actionChipWide,
+                isWideScreen && styles.longRestChipWide,
                 {
                   borderColor: colors.borderStrong,
                   backgroundColor:
@@ -1988,6 +1987,9 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     flexBasis: 240,
     maxWidth: 300,
+  },
+  longRestChipWide: {
+    marginLeft: "auto",
   },
   actionText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
 
