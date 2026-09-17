@@ -71,7 +71,7 @@ function SheetPane({
   children: React.ReactNode;
 }) {
   if (!wide) {
-    return <View style={[style, contentContainerStyle]}>{children}</View>;
+    return <>{children}</>;
   }
 
   return (
@@ -84,6 +84,11 @@ function SheetPane({
       {children}
     </ScrollView>
   );
+}
+
+function SheetColumns({ wide, children }: { wide: boolean; children: React.ReactNode }) {
+  if (!wide) return <>{children}</>;
+  return <View style={styles.sheetColumnsWide}>{children}</View>;
 }
 
 export default function CharacterSheetScreen() {
@@ -682,7 +687,7 @@ export default function CharacterSheetScreen() {
             isWideScreen && styles.sheetContentWide,
           ]}
         >
-          <View style={[styles.sheetColumns, isWideScreen && styles.sheetColumnsWide]}>
+          <SheetColumns wide={isWideScreen}>
             <SheetPane
               wide={isWideScreen}
               style={[styles.overviewColumn, isWideScreen && styles.overviewColumnWide]}
@@ -739,7 +744,7 @@ export default function CharacterSheetScreen() {
                 placeholder="1"
               />
             </View>
-          </View>
+          </SheetColumns>
 
           <View style={[styles.combatBox, { borderColor: colors.borderStrong }]}>
             <HpTracker
@@ -1796,9 +1801,6 @@ const styles = StyleSheet.create({
   sheetScrollWide: {
     flex: 1,
     minHeight: 0,
-  },
-  sheetColumns: {
-    gap: 12,
   },
   sheetColumnsWide: {
     flex: 1,
