@@ -59,6 +59,33 @@ import { getAgeCatalog } from "@/src/ageCatalog";
 
 type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
 
+function SheetPane({
+  wide,
+  style,
+  contentContainerStyle,
+  children,
+}: {
+  wide: boolean;
+  style?: React.ComponentProps<typeof View>["style"];
+  contentContainerStyle?: React.ComponentProps<typeof View>["style"];
+  children: React.ReactNode;
+}) {
+  if (!wide) {
+    return <View style={[style, contentContainerStyle]}>{children}</View>;
+  }
+
+  return (
+    <ScrollView
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
+      style={style}
+      contentContainerStyle={contentContainerStyle}
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
 export default function CharacterSheetScreen() {
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
@@ -619,7 +646,7 @@ export default function CharacterSheetScreen() {
       >
         <Pressable
           testID="back-btn"
-          onPress={() => router.back()}
+          onPress={() => router.replace({ pathname: "/", params: { age: characterAge } })}
           hitSlop={12}
           style={styles.backBtn}
         >
@@ -656,10 +683,8 @@ export default function CharacterSheetScreen() {
           ]}
         >
           <View style={[styles.sheetColumns, isWideScreen && styles.sheetColumnsWide]}>
-            <ScrollView
-              nestedScrollEnabled
-              scrollEnabled={isWideScreen}
-              keyboardShouldPersistTaps="handled"
+            <SheetPane
+              wide={isWideScreen}
               style={[styles.overviewColumn, isWideScreen && styles.overviewColumnWide]}
               contentContainerStyle={styles.overviewContent}
             >
@@ -911,11 +936,9 @@ export default function CharacterSheetScreen() {
             </View>
           )}
 
-            </ScrollView>
-            <ScrollView
-              nestedScrollEnabled
-              scrollEnabled={isWideScreen}
-              keyboardShouldPersistTaps="handled"
+            </SheetPane>
+            <SheetPane
+              wide={isWideScreen}
               style={[styles.detailColumn, isWideScreen && styles.detailColumnWide]}
               contentContainerStyle={styles.detailContent}
             >
@@ -1063,7 +1086,7 @@ export default function CharacterSheetScreen() {
               Add Custom Section
             </Text>
           </Pressable>
-            </ScrollView>
+            </SheetPane>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
