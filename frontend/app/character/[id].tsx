@@ -1767,6 +1767,7 @@ const styles = StyleSheet.create({
   },
   sheetContentWide: {
     flexGrow: 1,
+    height: "100%",
     minHeight: 0,
   },
   sheetScrollWide: {
