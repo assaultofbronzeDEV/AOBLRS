@@ -16,7 +16,7 @@ import {
   Animated,
 } from "react-native";
 import { PanGestureHandler, PinchGestureHandler, State } from "react-native-gesture-handler";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import * as ScreenOrientation from "expo-screen-orientation";
@@ -354,6 +354,7 @@ export default function CharacterListScreen() {
   const { colors, mode } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { panel } = useLocalSearchParams<{ panel?: "help" | "lore" | "gm" }>();
   const party = usePartyState();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
@@ -393,6 +394,20 @@ export default function CharacterListScreen() {
   const [exportAllOpen, setExportAllOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [activeAge, setActiveAge] = useState<AgeId>(DEFAULT_AGE_ID);
+
+  useEffect(() => {
+    if (panel === "help") {
+      setHelpMode("help");
+      setHelpOpen(true);
+    } else if (panel === "lore") {
+      setHelpMode("lore");
+      setLoreTab("overview");
+      setHelpOpen(true);
+    } else if (panel === "gm") {
+      setGmToolsOpen(true);
+    }
+  }, [panel]);
+
   useEffect(() => {
     setSharedHeroes(party.sharedHeroes);
     setJoinedRoom(party.roomCode);

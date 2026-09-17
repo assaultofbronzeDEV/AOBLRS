@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/material-design-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
-import { fonts, setThemeAge, useTheme } from "@/src/theme";
+import { fonts, setThemeAge, setThemeMode, useTheme } from "@/src/theme";
 import {
   Ability,
   Character,
@@ -92,7 +92,7 @@ function SheetColumns({ wide, children }: { wide: boolean; children: React.React
 }
 
 export default function CharacterSheetScreen() {
-  const { colors } = useTheme();
+  const { colors, mode } = useTheme();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -649,14 +649,53 @@ export default function CharacterSheetScreen() {
           },
         ]}
       >
-        <Pressable
-          testID="back-btn"
-          onPress={() => router.replace({ pathname: "/", params: { age: characterAge } })}
-          hitSlop={12}
-          style={styles.backBtn}
-        >
-          <Icon name="chevron-left" size={28} color={colors.onSurface} />
-        </Pressable>
+        <View style={styles.headerLeftActions}>
+          <Pressable
+            testID="back-btn"
+            onPress={() => router.replace({ pathname: "/", params: { age: characterAge } })}
+            hitSlop={12}
+            style={styles.backBtn}
+            accessibilityLabel="Back to character list"
+          >
+            <Icon name="chevron-left" size={28} color={colors.onSurface} />
+          </Pressable>
+          <Pressable
+            testID="sheet-help-btn"
+            onPress={() => router.push({ pathname: "/", params: { age: characterAge, panel: "help" } })}
+            hitSlop={8}
+            style={({ pressed }) => [styles.headerToolBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+            accessibilityLabel="Open help"
+          >
+            <Icon name="help-circle-outline" size={18} color={colors.onSurface} />
+          </Pressable>
+          <Pressable
+            testID="sheet-lore-btn"
+            onPress={() => router.push({ pathname: "/", params: { age: characterAge, panel: "lore" } })}
+            hitSlop={8}
+            style={({ pressed }) => [styles.headerToolBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+            accessibilityLabel="Open lore"
+          >
+            <Icon name="book-open-page-variant-outline" size={18} color={colors.onSurface} />
+          </Pressable>
+          <Pressable
+            testID="sheet-theme-toggle"
+            onPress={() => setThemeMode(mode === "dark" ? "light" : "dark")}
+            hitSlop={8}
+            style={({ pressed }) => [styles.headerToolBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+            accessibilityLabel="Toggle color theme"
+          >
+            <Icon name={mode === "dark" ? "weather-night" : "white-balance-sunny"} size={18} color={colors.onSurface} />
+          </Pressable>
+          <Pressable
+            testID="sheet-gm-tools-btn"
+            onPress={() => router.push({ pathname: "/", params: { age: characterAge, panel: "gm" } })}
+            hitSlop={8}
+            style={({ pressed }) => [styles.headerToolBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+            accessibilityLabel="Open GM tools"
+          >
+            <Icon name="dice-multiple-outline" size={18} color={colors.onSurface} />
+          </Pressable>
+        </View>
         <View style={{ flex: 1 }} />
         <Pressable
           testID="export-sheet-btn"
@@ -1766,7 +1805,15 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     borderBottomWidth: 3,
   },
+  headerLeftActions: { flexDirection: "row", alignItems: "center", gap: 6 },
   backBtn: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  headerToolBtn: {
+    width: 32,
+    height: 32,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   headerActionBtn: {
     width: 36,
     height: 36,
