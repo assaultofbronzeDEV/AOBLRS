@@ -813,13 +813,17 @@ export default function CharacterSheetScreen() {
             />
             <View style={[styles.divider, { backgroundColor: colors.borderStrong }]} />
             <View style={[styles.combatRow, !isWideScreen && styles.combatRowNarrow]}>
-              <ArmourCard armour={char.equippedArmour} onChange={equipArmour} onChoose={() => setArmourPickerOpen(true)} />
-              <QuickDiceRoller
-                onRoll={(notation, label) => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setRoll({ label, standaloneRoll: notation });
-                }}
-              />
+              <View style={isWideScreen ? styles.combatCardSplit : styles.combatCardStacked}>
+                <ArmourCard armour={char.equippedArmour} onChange={equipArmour} onChoose={() => setArmourPickerOpen(true)} />
+              </View>
+              <View style={isWideScreen ? styles.combatCardSplit : styles.combatCardStacked}>
+                <QuickDiceRoller
+                  onRoll={(notation, label) => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setRoll({ label, standaloneRoll: notation });
+                  }}
+                />
+              </View>
             </View>
           </View>
 
@@ -1947,6 +1951,8 @@ const styles = StyleSheet.create({
   divider: { height: 1.5, marginVertical: 2 },
   combatRow: { flexDirection: "row", gap: 10 },
   combatRowNarrow: { flexDirection: "column" },
+  combatCardSplit: { flex: 1, minWidth: 0 },
+  combatCardStacked: { minWidth: 0 },
   combatCell: {
     flex: 1,
     minWidth: 0,

@@ -74,7 +74,7 @@ export default function ArmourCard({ armour, onChange, onChoose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 2, padding: 10, gap: 7, flexGrow: 1, flexShrink: 0, flexBasis: 0, minWidth: 0 },
+  card: { borderWidth: 2, padding: 10, gap: 7, minWidth: 0 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 5, borderBottomWidth: 1, paddingBottom: 4 },
   label: { flex: 1, fontSize: 11, letterSpacing: 1.5 },
   name: { fontSize: 16, fontWeight: "700", paddingVertical: 2 },

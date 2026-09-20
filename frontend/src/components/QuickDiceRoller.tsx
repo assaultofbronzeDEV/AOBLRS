@@ -47,7 +47,7 @@ export default function QuickDiceRoller({ onRoll }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: { flexGrow: 1, flexShrink: 0, flexBasis: 0, minWidth: 0, borderWidth: 2, padding: 10, gap: 7 },
+  card: { minWidth: 0, borderWidth: 2, padding: 10, gap: 7 },
   label: { fontSize: 11, letterSpacing: 1.5 },
   row: { flexDirection: "row", alignItems: "center", gap: 6 },
   dieLabel: { width: 27, fontSize: 11, letterSpacing: 0.5 },
