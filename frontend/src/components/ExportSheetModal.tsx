@@ -128,7 +128,7 @@ export default function ExportSheetModal({ visible, onClose, character, characte
                   {isBundle
                     ? "Export All Sheets"
                     : entity
-                      ? `Export ${entity.type === "item" ? "Item" : entity.type === "customPreset" ? "Custom Preset" : entity.type[0].toUpperCase() + entity.type.slice(1)}`
+                      ? `Export ${entity.type === "item" ? "Item" : entity.type === "customPreset" ? "Custom Preset" : entity.type === "statRoll" ? "Stat Roll" : entity.type[0].toUpperCase() + entity.type.slice(1)}`
                       : "Export Sheet"}
                 </Text>
                 <Text numberOfLines={1} style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.body }]}>

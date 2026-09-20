@@ -32,6 +32,9 @@ import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 import { getAgeCatalog } from "@/src/ageCatalog";
 import CustomPresetModal from "@/src/components/CustomPresetModal";
 import { CustomPreset, CustomPresetKind, addCustomPreset, deleteCustomPreset, loadCustomPresets } from "@/src/storage/customPresets";
+import ExportSheetModal from "@/src/components/ExportSheetModal";
+import ImportEntityModal from "@/src/components/ImportEntityModal";
+import { ExportEntity, StatRollPreset } from "@/src/storage/sheetTransfer";
 
 // ---------- Steps ----------
 type Step = 0 | 1 | 2 | 3 | 4;
@@ -276,6 +279,22 @@ export default function CreateHeroScreen() {
     if (targetKind === "race" && race?.id === id) setRace(null);
     if (targetKind === "class" && charClass?.id === id) setCharClass(null);
     if (targetKind === "monsterType" && monsterType?.id === id) setMonsterType(null);
+  };
+
+  const [statsExportOpen, setStatsExportOpen] = useState(false);
+  const [statsImportOpen, setStatsImportOpen] = useState(false);
+
+  const importStats = (values: Record<string, number>) => {
+    setAssigned(values);
+    setPool((prev) => prev.map(() => 0));
+    setSelectedRollIdx(null);
+  };
+
+  const handleImportStatRoll = (entity: ExportEntity) => {
+    const preset = entity as StatRollPreset;
+    if (preset.kind !== (isMonster ? "monster" : "hero") || !preset.values) return;
+    importStats(preset.values);
+    setStatsImportOpen(false);
   };
 
   const highSet = useMemo(() => {
@@ -652,6 +671,9 @@ export default function CreateHeroScreen() {
             onPickSlot={onPickSlot}
             onReroll={reroll}
             onAutoFill={autoFill}
+            canExport={allAssigned}
+            onExportStats={() => setStatsExportOpen(true)}
+            onImportStats={() => setStatsImportOpen(true)}
           />
         )}
         {isMonster && step === 2 && monsterType && (
@@ -665,6 +687,9 @@ export default function CreateHeroScreen() {
             onPickSlot={onPickSlot}
             onReroll={reroll}
             onAutoFill={autoFill}
+            canExport={allAssigned}
+            onExportStats={() => setStatsExportOpen(true)}
+            onImportStats={() => setStatsImportOpen(true)}
           />
         )}
         {!isMonster && step === 4 && race && charClass && (
@@ -766,6 +791,26 @@ export default function CreateHeroScreen() {
         kind={presetModalKind ?? "race"}
         onClose={() => setPresetModalKind(null)}
         onSaved={saveCustomPreset}
+      />
+
+      <ExportSheetModal
+        visible={statsExportOpen}
+        onClose={() => setStatsExportOpen(false)}
+        entity={{
+          type: "statRoll",
+          value: {
+            id: "draft",
+            name: isMonster ? "Enemy Stat Roll" : "Party Stat Roll",
+            kind: isMonster ? "monster" : "hero",
+            values: assigned,
+          },
+        }}
+      />
+      <ImportEntityModal
+        visible={statsImportOpen}
+        expectedType="statRoll"
+        onClose={() => setStatsImportOpen(false)}
+        onImport={handleImportStatRoll}
       />
     </View>
   );
@@ -1400,6 +1445,9 @@ function AssignStep({
   onPickSlot,
   onReroll,
   onAutoFill,
+  canExport,
+  onExportStats,
+  onImportStats,
 }: {
   pool: number[];
   assigned: Record<string, number>;
@@ -1410,6 +1458,9 @@ function AssignStep({
   onPickSlot: (s: SlotRef) => void;
   onReroll: () => void;
   onAutoFill: () => void;
+  canExport: boolean;
+  onExportStats: () => void;
+  onImportStats: () => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -1508,6 +1559,38 @@ function AssignStep({
             <Text style={styles.rerollSmallText}>Reroll &amp; reset</Text>
           </Pressable>
         </View>
+        <View style={styles.assignActionRow}>
+          <Pressable
+            testID="assign-import-stats"
+            onPress={onImportStats}
+            style={({ pressed }) => [
+              styles.rerollSmall,
+              {
+                borderColor: colors.borderStrong,
+                backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
+              },
+            ]}
+          >
+            <Icon name="file-import-outline" size={13} color={colors.onSurface} />
+            <Text style={styles.rerollSmallText}>Import Stats</Text>
+          </Pressable>
+          <Pressable
+            testID="assign-export-stats"
+            onPress={onExportStats}
+            disabled={!canExport}
+            style={({ pressed }) => [
+              styles.rerollSmall,
+              {
+                borderColor: colors.borderStrong,
+                backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
+                opacity: canExport ? 1 : 0.4,
+              },
+            ]}
+          >
+            <Icon name="file-export-outline" size={13} color={colors.onSurface} />
+            <Text style={styles.rerollSmallText}>Export Stats</Text>
+          </Pressable>
+        </View>
       </View>
 
       {STATS_ORDER.map((sk) => (
@@ -1570,6 +1653,9 @@ function MonsterAssignStep({
   onPickSlot,
   onReroll,
   onAutoFill,
+  canExport,
+  onExportStats,
+  onImportStats,
 }: {
   pool: number[];
   assigned: Record<string, number>;
@@ -1580,6 +1666,9 @@ function MonsterAssignStep({
   onPickSlot: (s: SlotRef) => void;
   onReroll: () => void;
   onAutoFill: () => void;
+  canExport: boolean;
+  onExportStats: () => void;
+  onImportStats: () => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -1632,6 +1721,21 @@ function MonsterAssignStep({
           <Pressable testID="monster-assign-reroll" onPress={onReroll} style={[styles.rerollSmall, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
             <Icon name="restart" size={13} color={colors.onSurface} />
             <Text style={styles.rerollSmallText}>Reroll &amp; reset</Text>
+          </Pressable>
+        </View>
+        <View style={styles.assignActionRow}>
+          <Pressable testID="monster-import-stats" onPress={onImportStats} style={[styles.rerollSmall, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+            <Icon name="file-import-outline" size={13} color={colors.onSurface} />
+            <Text style={styles.rerollSmallText}>Import Stats</Text>
+          </Pressable>
+          <Pressable
+            testID="monster-export-stats"
+            onPress={onExportStats}
+            disabled={!canExport}
+            style={[styles.rerollSmall, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary, opacity: canExport ? 1 : 0.4 }]}
+          >
+            <Icon name="file-export-outline" size={13} color={colors.onSurface} />
+            <Text style={styles.rerollSmallText}>Export Stats</Text>
           </Pressable>
         </View>
       </View>
