@@ -14,7 +14,7 @@ export type StatRollPreset = {
   id: string;
   name: string;
   kind: "hero" | "monster";
-  values: Record<string, number>; // slot key -> assigned value
+  pool: number[];
 };
 
 export type ExportPayload = {

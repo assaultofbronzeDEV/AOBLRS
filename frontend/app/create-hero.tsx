@@ -284,16 +284,22 @@ export default function CreateHeroScreen() {
   const [statsExportOpen, setStatsExportOpen] = useState(false);
   const [statsImportOpen, setStatsImportOpen] = useState(false);
 
-  const importStats = (values: Record<string, number>) => {
-    setAssigned(values);
-    setPool((prev) => prev.map(() => 0));
+  const importStats = (nextPool: number[]) => {
+    setPool(nextPool);
+    setAssigned({});
     setSelectedRollIdx(null);
   };
 
   const handleImportStatRoll = (entity: ExportEntity) => {
     const preset = entity as StatRollPreset;
-    if (preset.kind !== (isMonster ? "monster" : "hero") || !preset.values) return;
-    importStats(preset.values);
+    const expectedDice = isMonster ? 5 : 20;
+    if (
+      preset.kind !== (isMonster ? "monster" : "hero") ||
+      !Array.isArray(preset.pool) ||
+      preset.pool.length !== expectedDice ||
+      preset.pool.some((value) => !Number.isInteger(value) || value < 6 || value > 18)
+    ) return;
+    importStats(preset.pool);
     setStatsImportOpen(false);
   };
 
@@ -658,7 +664,13 @@ export default function CreateHeroScreen() {
           />
         )}
         {((!isMonster && step === 2) || (isMonster && step === 1)) && (
-          <RollStep pool={pool} onReroll={reroll} monster={isMonster} />
+          <RollStep
+            pool={pool}
+            onReroll={reroll}
+            monster={isMonster}
+            onExportStats={() => setStatsExportOpen(true)}
+            onImportStats={() => setStatsImportOpen(true)}
+          />
         )}
         {!isMonster && step === 3 && race && charClass && (
           <AssignStep
@@ -671,9 +683,6 @@ export default function CreateHeroScreen() {
             onPickSlot={onPickSlot}
             onReroll={reroll}
             onAutoFill={autoFill}
-            canExport={allAssigned}
-            onExportStats={() => setStatsExportOpen(true)}
-            onImportStats={() => setStatsImportOpen(true)}
           />
         )}
         {isMonster && step === 2 && monsterType && (
@@ -687,9 +696,6 @@ export default function CreateHeroScreen() {
             onPickSlot={onPickSlot}
             onReroll={reroll}
             onAutoFill={autoFill}
-            canExport={allAssigned}
-            onExportStats={() => setStatsExportOpen(true)}
-            onImportStats={() => setStatsImportOpen(true)}
           />
         )}
         {!isMonster && step === 4 && race && charClass && (
@@ -802,7 +808,7 @@ export default function CreateHeroScreen() {
             id: "draft",
             name: isMonster ? "Enemy Stat Roll" : "Party Stat Roll",
             kind: isMonster ? "monster" : "hero",
-            values: assigned,
+            pool,
           },
         }}
       />
@@ -1360,7 +1366,19 @@ function PickerCard({
 }
 
 // ---------- Roll step ----------
-function RollStep({ pool, onReroll, monster = false }: { pool: number[]; onReroll: () => void; monster?: boolean }) {
+function RollStep({
+  pool,
+  onReroll,
+  monster = false,
+  onExportStats,
+  onImportStats,
+}: {
+  pool: number[];
+  onReroll: () => void;
+  monster?: boolean;
+  onExportStats: () => void;
+  onImportStats: () => void;
+}) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   // Simple stagger animation on mount / reroll.
@@ -1430,6 +1448,25 @@ function RollStep({ pool, onReroll, monster = false }: { pool: number[]; onRerol
         <Icon name="dice-multiple" size={16} color={colors.onSurface} />
         <Text style={styles.rerollText}>Reroll all</Text>
       </Pressable>
+      <View style={styles.assignActionRow}>
+        <Pressable
+          testID="roll-import-stats"
+          onPress={onImportStats}
+          style={[styles.rerollSmall, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}
+        >
+          <Icon name="file-import-outline" size={13} color={colors.onSurface} />
+          <Text style={styles.rerollSmallText}>Import Dice Pool</Text>
+        </Pressable>
+        <Pressable
+          testID="roll-export-stats"
+          onPress={onExportStats}
+          disabled={pool.length === 0}
+          style={[styles.rerollSmall, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary, opacity: pool.length > 0 ? 1 : 0.4 }]}
+        >
+          <Icon name="file-export-outline" size={13} color={colors.onSurface} />
+          <Text style={styles.rerollSmallText}>Export Dice Pool</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -1445,9 +1482,6 @@ function AssignStep({
   onPickSlot,
   onReroll,
   onAutoFill,
-  canExport,
-  onExportStats,
-  onImportStats,
 }: {
   pool: number[];
   assigned: Record<string, number>;
@@ -1458,9 +1492,6 @@ function AssignStep({
   onPickSlot: (s: SlotRef) => void;
   onReroll: () => void;
   onAutoFill: () => void;
-  canExport: boolean;
-  onExportStats: () => void;
-  onImportStats: () => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -1559,38 +1590,6 @@ function AssignStep({
             <Text style={styles.rerollSmallText}>Reroll &amp; reset</Text>
           </Pressable>
         </View>
-        <View style={styles.assignActionRow}>
-          <Pressable
-            testID="assign-import-stats"
-            onPress={onImportStats}
-            style={({ pressed }) => [
-              styles.rerollSmall,
-              {
-                borderColor: colors.borderStrong,
-                backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
-              },
-            ]}
-          >
-            <Icon name="file-import-outline" size={13} color={colors.onSurface} />
-            <Text style={styles.rerollSmallText}>Import Stats</Text>
-          </Pressable>
-          <Pressable
-            testID="assign-export-stats"
-            onPress={onExportStats}
-            disabled={!canExport}
-            style={({ pressed }) => [
-              styles.rerollSmall,
-              {
-                borderColor: colors.borderStrong,
-                backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary,
-                opacity: canExport ? 1 : 0.4,
-              },
-            ]}
-          >
-            <Icon name="file-export-outline" size={13} color={colors.onSurface} />
-            <Text style={styles.rerollSmallText}>Export Stats</Text>
-          </Pressable>
-        </View>
       </View>
 
       {STATS_ORDER.map((sk) => (
@@ -1653,9 +1652,6 @@ function MonsterAssignStep({
   onPickSlot,
   onReroll,
   onAutoFill,
-  canExport,
-  onExportStats,
-  onImportStats,
 }: {
   pool: number[];
   assigned: Record<string, number>;
@@ -1666,9 +1662,6 @@ function MonsterAssignStep({
   onPickSlot: (s: SlotRef) => void;
   onReroll: () => void;
   onAutoFill: () => void;
-  canExport: boolean;
-  onExportStats: () => void;
-  onImportStats: () => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -1721,21 +1714,6 @@ function MonsterAssignStep({
           <Pressable testID="monster-assign-reroll" onPress={onReroll} style={[styles.rerollSmall, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
             <Icon name="restart" size={13} color={colors.onSurface} />
             <Text style={styles.rerollSmallText}>Reroll &amp; reset</Text>
-          </Pressable>
-        </View>
-        <View style={styles.assignActionRow}>
-          <Pressable testID="monster-import-stats" onPress={onImportStats} style={[styles.rerollSmall, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
-            <Icon name="file-import-outline" size={13} color={colors.onSurface} />
-            <Text style={styles.rerollSmallText}>Import Stats</Text>
-          </Pressable>
-          <Pressable
-            testID="monster-export-stats"
-            onPress={onExportStats}
-            disabled={!canExport}
-            style={[styles.rerollSmall, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary, opacity: canExport ? 1 : 0.4 }]}
-          >
-            <Icon name="file-export-outline" size={13} color={colors.onSurface} />
-            <Text style={styles.rerollSmallText}>Export Stats</Text>
           </Pressable>
         </View>
       </View>
