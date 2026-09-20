@@ -231,7 +231,8 @@ export default function CharacterSheetScreen() {
       return { ...s, value: nextValue, subs };
     });
     const nextLevel = String((parseInt(char.level, 10) || 0) + 1);
-    update({ stats, level: nextLevel });
+    const heroPoints = Math.min(10, char.heroPoints + 1);
+    update({ stats, level: nextLevel, heroPoints });
     setLevelUpOpen(false);
     setAbilityPickerFor(abilityKey);
   };
