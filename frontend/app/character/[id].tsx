@@ -102,6 +102,8 @@ export default function CharacterSheetScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const isWideScreen = width >= 768;
+  const [actionRowWidth, setActionRowWidth] = useState(0);
+  const isCompactActionRow = actionRowWidth > 0 && actionRowWidth < 340;
   const { id, age } = useLocalSearchParams<{ id: string; age?: string }>();
   const characterAge: AgeId = age === "age-of-war" ? "age-of-war" : DEFAULT_AGE_ID;
   const ageCatalog = getAgeCatalog(characterAge);
@@ -821,13 +823,16 @@ export default function CharacterSheetScreen() {
             </View>
           </View>
 
-          <View style={[styles.actionRow, isWideScreen && styles.actionRowWide]}>
+          <View
+            style={styles.actionRow}
+            onLayout={(e) => setActionRowWidth(e.nativeEvent.layout.width)}
+          >
             <Pressable
               testID="roll-mode-toggle"
               onPress={cycleRollMode}
               style={({ pressed }) => [
                 styles.actionChip,
-                isWideScreen && styles.actionChipWide,
+                isCompactActionRow && styles.actionChipCompact,
                 {
                   borderColor: colors.borderStrong,
                   backgroundColor:
@@ -858,7 +863,14 @@ export default function CharacterSheetScreen() {
                       : colors.onSurface
                 }
               />
-              <Text style={[styles.actionText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.actionText,
+                  isCompactActionRow && styles.actionTextCompact,
+                  { color: colors.onSurface, fontFamily: fonts.displayBold },
+                ]}
+              >
                 {rollMode === "advantage"
                   ? "Advantage"
                   : rollMode === "disadvantage"
@@ -871,8 +883,7 @@ export default function CharacterSheetScreen() {
               onPress={longRest}
               style={({ pressed }) => [
                 styles.actionChip,
-                isWideScreen && styles.actionChipWide,
-                isWideScreen && styles.longRestChipWide,
+                isCompactActionRow && styles.actionChipCompact,
                 {
                   borderColor: colors.borderStrong,
                   backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary,
@@ -881,7 +892,12 @@ export default function CharacterSheetScreen() {
             >
               <Icon name="campfire" size={16} color={colors.onBrandPrimary} />
               <Text
-                style={[styles.actionText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}
+                numberOfLines={1}
+                style={[
+                  styles.actionText,
+                  isCompactActionRow && styles.actionTextCompact,
+                  { color: colors.onBrandPrimary, fontFamily: fonts.displayBold },
+                ]}
               >
                 Long Rest
               </Text>
@@ -1970,12 +1986,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
-  actionRowWide: {
-    flexWrap: "wrap",
-    justifyContent: "flex-start",
-  },
   actionChip: {
     flex: 1,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1984,15 +1997,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 10,
   },
-  actionChipWide: {
-    flexGrow: 0,
-    flexBasis: 240,
-    maxWidth: 300,
-  },
-  longRestChipWide: {
-    marginLeft: "auto",
+  actionChipCompact: {
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
   },
   actionText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
+  actionTextCompact: { fontSize: 11, letterSpacing: 0.2 },
 
   sectionHeader: {
     borderWidth: 2,

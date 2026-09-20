@@ -44,7 +44,7 @@ export default function ArmourCard({ armour, onChange, onChoose }: Props) {
       <View style={styles.detailRow}>
         <View style={styles.speed}>
           <Icon name="run" size={15} color={colors.brandPrimary} />
-          <Text style={[styles.speedLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>MOVE</Text>
+          <Text style={[styles.speedLabel, { color: colors.muted, fontFamily: fonts.displayBold }]} numberOfLines={1}>MOVE</Text>
           <TextInput
             testID="armour-movement-speed"
             value={armour.movementSpeed}
@@ -54,7 +54,7 @@ export default function ArmourCard({ armour, onChange, onChoose }: Props) {
             disableFullscreenUI
             style={[styles.speedInput, { color: colors.onSurface, borderColor: colors.border, fontFamily: fonts.displayBold }]}
           />
-          <Text style={[styles.unit, { color: colors.muted, fontFamily: fonts.display }]}>ft</Text>
+          <Text style={[styles.unit, { color: colors.muted, fontFamily: fonts.display }]} numberOfLines={1}>ft</Text>
         </View>
         <View style={styles.reduction}>
           <Text style={[styles.reductionLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>DAMAGE REDUCTION</Text>
@@ -79,12 +79,12 @@ const styles = StyleSheet.create({
   label: { flex: 1, fontSize: 11, letterSpacing: 1.5 },
   name: { fontSize: 16, fontWeight: "700", paddingVertical: 2 },
   description: { minHeight: 34, fontSize: 11, lineHeight: 15, padding: 0 },
-  detailRow: { gap: 6 },
-  speed: { flexDirection: "row", alignItems: "center", gap: 4 },
-  speedLabel: { fontSize: 10, letterSpacing: 0.7 },
-  speedInput: { width: 34, borderWidth: 1.5, paddingVertical: 4, textAlign: "center", fontSize: 13 },
-  unit: { fontSize: 12 },
-  reduction: { flexDirection: "row", alignItems: "center", gap: 6 },
+  detailRow: { gap: 6, minWidth: 0 },
+  speed: { flexDirection: "row", alignItems: "center", gap: 4, minWidth: 0, flexShrink: 1 },
+  speedLabel: { fontSize: 10, letterSpacing: 0.7, flexShrink: 1 },
+  speedInput: { width: 34, flexShrink: 0, borderWidth: 1.5, paddingVertical: 4, textAlign: "center", fontSize: 13 },
+  unit: { fontSize: 12, flexShrink: 0 },
+  reduction: { flexDirection: "row", alignItems: "center", gap: 6, minWidth: 0, flexShrink: 1 },
   reductionLabel: { fontSize: 10, letterSpacing: 0.5, flexShrink: 1 },
-  reductionInput: { width: 38, borderWidth: 1.5, paddingVertical: 4, textAlign: "center", fontSize: 13 },
+  reductionInput: { width: 38, flexShrink: 0, borderWidth: 1.5, paddingVertical: 4, textAlign: "center", fontSize: 13 },
 });
