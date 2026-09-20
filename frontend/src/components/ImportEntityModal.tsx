@@ -17,7 +17,8 @@ type Props = {
   onImport: (entity: ExportEntity) => void;
 };
 
-const typeLabel = (type: ExportEntityType) => (type === "item" ? "Item" : `${type[0].toUpperCase()}${type.slice(1)}`);
+const typeLabel = (type: ExportEntityType) =>
+  type === "item" ? "Item" : type === "customPreset" ? "Custom Preset" : `${type[0].toUpperCase()}${type.slice(1)}`;
 
 export default function ImportEntityModal({ visible, expectedType, onClose, onImport }: Props) {
   const { colors } = useTheme();

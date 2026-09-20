@@ -30,6 +30,8 @@ import { CLASSES, RACES, Race, CharClass, TraitRef, traitKey } from "@/src/data/
 import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 import { getAgeCatalog } from "@/src/ageCatalog";
+import CustomPresetModal from "@/src/components/CustomPresetModal";
+import { CustomPreset, CustomPresetKind, addCustomPreset, loadCustomPresets } from "@/src/storage/customPresets";
 
 // ---------- Steps ----------
 type Step = 0 | 1 | 2 | 3 | 4;
@@ -90,7 +92,58 @@ type MonsterType = {
   oncePerRestDescription?: string;
   oncePerRestRoll?: string;
   oncePerRestType?: "damage" | "healing" | "none";
+  high?: TraitRef[];
+  low?: TraitRef[];
 };
+
+// Converts a saved CustomPreset into the shape each easy-creation step expects.
+function presetToRace(preset: CustomPreset): Race {
+  return {
+    id: preset.id,
+    name: preset.name,
+    tagline: preset.description || "A custom bloodline.",
+    lore: preset.description || "A custom bloodline forged by the table.",
+    high: preset.good,
+    low: preset.bad,
+  };
+}
+
+function presetToClass(preset: CustomPreset): CharClass {
+  return {
+    id: preset.id,
+    name: preset.name,
+    tagline: preset.description || "A custom calling.",
+    lore: preset.description || "A custom calling forged by the table.",
+    baseArmour: 2,
+    weapons: [{ name: "Simple Weapon", attackKind: "melee", damageRoll: "1d6" }],
+    high: preset.good,
+    low: preset.bad,
+  };
+}
+
+function presetToMonsterType(preset: CustomPreset): MonsterType {
+  return {
+    id: preset.id,
+    name: preset.name,
+    tagline: preset.description || "A custom threat.",
+    lore: preset.description || "A custom threat forged by the table.",
+    health: 15,
+    armour: 2,
+    attackRoll: "1d6",
+    weaponName: "Simple Weapon",
+    weaponDamageRoll: "1d6",
+    weaponAttackKind: "melee",
+    oncePerTurnName: "Strike",
+    oncePerTurnDescription: "A basic attack.",
+    oncePerTurnRoll: "1d6",
+    oncePerRestName: "Second Wind",
+    oncePerRestDescription: "Regain some strength.",
+    oncePerRestRoll: "1d6",
+    oncePerRestType: "healing",
+    high: preset.good,
+    low: preset.bad,
+  };
+}
 
 const CUSTOM_MONSTER: MonsterType = {
   id: "custom-monster",
@@ -188,20 +241,48 @@ export default function CreateHeroScreen() {
   const [selectedRollIdx, setSelectedRollIdx] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [customRaces, setCustomRaces] = useState<Race[]>([]);
+  const [customClasses, setCustomClasses] = useState<CharClass[]>([]);
+  const [customMonsterTypes, setCustomMonsterTypes] = useState<MonsterType[]>([]);
+  const [presetModalKind, setPresetModalKind] = useState<CustomPresetKind | null>(null);
+
+  const refreshCustomPresets = async (targetKind: CustomPresetKind) => {
+    const list = await loadCustomPresets(targetKind);
+    if (targetKind === "race") setCustomRaces(list.map(presetToRace));
+    if (targetKind === "class") setCustomClasses(list.map(presetToClass));
+    if (targetKind === "monsterType") setCustomMonsterTypes(list.map(presetToMonsterType));
+  };
+
+  useEffect(() => {
+    refreshCustomPresets("race");
+    refreshCustomPresets("class");
+    refreshCustomPresets("monsterType");
+  }, []);
+
+  const saveCustomPreset = async (preset: Omit<CustomPreset, "id" | "createdAt">) => {
+    const saved = await addCustomPreset(preset);
+    await refreshCustomPresets(saved.kind);
+    setPresetModalKind(null);
+    if (saved.kind === "race") setRace(presetToRace(saved));
+    if (saved.kind === "class") setCharClass(presetToClass(saved));
+    if (saved.kind === "monsterType") chooseMonsterType(presetToMonsterType(saved));
+  };
 
   const highSet = useMemo(() => {
     const s = new Set<string>();
     race?.high.forEach((t) => s.add(traitKey(t)));
     charClass?.high.forEach((t) => s.add(traitKey(t)));
+    monsterType?.high?.forEach((t) => s.add(traitKey(t)));
     return s;
-  }, [race, charClass]);
+  }, [race, charClass, monsterType]);
 
   const lowSet = useMemo(() => {
     const s = new Set<string>();
     race?.low.forEach((t) => s.add(traitKey(t)));
     charClass?.low.forEach((t) => s.add(traitKey(t)));
+    monsterType?.low?.forEach((t) => s.add(traitKey(t)));
     return s;
-  }, [race, charClass]);
+  }, [race, charClass, monsterType]);
 
   const isMonster = mode === "monster";
   const wizardSlots = isMonster
@@ -520,13 +601,19 @@ export default function CreateHeroScreen() {
 
       <View style={{ flex: 1 }}>
         {!isMonster && step === 0 && (
-          <RaceStep selected={race} onSelect={setRace} />
+          <RaceStep selected={race} onSelect={setRace} customRaces={customRaces} onCreateCustom={() => setPresetModalKind("race")} />
         )}
         {!isMonster && step === 1 && (
-          <ClassStep selected={charClass} onSelect={setCharClass} />
+          <ClassStep selected={charClass} onSelect={setCharClass} customClasses={customClasses} onCreateCustom={() => setPresetModalKind("class")} />
         )}
         {isMonster && step === 0 && (
-          <MonsterTypeStep selected={monsterType} onSelect={chooseMonsterType} onNew={startNewMonster} />
+          <MonsterTypeStep
+            selected={monsterType}
+            onSelect={chooseMonsterType}
+            onNew={startNewMonster}
+            customMonsterTypes={customMonsterTypes}
+            onCreateCustom={() => setPresetModalKind("monsterType")}
+          />
         )}
         {((!isMonster && step === 2) || (isMonster && step === 1)) && (
           <RollStep pool={pool} onReroll={reroll} monster={isMonster} />
@@ -549,6 +636,8 @@ export default function CreateHeroScreen() {
             pool={pool}
             assigned={assigned}
             selectedRollIdx={selectedRollIdx}
+            highSet={highSet}
+            lowSet={lowSet}
             onPickRoll={onPickRoll}
             onPickSlot={onPickSlot}
             onReroll={reroll}
@@ -648,6 +737,13 @@ export default function CreateHeroScreen() {
       </View>
         </>
       )}
+
+      <CustomPresetModal
+        visible={presetModalKind != null}
+        kind={presetModalKind ?? "race"}
+        onClose={() => setPresetModalKind(null)}
+        onSaved={saveCustomPreset}
+      />
     </View>
   );
 }
@@ -813,9 +909,13 @@ function StepBar({ step, labels }: { step: Step; labels: string[] }) {
 function RaceStep({
   selected,
   onSelect,
+  customRaces,
+  onCreateCustom,
 }: {
   selected: Race | null;
   onSelect: (r: Race) => void;
+  customRaces: Race[];
+  onCreateCustom: () => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -825,7 +925,23 @@ function RaceStep({
       <Text style={styles.stepSubHeading}>
         Green traits are natural strengths. Place a LOW roll there. Red traits are weak spots. Place a HIGH roll there.
       </Text>
-      {RACES.map((r) => (
+      <Pressable
+        testID="create-custom-race"
+        onPress={onCreateCustom}
+        style={({ pressed }) => [
+          styles.modeCta,
+          {
+            borderWidth: 2,
+            borderColor: colors.brandPrimary,
+            backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
+          },
+        ]}
+      >
+        <Icon name="pencil-plus" size={16} color={colors.onBrandPrimary} />
+        <Text style={[styles.modeCtaText, { color: colors.onBrandPrimary }]}>Create Custom Race</Text>
+        <Icon name="chevron-right" size={16} color={colors.onBrandPrimary} />
+      </Pressable>
+      {[...customRaces, ...RACES].map((r) => (
         <PickerCard
           key={r.id}
           testID={`race-${r.id}`}
@@ -846,9 +962,13 @@ function RaceStep({
 function ClassStep({
   selected,
   onSelect,
+  customClasses,
+  onCreateCustom,
 }: {
   selected: CharClass | null;
   onSelect: (c: CharClass) => void;
+  customClasses: CharClass[];
+  onCreateCustom: () => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -858,7 +978,23 @@ function ClassStep({
       <Text style={styles.stepSubHeading}>
         Sets your starting Armour and weapon(s). Traits stack with your race&apos;s hints.
       </Text>
-      {CLASSES.map((c) => (
+      <Pressable
+        testID="create-custom-class"
+        onPress={onCreateCustom}
+        style={({ pressed }) => [
+          styles.modeCta,
+          {
+            borderWidth: 2,
+            borderColor: colors.brandPrimary,
+            backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
+          },
+        ]}
+      >
+        <Icon name="pencil-plus" size={16} color={colors.onBrandPrimary} />
+        <Text style={[styles.modeCtaText, { color: colors.onBrandPrimary }]}>Create Custom Class</Text>
+        <Icon name="chevron-right" size={16} color={colors.onBrandPrimary} />
+      </Pressable>
+      {[...customClasses, ...CLASSES].map((c) => (
         <PickerCard
           key={c.id}
           testID={`class-${c.id}`}
@@ -899,10 +1035,14 @@ function MonsterTypeStep({
   selected,
   onSelect,
   onNew,
+  customMonsterTypes,
+  onCreateCustom,
 }: {
   selected: MonsterType | null;
   onSelect: (type: MonsterType) => void;
   onNew: () => void;
+  customMonsterTypes: MonsterType[];
+  onCreateCustom: () => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -928,7 +1068,23 @@ function MonsterTypeStep({
         <Text style={[styles.modeCtaText, { color: colors.onBrandPrimary }]}>New Enemy, Randomized Stats</Text>
         <Icon name="chevron-right" size={16} color={colors.onBrandPrimary} />
       </Pressable>
-      {MONSTER_TYPES.map((type) => (
+      <Pressable
+        testID="create-custom-monster-type"
+        onPress={onCreateCustom}
+        style={({ pressed }) => [
+          styles.modeCta,
+          {
+            borderWidth: 2,
+            borderColor: colors.borderStrong,
+            backgroundColor: pressed ? colors.surfaceTertiary : colors.surfaceSecondary,
+          },
+        ]}
+      >
+        <Icon name="pencil-plus" size={16} color={colors.onSurface} />
+        <Text style={[styles.modeCtaText, { color: colors.onSurface }]}>Create Custom Enemy Type</Text>
+        <Icon name="chevron-right" size={16} color={colors.onSurface} />
+      </Pressable>
+      {[...customMonsterTypes, ...MONSTER_TYPES].map((type) => (
         <PickerCard
           key={type.id}
           testID={`monster-type-${type.id}`}
@@ -936,8 +1092,8 @@ function MonsterTypeStep({
           title={type.name}
           tagline={type.tagline}
           lore={type.lore}
-          high={[]}
-          low={[]}
+          high={type.high ?? []}
+          low={type.low ?? []}
           onPress={() => onSelect(type)}
           extra={
             <View style={styles.classExtras}>
@@ -1284,6 +1440,8 @@ function MonsterAssignStep({
   pool,
   assigned,
   selectedRollIdx,
+  highSet,
+  lowSet,
   onPickRoll,
   onPickSlot,
   onReroll,
@@ -1292,6 +1450,8 @@ function MonsterAssignStep({
   pool: number[];
   assigned: Record<string, number>;
   selectedRollIdx: number | null;
+  highSet: Set<string>;
+  lowSet: Set<string>;
   onPickRoll: (i: number) => void;
   onPickSlot: (s: SlotRef) => void;
   onReroll: () => void;
@@ -1352,17 +1512,21 @@ function MonsterAssignStep({
         </View>
       </View>
       <View style={styles.statGrid}>
-        {MONSTER_SLOTS.map((slot, i) => (
-          <SlotChip
-            key={slotKey(slot)}
-            testID={`monster-slot-${i}`}
-            label={labels[i]}
-            value={assigned[slotKey(slot)]}
-            tint="none"
-            onPress={() => onPickSlot(slot)}
-            armed={selectedRollIdx != null}
-          />
-        ))}
+        {MONSTER_SLOTS.map((slot, i) => {
+          const traitK = traitKey(slot);
+          const tint = highSet.has(traitK) ? ("high" as const) : lowSet.has(traitK) ? ("low" as const) : ("none" as const);
+          return (
+            <SlotChip
+              key={slotKey(slot)}
+              testID={`monster-slot-${i}`}
+              label={labels[i]}
+              value={assigned[slotKey(slot)]}
+              tint={tint}
+              onPress={() => onPickSlot(slot)}
+              armed={selectedRollIdx != null}
+            />
+          );
+        })}
       </View>
     </ScrollView>
   );

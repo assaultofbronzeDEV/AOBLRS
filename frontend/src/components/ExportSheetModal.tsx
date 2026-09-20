@@ -125,7 +125,11 @@ export default function ExportSheetModal({ visible, onClose, character, characte
               />
               <View style={styles.headerTitles}>
                 <Text style={[styles.title, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-                  {isBundle ? "Export All Sheets" : entity ? `Export ${entity.type === "item" ? "Item" : entity.type[0].toUpperCase() + entity.type.slice(1)}` : "Export Sheet"}
+                  {isBundle
+                    ? "Export All Sheets"
+                    : entity
+                      ? `Export ${entity.type === "item" ? "Item" : entity.type === "customPreset" ? "Custom Preset" : entity.type[0].toUpperCase() + entity.type.slice(1)}`
+                      : "Export Sheet"}
                 </Text>
                 <Text numberOfLines={1} style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.body }]}>
                   {exportTitle}

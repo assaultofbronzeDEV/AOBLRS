@@ -93,7 +93,7 @@ export default function LevelUpModal({ visible, stats, onClose, onConfirm }: Pro
 
   if (!visible) return null;
 
-  const pointsUsed = Object.values(spent).reduce((sum, n) => sum + (n ?? 0), 0);
+  const pointsUsed = Object.values(spent).reduce<number>((sum, n) => sum + (n ?? 0), 0);
   const pointsLeft = LEVEL_UP_POINTS - pointsUsed;
   const canConfirm = pointsLeft === 0 && abilityKey != null;
 
@@ -200,7 +200,7 @@ export default function LevelUpModal({ visible, stats, onClose, onConfirm }: Pro
                       },
                     ]}
                   >
-                    <Icon name={opt.icon} size={18} color={active ? colors.onBrandPrimary : colors.onSurface} />
+                    <Icon name={opt.icon as any} size={18} color={active ? colors.onBrandPrimary : colors.onSurface} />
                     <Text
                       style={[
                         styles.abilityOptionText,

@@ -8,6 +8,7 @@ import {
   genId,
 } from "@/src/types";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
+import { CustomPreset } from "@/src/storage/customPresets";
 
 export type ExportPayload = {
   schema: "aob-sheet-v1";
@@ -20,8 +21,8 @@ export type ExportPayload = {
   characters?: Character[];
 };
 
-export type ExportEntityType = "ability" | "weapon" | "item";
-export type ExportEntity = Ability | Weapon | InventoryItem;
+export type ExportEntityType = "ability" | "weapon" | "item" | "customPreset";
+export type ExportEntity = Ability | Weapon | InventoryItem | CustomPreset;
 
 export type EntityExportPayload = {
   schema: "aob-entity-v1";
@@ -92,7 +93,7 @@ export function parseEntityImportJson(raw: string): ParseEntityImportResult {
 
   try {
     const parsed = JSON.parse(raw.trim());
-    const validTypes: ExportEntityType[] = ["ability", "weapon", "item"];
+    const validTypes: ExportEntityType[] = ["ability", "weapon", "item", "customPreset"];
     if (
       parsed?.schema !== "aob-entity-v1" ||
       !validTypes.includes(parsed.entityType) ||
