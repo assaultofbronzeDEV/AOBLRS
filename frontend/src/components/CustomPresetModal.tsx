@@ -62,6 +62,10 @@ export default function CustomPresetModal({ visible, kind, onClose, onSaved }: P
   const [description, setDescription] = useState("");
   const [good, setGood] = useState<TraitRef[]>([]);
   const [bad, setBad] = useState<TraitRef[]>([]);
+  const [weaponName, setWeaponName] = useState("");
+  const [weaponAttackKind, setWeaponAttackKind] = useState<"melee" | "ranged">("melee");
+  const [weaponDamageRoll, setWeaponDamageRoll] = useState("1d6");
+  const [maxHealth, setMaxHealth] = useState("15");
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -71,6 +75,10 @@ export default function CustomPresetModal({ visible, kind, onClose, onSaved }: P
       setDescription("");
       setGood([]);
       setBad([]);
+      setWeaponName("");
+      setWeaponAttackKind("melee");
+      setWeaponDamageRoll("1d6");
+      setMaxHealth("15");
     }
   }, [visible]);
 
@@ -114,13 +122,23 @@ export default function CustomPresetModal({ visible, kind, onClose, onSaved }: P
     description: description.trim(),
     good,
     bad,
+    weapon: kind === "class" ? { name: weaponName.trim() || "Simple Weapon", attackKind: weaponAttackKind, damageRoll: weaponDamageRoll.trim() || "1d6" } : undefined,
+    maxHealth: kind === "monsterType" ? Math.max(1, parseInt(maxHealth, 10) || 15) : undefined,
     createdAt: new Date().toISOString(),
   };
 
   const save = () => {
     if (!canSave) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onSaved({ kind, name: name.trim(), description: description.trim(), good, bad });
+    onSaved({
+      kind,
+      name: name.trim(),
+      description: description.trim(),
+      good,
+      bad,
+      weapon: draftPreset.weapon,
+      maxHealth: draftPreset.maxHealth,
+    });
   };
 
   const handleImport = (entity: ExportEntity) => {
@@ -130,6 +148,12 @@ export default function CustomPresetModal({ visible, kind, onClose, onSaved }: P
     setDescription(preset.description ?? "");
     setGood(Array.isArray(preset.good) ? preset.good : []);
     setBad(Array.isArray(preset.bad) ? preset.bad : []);
+    if (preset.weapon) {
+      setWeaponName(preset.weapon.name ?? "");
+      setWeaponAttackKind(preset.weapon.attackKind === "ranged" ? "ranged" : "melee");
+      setWeaponDamageRoll(preset.weapon.damageRoll ?? "1d6");
+    }
+    if (preset.maxHealth != null) setMaxHealth(String(preset.maxHealth));
   };
 
   return (
@@ -189,6 +213,71 @@ export default function CustomPresetModal({ visible, kind, onClose, onSaved }: P
               multiline
               style={[styles.input, styles.textArea, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.body }]}
             />
+
+            {kind === "monsterType" && (
+              <>
+                <Text style={[styles.fieldLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>MAX HEALTH</Text>
+                <TextInput
+                  testID="custom-preset-max-health"
+                  value={maxHealth}
+                  onChangeText={(t) => setMaxHealth(t.replace(/\D/g, "").slice(0, 3))}
+                  keyboardType="number-pad"
+                  placeholder="15"
+                  placeholderTextColor={colors.muted}
+                  style={[styles.input, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.displayBold }]}
+                />
+              </>
+            )}
+
+            {kind === "class" && (
+              <>
+                <Text style={[styles.fieldLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>STARTING WEAPON</Text>
+                <TextInput
+                  testID="custom-preset-weapon-name"
+                  value={weaponName}
+                  onChangeText={setWeaponName}
+                  placeholder="Weapon name"
+                  placeholderTextColor={colors.muted}
+                  style={[styles.input, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.displayBold }]}
+                />
+                <View style={styles.weaponRow}>
+                  <Pressable
+                    testID="custom-preset-weapon-melee"
+                    onPress={() => setWeaponAttackKind("melee")}
+                    style={[
+                      styles.weaponKindBtn,
+                      { borderColor: colors.borderStrong, backgroundColor: weaponAttackKind === "melee" ? colors.brandPrimary : colors.surface },
+                    ]}
+                  >
+                    <Icon name="sword" size={14} color={weaponAttackKind === "melee" ? colors.onBrandPrimary : colors.onSurface} />
+                    <Text style={[styles.weaponKindText, { color: weaponAttackKind === "melee" ? colors.onBrandPrimary : colors.onSurface, fontFamily: fonts.displayBold }]}>
+                      Melee
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    testID="custom-preset-weapon-ranged"
+                    onPress={() => setWeaponAttackKind("ranged")}
+                    style={[
+                      styles.weaponKindBtn,
+                      { borderColor: colors.borderStrong, backgroundColor: weaponAttackKind === "ranged" ? colors.brandPrimary : colors.surface },
+                    ]}
+                  >
+                    <Icon name="bow-arrow" size={14} color={weaponAttackKind === "ranged" ? colors.onBrandPrimary : colors.onSurface} />
+                    <Text style={[styles.weaponKindText, { color: weaponAttackKind === "ranged" ? colors.onBrandPrimary : colors.onSurface, fontFamily: fonts.displayBold }]}>
+                      Ranged
+                    </Text>
+                  </Pressable>
+                  <TextInput
+                    testID="custom-preset-weapon-damage"
+                    value={weaponDamageRoll}
+                    onChangeText={setWeaponDamageRoll}
+                    placeholder="1d6"
+                    placeholderTextColor={colors.muted}
+                    style={[styles.input, styles.weaponDamageInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.displayBold }]}
+                  />
+                </View>
+              </>
+            )}
 
             <Text style={[styles.fieldLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>
               GOOD STATS ({good.length}/{MAX_TRAITS})
@@ -297,6 +386,10 @@ const styles = StyleSheet.create({
   hint: { fontSize: 11, lineHeight: 14, marginBottom: 4 },
   input: { borderWidth: 1.5, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14 },
   textArea: { minHeight: 60, textAlignVertical: "top" },
+  weaponRow: { flexDirection: "row", gap: 6, alignItems: "center" },
+  weaponKindBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1.5, paddingHorizontal: 8, paddingVertical: 8 },
+  weaponKindText: { fontSize: 11 },
+  weaponDamageInput: { flex: 1, minWidth: 0 },
   traitGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   traitChip: { borderWidth: 1.5, paddingHorizontal: 8, paddingVertical: 6 },
   traitChipText: { fontSize: 11 },

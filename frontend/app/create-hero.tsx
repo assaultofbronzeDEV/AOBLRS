@@ -31,7 +31,7 @@ import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 import { getAgeCatalog } from "@/src/ageCatalog";
 import CustomPresetModal from "@/src/components/CustomPresetModal";
-import { CustomPreset, CustomPresetKind, addCustomPreset, loadCustomPresets } from "@/src/storage/customPresets";
+import { CustomPreset, CustomPresetKind, addCustomPreset, deleteCustomPreset, loadCustomPresets } from "@/src/storage/customPresets";
 
 // ---------- Steps ----------
 type Step = 0 | 1 | 2 | 3 | 4;
@@ -109,25 +109,27 @@ function presetToRace(preset: CustomPreset): Race {
 }
 
 function presetToClass(preset: CustomPreset): CharClass {
+  const weapon = preset.weapon ?? { name: "Simple Weapon", attackKind: "melee" as const, damageRoll: "1d6" };
   return {
     id: preset.id,
     name: preset.name,
     tagline: preset.description || "A custom calling.",
     lore: preset.description || "A custom calling forged by the table.",
     baseArmour: 2,
-    weapons: [{ name: "Simple Weapon", attackKind: "melee", damageRoll: "1d6" }],
+    weapons: [weapon],
     high: preset.good,
     low: preset.bad,
   };
 }
 
 function presetToMonsterType(preset: CustomPreset): MonsterType {
+  const health = preset.maxHealth ?? 15;
   return {
     id: preset.id,
     name: preset.name,
     tagline: preset.description || "A custom threat.",
     lore: preset.description || "A custom threat forged by the table.",
-    health: 15,
+    health,
     armour: 2,
     attackRoll: "1d6",
     weaponName: "Simple Weapon",
@@ -266,6 +268,14 @@ export default function CreateHeroScreen() {
     if (saved.kind === "race") setRace(presetToRace(saved));
     if (saved.kind === "class") setCharClass(presetToClass(saved));
     if (saved.kind === "monsterType") chooseMonsterType(presetToMonsterType(saved));
+  };
+
+  const removeCustomPreset = async (targetKind: CustomPresetKind, id: string) => {
+    await deleteCustomPreset(id);
+    await refreshCustomPresets(targetKind);
+    if (targetKind === "race" && race?.id === id) setRace(null);
+    if (targetKind === "class" && charClass?.id === id) setCharClass(null);
+    if (targetKind === "monsterType" && monsterType?.id === id) setMonsterType(null);
   };
 
   const highSet = useMemo(() => {
@@ -601,10 +611,22 @@ export default function CreateHeroScreen() {
 
       <View style={{ flex: 1 }}>
         {!isMonster && step === 0 && (
-          <RaceStep selected={race} onSelect={setRace} customRaces={customRaces} onCreateCustom={() => setPresetModalKind("race")} />
+          <RaceStep
+            selected={race}
+            onSelect={setRace}
+            customRaces={customRaces}
+            onCreateCustom={() => setPresetModalKind("race")}
+            onDeleteCustom={(id) => removeCustomPreset("race", id)}
+          />
         )}
         {!isMonster && step === 1 && (
-          <ClassStep selected={charClass} onSelect={setCharClass} customClasses={customClasses} onCreateCustom={() => setPresetModalKind("class")} />
+          <ClassStep
+            selected={charClass}
+            onSelect={setCharClass}
+            customClasses={customClasses}
+            onCreateCustom={() => setPresetModalKind("class")}
+            onDeleteCustom={(id) => removeCustomPreset("class", id)}
+          />
         )}
         {isMonster && step === 0 && (
           <MonsterTypeStep
@@ -613,6 +635,7 @@ export default function CreateHeroScreen() {
             onNew={startNewMonster}
             customMonsterTypes={customMonsterTypes}
             onCreateCustom={() => setPresetModalKind("monsterType")}
+            onDeleteCustom={(id) => removeCustomPreset("monsterType", id)}
           />
         )}
         {((!isMonster && step === 2) || (isMonster && step === 1)) && (
@@ -911,11 +934,13 @@ function RaceStep({
   onSelect,
   customRaces,
   onCreateCustom,
+  onDeleteCustom,
 }: {
   selected: Race | null;
   onSelect: (r: Race) => void;
   customRaces: Race[];
   onCreateCustom: () => void;
+  onDeleteCustom: (id: string) => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -941,7 +966,23 @@ function RaceStep({
         <Text style={[styles.modeCtaText, { color: colors.onBrandPrimary }]}>Create Custom Race</Text>
         <Icon name="chevron-right" size={16} color={colors.onBrandPrimary} />
       </Pressable>
-      {[...customRaces, ...RACES].map((r) => (
+      {customRaces.length > 0 && <Text style={styles.sectionLabel}>CUSTOM RACES</Text>}
+      {customRaces.map((r) => (
+        <PickerCard
+          key={r.id}
+          testID={`race-${r.id}`}
+          selected={selected?.id === r.id}
+          title={r.name}
+          tagline={r.tagline}
+          lore={r.lore}
+          high={r.high}
+          low={r.low}
+          onPress={() => onSelect(r)}
+          onDelete={() => onDeleteCustom(r.id)}
+        />
+      ))}
+      {customRaces.length > 0 && <Text style={styles.sectionLabel}>STANDARD RACES</Text>}
+      {RACES.map((r) => (
         <PickerCard
           key={r.id}
           testID={`race-${r.id}`}
@@ -964,11 +1005,13 @@ function ClassStep({
   onSelect,
   customClasses,
   onCreateCustom,
+  onDeleteCustom,
 }: {
   selected: CharClass | null;
   onSelect: (c: CharClass) => void;
   customClasses: CharClass[];
   onCreateCustom: () => void;
+  onDeleteCustom: (id: string) => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -994,7 +1037,43 @@ function ClassStep({
         <Text style={[styles.modeCtaText, { color: colors.onBrandPrimary }]}>Create Custom Class</Text>
         <Icon name="chevron-right" size={16} color={colors.onBrandPrimary} />
       </Pressable>
-      {[...customClasses, ...CLASSES].map((c) => (
+      {customClasses.length > 0 && <Text style={styles.sectionLabel}>CUSTOM CLASSES</Text>}
+      {customClasses.map((c) => (
+        <PickerCard
+          key={c.id}
+          testID={`class-${c.id}`}
+          selected={selected?.id === c.id}
+          title={c.name}
+          tagline={c.tagline}
+          lore={c.lore}
+          high={c.high}
+          low={c.low}
+          onPress={() => onSelect(c)}
+          onDelete={() => onDeleteCustom(c.id)}
+          extra={
+            <View style={styles.classExtras}>
+              <View style={styles.classExtraChip}>
+                <Icon name="shield" size={12} color={colors.brandPrimary} />
+                <Text style={styles.classExtraText}>Armour {c.baseArmour}</Text>
+              </View>
+              {c.weapons.map((w, i) => (
+                <View key={i} style={styles.classExtraChip}>
+                  <Icon
+                    name={w.attackKind === "ranged" ? "bow-arrow" : "sword"}
+                    size={12}
+                    color={colors.brandPrimary}
+                  />
+                  <Text style={styles.classExtraText}>
+                    {w.name} ({w.damageRoll})
+                  </Text>
+                </View>
+              ))}
+            </View>
+          }
+        />
+      ))}
+      {customClasses.length > 0 && <Text style={styles.sectionLabel}>STANDARD CLASSES</Text>}
+      {CLASSES.map((c) => (
         <PickerCard
           key={c.id}
           testID={`class-${c.id}`}
@@ -1037,12 +1116,14 @@ function MonsterTypeStep({
   onNew,
   customMonsterTypes,
   onCreateCustom,
+  onDeleteCustom,
 }: {
   selected: MonsterType | null;
   onSelect: (type: MonsterType) => void;
   onNew: () => void;
   customMonsterTypes: MonsterType[];
   onCreateCustom: () => void;
+  onDeleteCustom: (id: string) => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -1084,7 +1165,35 @@ function MonsterTypeStep({
         <Text style={[styles.modeCtaText, { color: colors.onSurface }]}>Create Custom Enemy Type</Text>
         <Icon name="chevron-right" size={16} color={colors.onSurface} />
       </Pressable>
-      {[...customMonsterTypes, ...MONSTER_TYPES].map((type) => (
+      {customMonsterTypes.length > 0 && <Text style={styles.sectionLabel}>CUSTOM ENEMIES</Text>}
+      {customMonsterTypes.map((type) => (
+        <PickerCard
+          key={type.id}
+          testID={`monster-type-${type.id}`}
+          selected={selected?.id === type.id}
+          title={type.name}
+          tagline={type.tagline}
+          lore={type.lore}
+          high={type.high ?? []}
+          low={type.low ?? []}
+          onPress={() => onSelect(type)}
+          onDelete={() => onDeleteCustom(type.id)}
+          extra={
+            <View style={styles.classExtras}>
+              <View style={styles.classExtraChip}>
+                <Icon name="heart" size={12} color={colors.brandSecondary} />
+                <Text style={styles.classExtraText}>HP {type.health}</Text>
+              </View>
+              <View style={styles.classExtraChip}>
+                <Icon name="sword" size={12} color={colors.brandPrimary} />
+                <Text style={styles.classExtraText}>{type.attackRoll} damage</Text>
+              </View>
+            </View>
+          }
+        />
+      ))}
+      {customMonsterTypes.length > 0 && <Text style={styles.sectionLabel}>STANDARD ENEMIES</Text>}
+      {MONSTER_TYPES.map((type) => (
         <PickerCard
           key={type.id}
           testID={`monster-type-${type.id}`}
@@ -1124,6 +1233,7 @@ function PickerCard({
   onPress,
   extra,
   testID,
+  onDelete,
 }: {
   selected: boolean;
   title: string;
@@ -1134,6 +1244,7 @@ function PickerCard({
   onPress: () => void;
   extra?: React.ReactNode;
   testID?: string;
+  onDelete?: () => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -1155,6 +1266,19 @@ function PickerCard({
     >
       <View style={styles.pickerHead}>
         <Text style={styles.pickerTitle}>{title}</Text>
+        {onDelete && (
+          <Pressable
+            testID={`${testID}-delete`}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onDelete();
+            }}
+            hitSlop={8}
+            style={styles.pickerDeleteBtn}
+          >
+            <Icon name="trash-can-outline" size={18} color={colors.error} />
+          </Pressable>
+        )}
         {selected && (
           <Icon name="check-circle" size={20} color={colors.brandPrimary} />
         )}
@@ -1826,6 +1950,13 @@ const getStyles = (colors: ThemeColors) =>
       fontFamily: fonts.display,
       lineHeight: 18,
     },
+    sectionLabel: {
+      fontSize: 12,
+      color: colors.muted,
+      fontFamily: fonts.displayBold,
+      letterSpacing: 1.2,
+      marginTop: 4,
+    },
 
     // Picker card
     pickerCard: {
@@ -1837,12 +1968,18 @@ const getStyles = (colors: ThemeColors) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      gap: 8,
     },
     pickerTitle: {
+      flex: 1,
+      minWidth: 0,
       fontSize: 18,
       color: colors.onSurface,
       fontFamily: fonts.displayBold,
       letterSpacing: 1,
+    },
+    pickerDeleteBtn: {
+      padding: 2,
     },
     pickerTagline: {
       fontSize: 13,

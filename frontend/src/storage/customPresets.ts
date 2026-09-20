@@ -4,6 +4,12 @@ import { genId } from "@/src/types";
 
 export type CustomPresetKind = "race" | "class" | "monsterType";
 
+export type CustomPresetWeapon = {
+  name: string;
+  attackKind: "melee" | "ranged";
+  damageRoll: string;
+};
+
 export type CustomPreset = {
   id: string;
   kind: CustomPresetKind;
@@ -11,6 +17,8 @@ export type CustomPreset = {
   description: string;
   good: TraitRef[]; // up to 4 — natural strengths, place a LOW roll here
   bad: TraitRef[]; // up to 4 — weak spots, place a HIGH roll here
+  weapon?: CustomPresetWeapon; // class: starting weapon
+  maxHealth?: number; // monsterType: starting/max HP
   createdAt: string;
 };
 
