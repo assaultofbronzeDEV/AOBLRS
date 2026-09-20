@@ -54,6 +54,7 @@ import PickerSheet, { PickerEntry } from "@/src/components/PickerSheet";
 import CurrencyPurse from "@/src/components/CurrencyPurse";
 import ExportSheetModal from "@/src/components/ExportSheetModal";
 import ImportEntityModal from "@/src/components/ImportEntityModal";
+import LevelUpModal, { AbilityChoiceKey } from "@/src/components/LevelUpModal";
 import { ExportEntity, ExportEntityType } from "@/src/storage/sheetTransfer";
 import { valueForRef, labelForRef } from "@/src/components/StatPickerModal";
 import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
@@ -121,6 +122,7 @@ export default function CharacterSheetScreen() {
   const [armourPickerOpen, setArmourPickerOpen] = useState(false);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [abilityPickerFor, setAbilityPickerFor] = useState<AbilityKey | null>(null);
+  const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [entityToExport, setEntityToExport] = useState<{ type: ExportEntityType; value: ExportEntity } | null>(null);
   const [entityImportType, setEntityImportType] = useState<ExportEntityType | null>(null);
@@ -215,6 +217,18 @@ export default function CharacterSheetScreen() {
     if (!char) return;
     const stats = char.stats.map((s, i) => (i === idx ? next : s));
     update({ stats });
+  };
+
+  const confirmLevelUp = (reductions: Partial<Record<string, number>>, abilityKey: AbilityChoiceKey) => {
+    if (!char) return;
+    const stats = char.stats.map((s) => {
+      const dec = reductions[s.key] ?? 0;
+      return dec > 0 ? { ...s, value: Math.max(6, s.value - dec) } : s;
+    });
+    const nextLevel = String((parseInt(char.level, 10) || 0) + 1);
+    update({ stats, level: nextLevel });
+    setLevelUpOpen(false);
+    setAbilityPickerFor(abilityKey);
   };
 
   const changeHeroPoints = (delta: number) => {
@@ -757,25 +771,43 @@ export default function CharacterSheetScreen() {
                 accessibilityLabel="Assault of Bronze — Lightweight Roleplay System"
               />
               <View style={styles.topRow}>
-            <Pressable
-              testID="portrait-picker"
-              onPress={pickPortrait}
-              style={[
-                styles.portrait,
-                { borderColor: colors.borderStrong, backgroundColor: colors.surfaceTertiary },
-              ]}
-            >
-              {char.portraitUri ? (
-                <Image source={{ uri: char.portraitUri }} style={styles.portraitImg} />
-              ) : (
-                <View style={styles.portraitPlaceholder}>
-                  <Icon name="account-plus" size={40} color={colors.brandPrimary} />
-                  <Text style={[styles.portraitLabel, { color: colors.muted, fontFamily: fonts.display }]}>
-                    Tap to add portrait
-                  </Text>
-                </View>
-              )}
-            </Pressable>
+            <View style={styles.portraitCol}>
+              <Pressable
+                testID="portrait-picker"
+                onPress={pickPortrait}
+                style={[
+                  styles.portrait,
+                  { borderColor: colors.borderStrong, backgroundColor: colors.surfaceTertiary },
+                ]}
+              >
+                {char.portraitUri ? (
+                  <Image source={{ uri: char.portraitUri }} style={styles.portraitImg} />
+                ) : (
+                  <View style={styles.portraitPlaceholder}>
+                    <Icon name="account-plus" size={40} color={colors.brandPrimary} />
+                    <Text style={[styles.portraitLabel, { color: colors.muted, fontFamily: fonts.display }]}>
+                      Tap to add portrait
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable
+                testID="level-up-btn"
+                onPress={() => setLevelUpOpen(true)}
+                style={({ pressed }) => [
+                  styles.levelUpBtn,
+                  {
+                    borderColor: colors.borderStrong,
+                    backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
+                  },
+                ]}
+              >
+                <Icon name="arrow-up-bold-circle" size={15} color={colors.onBrandPrimary} />
+                <Text style={[styles.levelUpBtnText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
+                  Level Up
+                </Text>
+              </Pressable>
+            </View>
 
             <View style={styles.identityCol}>
               <LabeledField
@@ -1460,6 +1492,13 @@ export default function CharacterSheetScreen() {
         }}
       />
 
+      <LevelUpModal
+        visible={levelUpOpen}
+        stats={char.stats}
+        onClose={() => setLevelUpOpen(false)}
+        onConfirm={confirmLevelUp}
+      />
+
       <ExportSheetModal
         visible={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
@@ -1926,9 +1965,10 @@ const styles = StyleSheet.create({
   },
 
   topRow: { flexDirection: "row", gap: 10 },
+  portraitCol: { width: 130, gap: 6 },
   portrait: {
     width: 130,
-    height: 220,
+    height: 184,
     borderWidth: 2.5,
     overflow: "hidden",
   },
@@ -1941,6 +1981,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   portraitLabel: { fontSize: 11, textAlign: "center" },
+  levelUpBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    borderWidth: 2,
+    paddingVertical: 6,
+  },
+  levelUpBtnText: { fontSize: 11, letterSpacing: 0.4 },
   identityCol: { flex: 1, gap: 6 },
 
   combatBox: {
