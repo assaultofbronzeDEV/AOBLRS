@@ -10,6 +10,10 @@ export const LEVEL_UP_POINTS = 2;
 
 export type AbilityChoiceKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
 
+// Composite key: "STR" for the main stat, "STR:1" for its second sub-skill.
+const mainKey = (statKey: string) => statKey;
+const subKey = (statKey: string, subIndex: number) => `${statKey}:${subIndex}`;
+
 type AbilityOption = { key: AbilityChoiceKey; label: string; icon: string };
 
 const ABILITY_OPTIONS: AbilityOption[] = [
@@ -24,6 +28,56 @@ type Props = {
   onClose: () => void;
   onConfirm: (reductions: Partial<Record<string, number>>, abilityKey: AbilityChoiceKey) => void;
 };
+
+function StatRow({
+  label,
+  value,
+  used,
+  pointsLeft,
+  onSpend,
+  onRefund,
+  testIDBase,
+}: {
+  label: string;
+  value: number;
+  used: number;
+  pointsLeft: number;
+  onSpend: () => void;
+  onRefund: () => void;
+  testIDBase: string;
+}) {
+  const { colors } = useTheme();
+  const preview = value - used;
+  const canSpend = pointsLeft > 0 && preview > STAT_FLOOR;
+  return (
+    <View style={[styles.statRow, { borderBottomColor: colors.divider }]}>
+      <Text numberOfLines={1} style={[styles.statRowLabel, { color: colors.onSurface, fontFamily: fonts.body }]}>
+        {label}
+      </Text>
+      <Text style={[styles.statRowValue, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
+        {used > 0 ? `${value} → ${preview}` : value}
+      </Text>
+      <View style={styles.statRowButtons}>
+        <Pressable
+          testID={`${testIDBase}-minus`}
+          onPress={onRefund}
+          disabled={used <= 0}
+          style={[styles.statBtn, { borderColor: colors.borderStrong, opacity: used <= 0 ? 0.4 : 1 }]}
+        >
+          <Icon name="minus" size={13} color={colors.onSurface} />
+        </Pressable>
+        <Pressable
+          testID={`${testIDBase}-plus`}
+          onPress={onSpend}
+          disabled={!canSpend}
+          style={[styles.statBtn, { borderColor: colors.borderStrong, opacity: canSpend ? 1 : 0.4 }]}
+        >
+          <Icon name="plus" size={13} color={colors.onSurface} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
 
 export default function LevelUpModal({ visible, stats, onClose, onConfirm }: Props) {
   const { colors } = useTheme();
@@ -43,14 +97,14 @@ export default function LevelUpModal({ visible, stats, onClose, onConfirm }: Pro
   const pointsLeft = LEVEL_UP_POINTS - pointsUsed;
   const canConfirm = pointsLeft === 0 && abilityKey != null;
 
-  const spendOn = (key: string, current: number) => {
+  const spend = (key: string, current: number) => {
     const used = spent[key] ?? 0;
     if (pointsLeft <= 0 || current - used <= STAT_FLOOR) return;
     Haptics.selectionAsync();
     setSpent({ ...spent, [key]: used + 1 });
   };
 
-  const refundFrom = (key: string) => {
+  const refund = (key: string) => {
     const used = spent[key] ?? 0;
     if (used <= 0) return;
     Haptics.selectionAsync();
@@ -62,6 +116,9 @@ export default function LevelUpModal({ visible, stats, onClose, onConfirm }: Pro
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onConfirm(spent, abilityKey);
   };
+
+  const pairs: StatBlock[][] = [];
+  for (let i = 0; i < stats.length; i += 2) pairs.push(stats.slice(i, i + 2));
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -82,44 +139,44 @@ export default function LevelUpModal({ visible, stats, onClose, onConfirm }: Pro
               SPEND {LEVEL_UP_POINTS} STAT POINTS ({pointsLeft} LEFT)
             </Text>
             <Text style={[styles.hint, { color: colors.muted, fontFamily: fonts.body }]}>
-              Each point lowers a stat by 1 (lower is stronger). Stats cannot go below {STAT_FLOOR}.
+              Each point lowers a stat or sub-skill by 1 (lower is stronger). Nothing can go below {STAT_FLOOR}.
             </Text>
 
-            {stats.map((s) => {
-              const used = spent[s.key] ?? 0;
-              const preview = s.value - used;
-              return (
-                <View key={s.key} style={[styles.statRow, { borderColor: colors.border }]}>
-                  <View style={styles.statInfo}>
-                    <Text style={[styles.statName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{s.name}</Text>
-                    <Text style={[styles.statValue, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
-                      {s.value} {used > 0 ? `→ ${preview}` : ""}
-                    </Text>
+            {pairs.map((pair, rowIdx) => (
+              <View key={rowIdx} style={styles.statPairRow}>
+                {pair.map((block) => (
+                  <View key={block.key} style={[styles.statBlock, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
+                    <View style={[styles.statBlockHeader, { borderBottomColor: colors.borderStrong }]}>
+                      <Text style={[styles.statBlockKey, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{block.key}</Text>
+                      <Text numberOfLines={1} style={[styles.statBlockName, { color: colors.muted, fontFamily: fonts.display }]}>
+                        {block.name}
+                      </Text>
+                    </View>
+                    <StatRow
+                      label={block.name}
+                      value={block.value}
+                      used={spent[mainKey(block.key)] ?? 0}
+                      pointsLeft={pointsLeft}
+                      onSpend={() => spend(mainKey(block.key), block.value)}
+                      onRefund={() => refund(mainKey(block.key))}
+                      testIDBase={`levelup-stat-${block.key}`}
+                    />
+                    {block.subs.map((s, i) => (
+                      <StatRow
+                        key={s.name}
+                        label={s.name}
+                        value={s.value}
+                        used={spent[subKey(block.key, i)] ?? 0}
+                        pointsLeft={pointsLeft}
+                        onSpend={() => spend(subKey(block.key, i), s.value)}
+                        onRefund={() => refund(subKey(block.key, i))}
+                        testIDBase={`levelup-sub-${block.key}-${i}`}
+                      />
+                    ))}
                   </View>
-                  <View style={styles.statButtons}>
-                    <Pressable
-                      testID={`levelup-stat-${s.key}-minus`}
-                      onPress={() => refundFrom(s.key)}
-                      disabled={used <= 0}
-                      style={[styles.statBtn, { borderColor: colors.borderStrong, opacity: used <= 0 ? 0.4 : 1 }]}
-                    >
-                      <Icon name="minus" size={16} color={colors.onSurface} />
-                    </Pressable>
-                    <Pressable
-                      testID={`levelup-stat-${s.key}-plus`}
-                      onPress={() => spendOn(s.key, s.value)}
-                      disabled={pointsLeft <= 0 || preview <= STAT_FLOOR}
-                      style={[
-                        styles.statBtn,
-                        { borderColor: colors.borderStrong, opacity: pointsLeft <= 0 || preview <= STAT_FLOOR ? 0.4 : 1 },
-                      ]}
-                    >
-                      <Icon name="plus" size={16} color={colors.onSurface} />
-                    </Pressable>
-                  </View>
-                </View>
-              );
-            })}
+                ))}
+              </View>
+            ))}
 
             <Text style={[styles.sectionLabel, { color: colors.muted, fontFamily: fonts.displayBold, marginTop: 8 }]}>
               CHOOSE A NEW ABILITY
@@ -188,7 +245,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    maxWidth: 480,
+    maxWidth: 560,
     maxHeight: "88%",
     borderWidth: 1,
     overflow: "hidden",
@@ -207,22 +264,34 @@ const styles = StyleSheet.create({
   body: { padding: 16, gap: 10 },
   sectionLabel: { fontSize: 12, letterSpacing: 1 },
   hint: { fontSize: 12, lineHeight: 16, marginBottom: 4 },
+
+  statPairRow: { flexDirection: "row", gap: 10 },
+  statBlock: { flex: 1, minWidth: 0, borderWidth: 2 },
+  statBlockHeader: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderBottomWidth: 1.5,
+  },
+  statBlockKey: { fontSize: 14, letterSpacing: 0.5 },
+  statBlockName: { fontSize: 9, letterSpacing: 1, flexShrink: 1 },
+
   statRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1.5,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 8,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderBottomWidth: 1,
   },
-  statInfo: { flex: 1, minWidth: 0, gap: 2 },
-  statName: { fontSize: 13, letterSpacing: 0.5 },
-  statValue: { fontSize: 14 },
-  statButtons: { flexDirection: "row", gap: 8 },
+  statRowLabel: { flex: 1, minWidth: 0, fontSize: 10.5, lineHeight: 13 },
+  statRowValue: { fontSize: 11, marginHorizontal: 4 },
+  statRowButtons: { flexDirection: "row", gap: 4 },
   statBtn: {
-    width: 32,
-    height: 32,
+    width: 22,
+    height: 22,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",

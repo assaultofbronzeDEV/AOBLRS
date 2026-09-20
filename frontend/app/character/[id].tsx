@@ -222,8 +222,13 @@ export default function CharacterSheetScreen() {
   const confirmLevelUp = (reductions: Partial<Record<string, number>>, abilityKey: AbilityChoiceKey) => {
     if (!char) return;
     const stats = char.stats.map((s) => {
-      const dec = reductions[s.key] ?? 0;
-      return dec > 0 ? { ...s, value: Math.max(6, s.value - dec) } : s;
+      const mainDec = reductions[s.key] ?? 0;
+      const nextValue = mainDec > 0 ? Math.max(6, s.value - mainDec) : s.value;
+      const subs = s.subs.map((sub, i) => {
+        const dec = reductions[`${s.key}:${i}`] ?? 0;
+        return dec > 0 ? { ...sub, value: Math.max(6, sub.value - dec) } : sub;
+      });
+      return { ...s, value: nextValue, subs };
     });
     const nextLevel = String((parseInt(char.level, 10) || 0) + 1);
     update({ stats, level: nextLevel });
