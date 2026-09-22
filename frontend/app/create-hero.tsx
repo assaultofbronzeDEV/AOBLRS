@@ -27,9 +27,9 @@ import {
   HP_MAX,
   StatKey,
 } from "@/src/types";
-import AbilityCard from "@/src/components/AbilityCard";
 import { upsertCharacter } from "@/src/storage/characters";
 import { CLASSES, RACES, Race, CharClass, TraitRef, traitKey } from "@/src/data/lineages";
+import type { AbilityPreset } from "@/src/data/abilities";
 import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 import { getAgeCatalog } from "@/src/ageCatalog";
@@ -253,22 +253,23 @@ export default function CreateHeroScreen() {
   const [customClasses, setCustomClasses] = useState<CharClass[]>([]);
   const [customMonsterTypes, setCustomMonsterTypes] = useState<MonsterType[]>([]);
   const [presetModalKind, setPresetModalKind] = useState<CustomPresetKind | null>(null);
-  const [oncePerTurnAbility, setOncePerTurnAbility] = useState<Ability>(createEmptyAbility());
-  const [oncePerRestAbility, setOncePerRestAbility] = useState<Ability>(createEmptyAbility());
-  const [heroAbility, setHeroAbility] = useState<Ability>(createEmptyAbility());
+  const [oncePerTurnId, setOncePerTurnId] = useState<string | null>(null);
+  const [oncePerRestId, setOncePerRestId] = useState<string | null>(null);
+  const [heroAbilityId, setHeroAbilityId] = useState<string | null>(null);
 
-  const previewStats = useMemo(() => {
-    const stats = defaultHeroStats();
-    for (const st of stats) {
-      const mainKey = slotKey({ statKey: st.key, subIndex: null });
-      if (assigned[mainKey] != null) st.value = assigned[mainKey];
-      st.subs = st.subs.map((sub, i) => {
-        const k = slotKey({ statKey: st.key, subIndex: i });
-        return { ...sub, value: assigned[k] ?? sub.value };
-      });
-    }
-    return stats;
-  }, [assigned]);
+  const buildAbilityFromPreset = (id: string | null): Ability => {
+    const preset = id ? ageCatalog.abilities.find((a) => a.id === id) : undefined;
+    if (!preset) return createEmptyAbility();
+    return {
+      id: genId(),
+      title: preset.name,
+      description: preset.description,
+      linkedStat: preset.linkedStat,
+      effectRoll: preset.effectRoll ?? "",
+      effectType: preset.effectType,
+      used: false,
+    };
+  };
 
   const refreshCustomPresets = async (targetKind: CustomPresetKind) => {
     const list = await loadCustomPresets(targetKind);
@@ -605,9 +606,9 @@ export default function CreateHeroScreen() {
         attackKind: w.attackKind,
         damageRoll: w.damageRoll,
       })),
-      oncePerTurn: [{ ...oncePerTurnAbility, id: genId(), used: false }],
-      oncePerRest: [{ ...oncePerRestAbility, id: genId(), used: false }],
-      heroAbilities: [{ ...heroAbility, id: genId(), used: false }],
+      oncePerTurn: [buildAbilityFromPreset(oncePerTurnId)],
+      oncePerRest: [buildAbilityFromPreset(oncePerRestId)],
+      heroAbilities: [buildAbilityFromPreset(heroAbilityId)],
       inventoryItems: starterItems,
       backstory: `${race.name} ${charClass.name}. ${charClass.tagline}`,
     };
@@ -722,13 +723,13 @@ export default function CreateHeroScreen() {
         )}
         {!isMonster && step === 4 && (
           <AbilitiesStep
-            stats={previewStats}
-            oncePerTurnAbility={oncePerTurnAbility}
-            onChangeOncePerTurn={setOncePerTurnAbility}
-            oncePerRestAbility={oncePerRestAbility}
-            onChangeOncePerRest={setOncePerRestAbility}
-            heroAbility={heroAbility}
-            onChangeHeroAbility={setHeroAbility}
+            options={ageCatalog.abilities}
+            oncePerTurnId={oncePerTurnId}
+            onSelectOncePerTurn={setOncePerTurnId}
+            oncePerRestId={oncePerRestId}
+            onSelectOncePerRest={setOncePerRestId}
+            heroAbilityId={heroAbilityId}
+            onSelectHeroAbility={setHeroAbilityId}
           />
         )}
         {!isMonster && step === 5 && race && charClass && (
@@ -1831,72 +1832,127 @@ function SlotChip({
 }
 
 // ---------- Abilities step ----------
-function AbilitiesStep({
-  stats,
-  oncePerTurnAbility,
-  onChangeOncePerTurn,
-  oncePerRestAbility,
-  onChangeOncePerRest,
-  heroAbility,
-  onChangeHeroAbility,
+function AbilityPickerSection({
+  label,
+  hint,
+  options,
+  selectedId,
+  onSelect,
 }: {
-  stats: ReturnType<typeof defaultHeroStats>;
-  oncePerTurnAbility: Ability;
-  onChangeOncePerTurn: (next: Ability) => void;
-  oncePerRestAbility: Ability;
-  onChangeOncePerRest: (next: Ability) => void;
-  heroAbility: Ability;
-  onChangeHeroAbility: (next: Ability) => void;
+  label: string;
+  hint: string;
+  options: AbilityPreset[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
+  const selected = options.find((o) => o.id === selectedId);
+  return (
+    <View style={{ marginBottom: 22 }}>
+      <Text style={[styles.finalLabel, { marginBottom: 4 }]}>{label}</Text>
+      <Text style={[styles.stepSubHeading, { marginBottom: 10 }]}>{hint}</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {options.map((opt) => {
+          const active = opt.id === selectedId;
+          return (
+            <Pressable
+              key={opt.id}
+              testID={`ability-option-${opt.id}`}
+              onPress={() => onSelect(opt.id)}
+              style={({ pressed }) => [
+                styles.abilityChoice,
+                {
+                  borderColor: colors.borderStrong,
+                  backgroundColor: active ? colors.brandPrimary : pressed ? colors.brandTertiary : colors.surface,
+                },
+              ]}
+            >
+              <Icon
+                name={opt.effectType === "healing" ? "heart-plus" : opt.effectType === "damage" ? "sword-cross" : "sparkles"}
+                size={16}
+                color={active ? colors.onBrandPrimary : colors.brandPrimary}
+              />
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.abilityChoiceText,
+                  { color: active ? colors.onBrandPrimary : colors.onSurface, fontFamily: fonts.displayBold },
+                ]}
+              >
+                {opt.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {selected && (
+        <View style={[styles.abilityPreview, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+          <Text style={[styles.abilityPreviewTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+            {selected.name}
+            {selected.effectRoll ? ` · ${selected.effectRoll}` : ""}
+          </Text>
+          <Text style={[styles.abilityPreviewText, { color: colors.muted, fontFamily: fonts.body }]}>
+            {selected.description}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function AbilitiesStep({
+  options,
+  oncePerTurnId,
+  onSelectOncePerTurn,
+  oncePerRestId,
+  onSelectOncePerRest,
+  heroAbilityId,
+  onSelectHeroAbility,
+}: {
+  options: AbilityPreset[];
+  oncePerTurnId: string | null;
+  onSelectOncePerTurn: (id: string) => void;
+  oncePerRestId: string | null;
+  onSelectOncePerRest: (id: string) => void;
+  heroAbilityId: string | null;
+  onSelectHeroAbility: (id: string) => void;
+}) {
+  const styles = getStyles(useTheme().colors);
   const keyboardSpace = useKeyboardBottomSpace(240);
-  const noop = () => {};
+  const oncePerTurnOptions = options.filter((a) => a.category === "Starter Spells" || a.category === "Class Specials");
+  const oncePerRestOptions = options.filter((a) => a.category === "Once Per Rest");
+  const heroAbilityOptions = options.filter((a) => a.category === "Hero Abilities");
   return (
     <ScrollView
       contentContainerStyle={[styles.stepBody, { paddingBottom: 32 + keyboardSpace }]}
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.stepHeading}>Set your abilities</Text>
-      <Text style={styles.stepSubHeading}>
-        One Once Per Turn, one Once Per Rest, and one Hero Ability. You can add more later.
+      <Text style={[styles.stepSubHeading, { marginBottom: 16 }]}>
+        Pick one ability for each slot from the existing pool. You can add more later.
       </Text>
-      <View style={{ gap: 6, marginBottom: 18 }}>
-        <Text style={[styles.finalLabel, { marginBottom: 4 }]}>ONCE PER TURN</Text>
-        <AbilityCard
-          testID="create-hero-once-per-turn"
-          ability={oncePerTurnAbility}
-          stats={stats}
-          onChange={onChangeOncePerTurn}
-          onDelete={() => onChangeOncePerTurn(createEmptyAbility())}
-          onUse={noop}
-          onExport={noop}
-        />
-      </View>
-      <View style={{ gap: 6, marginBottom: 18 }}>
-        <Text style={[styles.finalLabel, { marginBottom: 4 }]}>ONCE PER REST</Text>
-        <AbilityCard
-          testID="create-hero-once-per-rest"
-          ability={oncePerRestAbility}
-          stats={stats}
-          onChange={onChangeOncePerRest}
-          onDelete={() => onChangeOncePerRest(createEmptyAbility())}
-          onUse={noop}
-          onExport={noop}
-        />
-      </View>
-      <View style={{ gap: 6 }}>
-        <Text style={[styles.finalLabel, { marginBottom: 4 }]}>HERO ABILITY</Text>
-        <AbilityCard
-          testID="create-hero-hero-ability"
-          ability={heroAbility}
-          stats={stats}
-          onChange={onChangeHeroAbility}
-          onDelete={() => onChangeHeroAbility(createEmptyAbility())}
-          onUse={noop}
-          onExport={noop}
-        />
-      </View>
+      <AbilityPickerSection
+        label="ONCE PER TURN"
+        hint="Cantrip-tier spells and class signatures — safe to reuse each turn."
+        options={oncePerTurnOptions}
+        selectedId={oncePerTurnId}
+        onSelect={onSelectOncePerTurn}
+      />
+      <AbilityPickerSection
+        label="ONCE PER REST"
+        hint="Big moves — fires once, refreshed on Long Rest."
+        options={oncePerRestOptions}
+        selectedId={oncePerRestId}
+        onSelect={onSelectOncePerRest}
+      />
+      <AbilityPickerSection
+        label="HERO ABILITY"
+        hint="Legendary feats — spend a Hero Point to trigger."
+        options={heroAbilityOptions}
+        selectedId={heroAbilityId}
+        onSelect={onSelectHeroAbility}
+      />
     </ScrollView>
   );
 }
@@ -2360,6 +2416,34 @@ const getStyles = (colors: ThemeColors) =>
       color: colors.muted,
       fontFamily: fonts.displayBold,
       letterSpacing: 1.5,
+    },
+    abilityChoice: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      borderWidth: 2,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      maxWidth: "100%",
+    },
+    abilityChoiceText: {
+      fontSize: 12,
+      letterSpacing: 0.5,
+      flexShrink: 1,
+    },
+    abilityPreview: {
+      borderWidth: 1.5,
+      padding: 10,
+      marginTop: 10,
+      gap: 4,
+    },
+    abilityPreviewTitle: {
+      fontSize: 13,
+      letterSpacing: 0.5,
+    },
+    abilityPreviewText: {
+      fontSize: 12.5,
+      lineHeight: 18,
     },
     nameInput: {
       borderWidth: 2,
