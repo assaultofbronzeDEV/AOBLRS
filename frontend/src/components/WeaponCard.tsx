@@ -175,9 +175,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingBottom: 4,
     gap: 4,
+    minWidth: 0,
   },
   titleInput: {
     flex: 1,
+    minWidth: 0,
     fontSize: 18,
     fontWeight: "700",
     paddingVertical: 4,

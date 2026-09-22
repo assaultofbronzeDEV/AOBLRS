@@ -30,6 +30,7 @@ import {
 import { upsertCharacter } from "@/src/storage/characters";
 import { CLASSES, RACES, Race, CharClass, TraitRef, traitKey } from "@/src/data/lineages";
 import type { AbilityPreset } from "@/src/data/abilities";
+import PickerSheet from "@/src/components/PickerSheet";
 import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 import { getAgeCatalog } from "@/src/ageCatalog";
@@ -253,23 +254,9 @@ export default function CreateHeroScreen() {
   const [customClasses, setCustomClasses] = useState<CharClass[]>([]);
   const [customMonsterTypes, setCustomMonsterTypes] = useState<MonsterType[]>([]);
   const [presetModalKind, setPresetModalKind] = useState<CustomPresetKind | null>(null);
-  const [oncePerTurnId, setOncePerTurnId] = useState<string | null>(null);
-  const [oncePerRestId, setOncePerRestId] = useState<string | null>(null);
-  const [heroAbilityId, setHeroAbilityId] = useState<string | null>(null);
-
-  const buildAbilityFromPreset = (id: string | null): Ability => {
-    const preset = id ? ageCatalog.abilities.find((a) => a.id === id) : undefined;
-    if (!preset) return createEmptyAbility();
-    return {
-      id: genId(),
-      title: preset.name,
-      description: preset.description,
-      linkedStat: preset.linkedStat,
-      effectRoll: preset.effectRoll ?? "",
-      effectType: preset.effectType,
-      used: false,
-    };
-  };
+  const [oncePerTurnAbility, setOncePerTurnAbility] = useState<Ability | null>(null);
+  const [oncePerRestAbility, setOncePerRestAbility] = useState<Ability | null>(null);
+  const [heroAbility, setHeroAbility] = useState<Ability | null>(null);
 
   const refreshCustomPresets = async (targetKind: CustomPresetKind) => {
     const list = await loadCustomPresets(targetKind);
@@ -364,6 +351,7 @@ export default function CreateHeroScreen() {
     if (step === 1 && !charClass) return;
     if (step === 2 && pool.length === 0) return;
     if (step === 3 && !allAssigned) return;
+    if (step === 4 && !(oncePerTurnAbility && oncePerRestAbility && heroAbility)) return;
     setStep((s) => Math.min(5, s + 1) as Step);
   };
   const goBack = () => setStep((s) => Math.max(0, s - 1) as Step);
@@ -606,9 +594,9 @@ export default function CreateHeroScreen() {
         attackKind: w.attackKind,
         damageRoll: w.damageRoll,
       })),
-      oncePerTurn: [buildAbilityFromPreset(oncePerTurnId)],
-      oncePerRest: [buildAbilityFromPreset(oncePerRestId)],
-      heroAbilities: [buildAbilityFromPreset(heroAbilityId)],
+      oncePerTurn: [oncePerTurnAbility ?? createEmptyAbility()],
+      oncePerRest: [oncePerRestAbility ?? createEmptyAbility()],
+      heroAbilities: [heroAbility ?? createEmptyAbility()],
       inventoryItems: starterItems,
       backstory: `${race.name} ${charClass.name}. ${charClass.tagline}`,
     };
@@ -724,12 +712,13 @@ export default function CreateHeroScreen() {
         {!isMonster && step === 4 && (
           <AbilitiesStep
             options={ageCatalog.abilities}
-            oncePerTurnId={oncePerTurnId}
-            onSelectOncePerTurn={setOncePerTurnId}
-            oncePerRestId={oncePerRestId}
-            onSelectOncePerRest={setOncePerRestId}
-            heroAbilityId={heroAbilityId}
-            onSelectHeroAbility={setHeroAbilityId}
+            categoryOrder={ageCatalog.abilityCategoryOrder}
+            oncePerTurnAbility={oncePerTurnAbility}
+            onSelectOncePerTurn={setOncePerTurnAbility}
+            oncePerRestAbility={oncePerRestAbility}
+            onSelectOncePerRest={setOncePerRestAbility}
+            heroAbility={heroAbility}
+            onSelectHeroAbility={setHeroAbility}
           />
         )}
         {!isMonster && step === 5 && race && charClass && (
@@ -771,13 +760,13 @@ export default function CreateHeroScreen() {
             disabled={
               isMonster
                 ? (step === 0 && !monsterType) || (step === 2 && !allAssigned)
-                : (step === 0 && !race) || (step === 1 && !charClass) || (step === 3 && !allAssigned)
+                : (step === 0 && !race) || (step === 1 && !charClass) || (step === 3 && !allAssigned) || (step === 4 && !(oncePerTurnAbility && oncePerRestAbility && heroAbility))
             }
             style={({ pressed }) => {
               const disabled =
                 isMonster
                   ? (step === 0 && !monsterType) || (step === 2 && !allAssigned)
-                  : (step === 0 && !race) || (step === 1 && !charClass) || (step === 3 && !allAssigned);
+                  : (step === 0 && !race) || (step === 1 && !charClass) || (step === 3 && !allAssigned) || (step === 4 && !(oncePerTurnAbility && oncePerRestAbility && heroAbility));
               return [
                 styles.footerBtn,
                 {
@@ -1832,97 +1821,99 @@ function SlotChip({
 }
 
 // ---------- Abilities step ----------
-function AbilityPickerSection({
+type AbilityWizardKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
+
+function AbilitySelectRow({
+  icon,
   label,
   hint,
-  options,
-  selectedId,
-  onSelect,
+  selectedName,
+  onPress,
+  testID,
 }: {
+  icon: string;
   label: string;
   hint: string;
-  options: AbilityPreset[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
+  selectedName?: string;
+  onPress: () => void;
+  testID: string;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
-  const selected = options.find((o) => o.id === selectedId);
   return (
-    <View style={{ marginBottom: 22 }}>
-      <Text style={[styles.finalLabel, { marginBottom: 4 }]}>{label}</Text>
-      <Text style={[styles.stepSubHeading, { marginBottom: 10 }]}>{hint}</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {options.map((opt) => {
-          const active = opt.id === selectedId;
-          return (
-            <Pressable
-              key={opt.id}
-              testID={`ability-option-${opt.id}`}
-              onPress={() => onSelect(opt.id)}
-              style={({ pressed }) => [
-                styles.abilityChoice,
-                {
-                  borderColor: colors.borderStrong,
-                  backgroundColor: active ? colors.brandPrimary : pressed ? colors.brandTertiary : colors.surface,
-                },
-              ]}
-            >
-              <Icon
-                name={opt.effectType === "healing" ? "heart-plus" : opt.effectType === "damage" ? "sword-cross" : "sparkles"}
-                size={16}
-                color={active ? colors.onBrandPrimary : colors.brandPrimary}
-              />
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.abilityChoiceText,
-                  { color: active ? colors.onBrandPrimary : colors.onSurface, fontFamily: fonts.displayBold },
-                ]}
-              >
-                {opt.name}
-              </Text>
-            </Pressable>
-          );
-        })}
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.abilitySelectRow,
+        { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface },
+      ]}
+    >
+      <Icon name={icon as any} size={22} color={colors.brandPrimary} />
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.finalLabel, { marginBottom: 2 }]}>{label}</Text>
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.abilitySelectValue,
+            { color: selectedName ? colors.onSurface : colors.muted, fontFamily: fonts.display },
+          ]}
+        >
+          {selectedName ?? hint}
+        </Text>
       </View>
-      {selected && (
-        <View style={[styles.abilityPreview, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
-          <Text style={[styles.abilityPreviewTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-            {selected.name}
-            {selected.effectRoll ? ` · ${selected.effectRoll}` : ""}
-          </Text>
-          <Text style={[styles.abilityPreviewText, { color: colors.muted, fontFamily: fonts.body }]}>
-            {selected.description}
-          </Text>
-        </View>
-      )}
-    </View>
+      <Icon name="chevron-right" size={20} color={colors.muted} />
+    </Pressable>
   );
 }
 
 function AbilitiesStep({
   options,
-  oncePerTurnId,
+  categoryOrder,
+  oncePerTurnAbility,
   onSelectOncePerTurn,
-  oncePerRestId,
+  oncePerRestAbility,
   onSelectOncePerRest,
-  heroAbilityId,
+  heroAbility,
   onSelectHeroAbility,
 }: {
   options: AbilityPreset[];
-  oncePerTurnId: string | null;
-  onSelectOncePerTurn: (id: string) => void;
-  oncePerRestId: string | null;
-  onSelectOncePerRest: (id: string) => void;
-  heroAbilityId: string | null;
-  onSelectHeroAbility: (id: string) => void;
+  categoryOrder: string[];
+  oncePerTurnAbility: Ability | null;
+  onSelectOncePerTurn: (a: Ability) => void;
+  oncePerRestAbility: Ability | null;
+  onSelectOncePerRest: (a: Ability) => void;
+  heroAbility: Ability | null;
+  onSelectHeroAbility: (a: Ability) => void;
 }) {
-  const styles = getStyles(useTheme().colors);
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const keyboardSpace = useKeyboardBottomSpace(240);
-  const oncePerTurnOptions = options.filter((a) => a.category === "Starter Spells" || a.category === "Class Specials");
-  const oncePerRestOptions = options.filter((a) => a.category === "Once Per Rest");
-  const heroAbilityOptions = options.filter((a) => a.category === "Hero Abilities");
+  const [pickerFor, setPickerFor] = useState<AbilityWizardKey | null>(null);
+
+  const presetToAbility = (preset: AbilityPreset): Ability => ({
+    id: genId(),
+    title: preset.name,
+    description: preset.description,
+    linkedStat: preset.linkedStat,
+    effectRoll: preset.effectRoll ?? "",
+    effectType: preset.effectType,
+    used: false,
+  });
+
+  const applySelection = (ability: Ability) => {
+    if (pickerFor === "oncePerTurn") onSelectOncePerTurn(ability);
+    if (pickerFor === "oncePerRest") onSelectOncePerRest(ability);
+    if (pickerFor === "heroAbilities") onSelectHeroAbility(ability);
+    setPickerFor(null);
+  };
+
+  const filteredPresets = options.filter((a) => {
+    if (pickerFor === "heroAbilities") return a.category === "Hero Abilities";
+    if (pickerFor === "oncePerRest") return a.category === "Once Per Rest";
+    return a.category === "Starter Spells" || a.category === "Class Specials";
+  });
+
   return (
     <ScrollView
       contentContainerStyle={[styles.stepBody, { paddingBottom: 32 + keyboardSpace }]}
@@ -1930,28 +1921,68 @@ function AbilitiesStep({
     >
       <Text style={styles.stepHeading}>Set your abilities</Text>
       <Text style={[styles.stepSubHeading, { marginBottom: 16 }]}>
-        Pick one ability for each slot from the existing pool. You can add more later.
+        Tap each slot to choose one ability from the library. All three are required to continue.
       </Text>
-      <AbilityPickerSection
-        label="ONCE PER TURN"
-        hint="Cantrip-tier spells and class signatures — safe to reuse each turn."
-        options={oncePerTurnOptions}
-        selectedId={oncePerTurnId}
-        onSelect={onSelectOncePerTurn}
-      />
-      <AbilityPickerSection
-        label="ONCE PER REST"
-        hint="Big moves — fires once, refreshed on Long Rest."
-        options={oncePerRestOptions}
-        selectedId={oncePerRestId}
-        onSelect={onSelectOncePerRest}
-      />
-      <AbilityPickerSection
-        label="HERO ABILITY"
-        hint="Legendary feats — spend a Hero Point to trigger."
-        options={heroAbilityOptions}
-        selectedId={heroAbilityId}
-        onSelect={onSelectHeroAbility}
+      <View style={{ gap: 12 }}>
+        <AbilitySelectRow
+          testID="create-hero-once-per-turn"
+          icon="refresh"
+          label="ONCE PER TURN"
+          hint="Tap to choose"
+          selectedName={oncePerTurnAbility?.title}
+          onPress={() => setPickerFor("oncePerTurn")}
+        />
+        <AbilitySelectRow
+          testID="create-hero-once-per-rest"
+          icon="campfire"
+          label="ONCE PER REST"
+          hint="Tap to choose"
+          selectedName={oncePerRestAbility?.title}
+          onPress={() => setPickerFor("oncePerRest")}
+        />
+        <AbilitySelectRow
+          testID="create-hero-hero-ability"
+          icon="star-four-points"
+          label="HERO ABILITY"
+          hint="Tap to choose"
+          selectedName={heroAbility?.title}
+          onPress={() => setPickerFor("heroAbilities")}
+        />
+      </View>
+
+      <PickerSheet
+        visible={pickerFor != null}
+        testIDPrefix="create-hero-ability-picker"
+        title={
+          pickerFor === "heroAbilities"
+            ? "Hero Ability Library"
+            : pickerFor === "oncePerRest"
+              ? "Once Per Rest Library"
+              : "Once Per Turn Library"
+        }
+        subtitle={
+          pickerFor === "oncePerRest"
+            ? "Big moves — 1d10 minimum. Fires once, refreshed on Long Rest."
+            : pickerFor === "heroAbilities"
+              ? "Legendary feats — d20 dice, spend a Hero Point to trigger."
+              : "Cantrip-tier spells and class signatures — safe to reuse each turn."
+        }
+        customLabel="Create custom ability"
+        presets={filteredPresets.map((a) => ({
+          id: a.id,
+          name: a.name,
+          category: a.category,
+          meta: a.effectRoll,
+          notes: a.tag ? `${a.tag} · ${a.description}` : a.description,
+          icon: a.effectType === "healing" ? "heart-plus" : a.effectType === "damage" ? "sword-cross" : "sparkles",
+        }))}
+        categoryOrder={categoryOrder}
+        onClose={() => setPickerFor(null)}
+        onSelect={(entry) => {
+          const preset = options.find((a) => a.id === entry.id);
+          if (preset) applySelection(presetToAbility(preset));
+        }}
+        onCustom={() => applySelection(createEmptyAbility())}
       />
     </ScrollView>
   );
@@ -2417,33 +2448,16 @@ const getStyles = (colors: ThemeColors) =>
       fontFamily: fonts.displayBold,
       letterSpacing: 1.5,
     },
-    abilityChoice: {
+    abilitySelectRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
+      gap: 12,
       borderWidth: 2,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      maxWidth: "100%",
+      padding: 14,
+      minWidth: 0,
     },
-    abilityChoiceText: {
-      fontSize: 12,
-      letterSpacing: 0.5,
-      flexShrink: 1,
-    },
-    abilityPreview: {
-      borderWidth: 1.5,
-      padding: 10,
-      marginTop: 10,
-      gap: 4,
-    },
-    abilityPreviewTitle: {
-      fontSize: 13,
-      letterSpacing: 0.5,
-    },
-    abilityPreviewText: {
-      fontSize: 12.5,
-      lineHeight: 18,
+    abilitySelectValue: {
+      fontSize: 14,
     },
     nameInput: {
       borderWidth: 2,
