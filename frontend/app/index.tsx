@@ -47,11 +47,11 @@ const HELP_TABS = [
     key: "overview",
     label: "Overview",
     title: "Assault of Bronze",
-    body: "Welcome to Assault of Bronze, a lightweight, narrative-first roleplay system built with one priority in mind: accessibility. Whether you're a first-time adventurer or a seasoned Game Master, AoB is designed to be intuitive, flexible, and fast-paced, putting the focus on storytelling, decision-making, and character immersion rather than constant rule-checking. With a streamlined dice system, stat-based action resolution, and easy-to-learn mechanics, AoB makes jumping into the game world quick and seamless.\n\nWith minimal math, clear success/fail mechanics, and storytelling at its core, Assault of Bronze empowers players and GMs alike to focus on what matters most - fun, creativity, and epic storytelling.\n\nThis help window will walk you through the core components of the system, from Character Creation, to Combat Mechanics, Special Abilities, Hero Points. You'll begin by building a character identity through race, class, and unique abilities. This help panel covers how to handle ability checks, how combat flows without constant reference to DCs and you will soon discover that this app was built with absolute ease of use in mind.\n\nI hope this is a capable tool and game system that can be used widely and easily, I sincerely hope you enjoy.\n\n- Jordan - creator of AOBLRS.",
+    body: "Welcome to Assault of Bronze, a lightweight, narrative-first roleplay system built with one priority in mind: accessibility. Whether you're a first-time adventurer or a seasoned Game Master, AoB is designed to be intuitive, flexible, and fast-paced, putting the focus on storytelling, decision-making, and character immersion rather than constant rule-checking. With a streamlined dice system, stat-based action resolution, and easy-to-learn mechanics, AoB makes jumping into the game world quick and seamless.\n\nWith minimal math, clear success/fail mechanics, and storytelling at its core, Assault of Bronze empowers players and GMs alike to focus on what matters most - fun, creativity, and epic storytelling.\n\nThis help window will walk you through the core components of the system, from Character Creation, to Dice and Combat Mechanics, Special Abilities and the importance of Logical Roleplay. You'll begin by building a character identity through race, class, and unique abilities. This help panel covers how to handle ability checks, how combat flows without constant reference to DCs and you will soon discover that this app was built with absolute ease of use in mind.\n\nI truly believe that this is a capable tool and game system that can be used widely and easily over a wide variety of settings and genres, I sincerely hope you enjoy.\n\n- Jordan - creator of AOBLRS.",
   },
   {
     key: "dice",
-    label: "Dice",
+    label: "Stats and Dice Mechanics",
     title: "Stats and Dice",
     body: `STAT CHECKS
 
@@ -59,7 +59,7 @@ Stat checks do not work like typical D&D rules in the AoB system. The stats on t
 
 Whenever players take an important action, the GM determines which skill the character is using. The player rolls against the corresponding stat on the Character Sheet. If the player passes the check, the character succeeds to the best of their ability: a quick, easy yes or no answer without DCs to reference.
 
-If the GM decides the method described by the player will not work as stated, the GM may set a higher target based on Logical Roleplay. For example, lifting a 1000kg boulder might require a roll of 50 or higher. The character could get help from other Player Characters or NPCs, who would all roll their strength checks; if the combined result reaches 50 or more, the group lifts the boulder.
+If the GM decides the method described by the player will not work as stated, the GM may set a higher target. This is known as a "Challenge Stat". For example, lifting a 1000kg boulder might require a roll of 50 or higher. The character could get help from other Player Characters or NPCs, who would all roll their strength checks, with each successful check their total die number rolled is added to the challenge pool; if the combined result reaches 50 or more, the group lifts the boulder.
 
 CRITICAL SUCCESSES AND FAILURES
 
@@ -93,7 +93,7 @@ The stats on the AoB character sheet are intentionally broad. They are shorthand
 
 When an unforeseen situation does not fit neatly into a stat, apply common sense. Briefly discuss which existing skill is the closest fit and agree on it. If the table cannot reach consensus, the GM should make a prompt ruling so play continues. The goal is to keep players invested in the unfolding story rather than stalling over skill-check debates. Quick, reasonable decisions preserve pace and fun.
 
-Debates can be revisited after the game, and not all debates are a problem. Let players debate where to go or whom to trust when they are immersed in the story; avoid arguments that pull the table away from the game rules and narrative.`,
+Debates can be revisited after the game, and not all debates are a problem. Let players debate where to go or whom to trust when they are immersed in the story; avoid arguments over game rules that pull the table away from the unfolding narrative.`,
   },
   {
     key: "combat",
@@ -117,7 +117,7 @@ Modifiers are never added to stat rolls. Instead, use Advantage or Disadvantage.
 
 ARMOUR
 
-Armour is a flat number subtracted from any damage a hero or enemy takes. It's always applied — you don't roll for it, and it works the same on every hit, no matter the source. The only exception is when the attacking weapon or effect specifically says it ignores armour (for example, an "IGNORES ARMOUR" weapon note); in that case the full damage goes through untouched.
+Armour is a flat number subtracted from any damage a hero or enemy takes.  You don't roll for it, and it works the same on every hit, no matter the source. The only exception is when the attacking weapon or effect specifically says it ignores armour (for example, an "IGNORES ARMOUR" weapon note); in that case the full damage goes through untouched.
 
 REMEMBER THE HERO DIE
 
@@ -141,19 +141,19 @@ Combat ends when the last enemy is defeated or surrenders. Remove the initiative
     title: "Creating characters",
     body: `HEROES AND ENEMIES
 
-  From the main screen, tap the create button to start a new Hero or Enemy. Easy Creation walks you through a profile, guided stat rolls, and lineage/class assignment — the fastest way to get playing. Custom Creation opens a blank sheet so you can hand-enter every stat, name, and detail yourself, useful for converting an existing character or building something the guided flow doesn't cover.
+From the main screen, tap the create button to start a new Hero or Enemy. Easy Creation walks you through a profile, guided stat rolls, and lineage/class assignment, this is the fastest way to get playing. Custom Creation opens a blank sheet so you can hand-enter every stat, name, and detail yourself, useful for converting an existing character or building something the guided flow doesn't cover.
 
-Either way, you end up on the same full character sheet afterward, so nothing is locked in by the mode you picked — you can keep adjusting stats, portrait, lineage, and class at any time.
+Either way, you end up on the same full character sheet afterward, so nothing is locked in by the mode you picked. You can keep adjusting stats, portrait, lineage, and class at any time.
 
 WEAPONS, ITEMS, AND ABILITIES ARE JUST A STARTING POINT
 
-Every weapon, item, and ability picker (opened from the + buttons on a character sheet) shows a library of premade options grouped by category. These presets exist to get you moving quickly, not to box you in. At the top of every picker is a "Create custom weapon / item / ability" button — use it to build your own gear and powers from scratch with your own name, damage dice, effects, and notes.
+Every weapon, item, and ability picker (opened from the + buttons on a character sheet) shows a library of premade options grouped by category. These presets exist to get you moving quickly, not to box you in. At the top of every picker is a "Create custom weapon / item / ability" button. Use it to build your own gear and powers from scratch with your own name, damage dice, effects, and notes.
 
 Don't hesitate to reskin or completely reinvent a preset: duplicate its stats under a new name, tweak the damage die, or invent an ability that fits your character's story better than anything in the list. The presets are a springboard, not the rulebook.
 
 SAVE YOUR HOMEBREW WITH EXPORT
 
-Once you've built custom weapons, items, or abilities on a sheet, use the export icon (top right of a character sheet, or the export action on a row in the main list) to save that hero or enemy out as a shareable sheet file. This is the best way to preserve your homebrew creations — export a finished character so you always have a backup, and import it back in (or share it with another player) whenever you need it. Duplicate a sheet first if you want to experiment without touching the original.`,
+Once you've built custom weapons, items, or abilities on a sheet, use the export icon (top right of a character sheet, or the export action on a row in the main list) to save that hero or enemy out as a shareable sheet file. This is the best way to preserve your homebrew creations. Export a finished character so you always have a backup, and import it back in (or share it with another player) whenever you need it. Duplicate a sheet first if you want to experiment without touching the original.`,
   },
   {
     key: "party",

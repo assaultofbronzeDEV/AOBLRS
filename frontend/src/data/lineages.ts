@@ -4,6 +4,7 @@
 // spots — assign HIGH numbers there.
 
 import type { StatKey } from "@/src/types";
+import { WEAPON_PRESETS } from "@/src/data/weapons";
 
 // A TraitRef points at either a main stat (subIndex = null) or a sub-skill.
 export type TraitRef = { statKey: StatKey; subIndex: number | null };
@@ -32,6 +33,14 @@ export type CharClass = {
   weapons: StartingWeapon[];
   high: TraitRef[];
   low: TraitRef[];
+};
+
+// Every class's starting gear must come from the shared weapon pool so it
+// stays in sync with what players can pick manually in-app.
+const poolWeapon = (id: string): StartingWeapon => {
+  const preset = WEAPON_PRESETS.find((w) => w.id === id);
+  if (!preset) throw new Error(`Unknown starter weapon id: ${id}`);
+  return { name: preset.name, attackKind: preset.attackKind, damageRoll: preset.damageRoll };
 };
 
 // Sub-skill index reference:
@@ -183,7 +192,7 @@ export const CLASSES: CharClass[] = [
     lore:
       "A frontline fighter who thrives in the thick of battle, relying on raw strength and skill in hand-to-hand combat to overwhelm foes. Warriors hit hard with powerful melee attacks but lack subtlety, preferring direct confrontation over stealth. Their sturdy armour provides solid protection, allowing them to stand firm and trade blows where others would fall.",
     baseArmour: 3,
-    weapons: [{ name: "Short Sword", attackKind: "melee", damageRoll: "1d6" }],
+    weapons: [poolWeapon("short-sword")],
     high: [
       { statKey: "DEX", subIndex: 0 }, // Melee Attack
       { statKey: "STR", subIndex: 3 }, // Vitality
@@ -199,10 +208,7 @@ export const CLASSES: CharClass[] = [
     lore:
       "A master of ranged combat who strikes from afar with precision and speed. Rangers excel at picking off targets before they can close the distance, using keen aim and quick reflexes to stay ahead of the fight. Their light armour offers minimal protection, so they rely on distance, agility, and positioning rather than brute force in melee.",
     baseArmour: 2,
-    weapons: [
-      { name: "Shortbow", attackKind: "ranged", damageRoll: "1d6" },
-      { name: "Dagger", attackKind: "melee", damageRoll: "1d4" },
-    ],
+    weapons: [poolWeapon("shortbow"), poolWeapon("dagger")],
     high: [
       { statKey: "DEX", subIndex: 1 }, // Ranged Attack
       { statKey: "DEX", subIndex: 3 }, // Stealth
@@ -218,7 +224,7 @@ export const CLASSES: CharClass[] = [
     lore:
       "A warrior who channels destructive magic as their primary weapon. Battle-Mages endure the rigours of combat through sheer vitality, allowing them to unleash devastating spells while withstanding enemy assaults. Lacking physical strength and any form of armour, they depend on their spells and resilience to carry them through the fray.\n\nTypically, Mages of any sort will channel their magic through an item containing a Power-Stone, otherwise casting spells would draw from components or the caster's own life force.",
     baseArmour: 2,
-    weapons: [{ name: "Runed Staff", attackKind: "melee", damageRoll: "1d6" }],
+    weapons: [poolWeapon("quarterstaff")],
     high: [
       { statKey: "DEX", subIndex: 0 }, // Melee Attack
       { statKey: "INT", subIndex: null }, // Intelligence (main)
@@ -234,7 +240,7 @@ export const CLASSES: CharClass[] = [
     lore:
       "A vital ally on the battlefield, skilled in healing wounds, brewing potions, and keeping their companions in fighting shape. Alchemists excel at first aid and restorative magic, ensuring the party can endure prolonged conflicts. While their melee capabilities are limited, their moderate armour offers some protection as they move between allies, mending injuries and bolstering morale.",
     baseArmour: 1,
-    weapons: [{ name: "Dagger", attackKind: "melee", damageRoll: "1d4" }],
+    weapons: [poolWeapon("dagger")],
     high: [
       { statKey: "INT", subIndex: 3 }, // First Aid
       { statKey: "INT", subIndex: null }, // Main Intelligence
@@ -250,10 +256,7 @@ export const CLASSES: CharClass[] = [
     lore:
       "Rogues are masters of shadows, precision, and opportunity. They strike when foes are unaware, weaving between danger and vanishing before a counterattack lands. Their advantage lies not in durability but in cunning and finesse. Lightly armoured and quick on their feet, Rogues excel at infiltration, ambushes, critical strikes, and disabling enemies before they know the fight has begun.",
     baseArmour: 1,
-    weapons: [
-      { name: "Dagger", attackKind: "melee", damageRoll: "1d4" },
-      { name: "Short Sword", attackKind: "melee", damageRoll: "1d6" },
-    ],
+    weapons: [poolWeapon("dagger"), poolWeapon("short-sword")],
     high: [
       { statKey: "DEX", subIndex: 2 }, // Sleight of Hand
       { statKey: "DEX", subIndex: 3 }, // Stealth
@@ -270,7 +273,7 @@ export const CLASSES: CharClass[] = [
     lore:
       "Wardens are shields made flesh, stalwart protectors who anchor the battlefield. Whether towering in heavy armour or bracing with reinforced shields, Wardens specialise in controlling enemy movement, guarding allies, and enduring attacks that would fell lesser fighters. They thrive when they can hold a position and force enemies to come to them.",
     baseArmour: 4,
-    weapons: [{ name: "Spear", attackKind: "melee", damageRoll: "1d6" }],
+    weapons: [poolWeapon("spear")],
     high: [
       { statKey: "CHA", subIndex: 3 }, // Creature Handling
       { statKey: "INT", subIndex: 0 }, // Perception
@@ -287,7 +290,7 @@ export const CLASSES: CharClass[] = [
     lore:
       "Scrappers are unpredictable street-fighters who rely on raw grit, chaotic momentum, and improvised techniques. Whether brawlers, pit-fighters, or alley survivors, Scrappers excel when chaos erupts. Their blows are wild but fast, overwhelming foes with relentless pressure. Their lack of formal training means they often miss, but when they land a hit, it hurts.",
     baseArmour: 2,
-    weapons: [{ name: "Bare Fists", attackKind: "melee", damageRoll: "1d4" }],
+    weapons: [poolWeapon("bare-fists")],
     high: [
       { statKey: "STR", subIndex: 0 }, // Lifting
       { statKey: "STR", subIndex: 2 }, // Intimidation
@@ -304,7 +307,7 @@ export const CLASSES: CharClass[] = [
     lore:
       "Sorcerers wield raw, untamed power typically born from innate talent rather than study or ritual. While unmatched in offensive spellcraft, Sorcerers are physically fragile, relying on distance, cunning, and magical control to stay alive. Their lack of armour and martial skill forces them to strike hard and avoid being struck in return.\n\nTypically, Mages of any sort will channel their magic through an item containing a Power-Stone, otherwise casting spells would draw from components or the caster's own life force.",
     baseArmour: 1,
-    weapons: [{ name: "Focus Wand", attackKind: "ranged", damageRoll: "1d6" }],
+    weapons: [poolWeapon("wand")],
     high: [
       { statKey: "INT", subIndex: null }, // intelligence (main)
       { statKey: "DEX", subIndex: 1 }, // Ranged Attack

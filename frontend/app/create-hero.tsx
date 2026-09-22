@@ -15,6 +15,8 @@ import Icon from "@react-native-vector-icons/material-design-icons";
 
 import { fonts, setThemeAge, useTheme, ThemeColors } from "@/src/theme";
 import {
+  Ability,
+  createEmptyAbility,
   createEmptyCharacter,
   createEmptyInventoryItem,
   createEmptyMonster,
@@ -25,6 +27,7 @@ import {
   HP_MAX,
   StatKey,
 } from "@/src/types";
+import AbilityCard from "@/src/components/AbilityCard";
 import { upsertCharacter } from "@/src/storage/characters";
 import { CLASSES, RACES, Race, CharClass, TraitRef, traitKey } from "@/src/data/lineages";
 import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
@@ -37,8 +40,8 @@ import ImportEntityModal from "@/src/components/ImportEntityModal";
 import { ExportEntity, StatRollPreset } from "@/src/storage/sheetTransfer";
 
 // ---------- Steps ----------
-type Step = 0 | 1 | 2 | 3 | 4;
-const HERO_STEP_LABELS = ["Race", "Class", "Roll", "Assign", "Finalize"];
+type Step = 0 | 1 | 2 | 3 | 4 | 5;
+const HERO_STEP_LABELS = ["Race", "Class", "Roll", "Assign", "Abilities", "Finalize"];
 const MONSTER_STEP_LABELS = ["Type", "Roll", "Assign", "Finalize"];
 
 // ---------- Slots for tap-to-assign ----------
@@ -161,12 +164,12 @@ const CUSTOM_MONSTER: MonsterType = {
 };
 
 const MONSTER_TYPES: MonsterType[] = [
-  { id: "average-npc", name: "Average NPC", tagline: "A capable everyday opponent.", lore: "A trained fighter following simple orders, dangerous in numbers and unremarkable alone.", health: 15, armour: 2, attackRoll: "1d6", statValues: [10, 10, 10, 10, 0], weaponName: "Club", weaponDamageRoll: "1d6", oncePerTurnName: "Basic Strike", oncePerTurnDescription: "A straightforward attack.", oncePerTurnRoll: "1d6", oncePerRestName: "Second Wind", oncePerRestDescription: "Regain a little strength.", oncePerRestRoll: "1d6", oncePerRestType: "healing" },
-  { id: "strong-npc", name: "Strong NPC", tagline: "A hardened and dangerous foe.", lore: "Battle-scarred and unyielding, hitting harder than most and refusing to go down easy.", health: 15, armour: 4, attackRoll: "1d8", statValues: [8, 9, 8, 9, 0], weaponName: "Greatclub", weaponDamageRoll: "1d8", oncePerTurnName: "Heavy Blow", oncePerTurnDescription: "A punishing strike that leaves room for no mistake.", oncePerTurnRoll: "1d8", oncePerRestName: "Bloodied Surge", oncePerRestDescription: "Fight harder when cornered.", oncePerRestRoll: "1d8+2" },
-  { id: "goblin", name: "Goblin (Basic)", tagline: "Small, scrappy, and spiteful.", lore: "Fast and sneaky, always looking for an opening to strike and flee.", health: 10, armour: 1, attackRoll: "1d8", statValues: [12, 10, 12, 10, 0], weaponName: "Rusty Dagger", weaponDamageRoll: "1d4", oncePerTurnName: "Quick Stab", oncePerTurnDescription: "A darting opportunistic attack.", oncePerTurnRoll: "1d6", oncePerRestName: "Scurry Away", oncePerRestDescription: "Disengage and vanish into cover." },
-  { id: "fire-goblin", name: "Fire Goblin", tagline: "A goblin with a taste for flame.", lore: "Wreathed in embers, lashing out with searing strikes that leave lingering burns.", health: 12, armour: 2, attackRoll: "1d8", specialAbility: "1d8+2 Fire Damage. Roll Vitality; on fail, take 1d4 damage next turn.", specialRoll: "1d8+2", statValues: [11, 10, 9, 8, 11], weaponName: "Firebrand", weaponDamageRoll: "1d6", oncePerTurnName: "Flame Lash", oncePerTurnDescription: "A whip of burning air.", oncePerTurnRoll: "1d8+2", oncePerRestName: "Ignite", oncePerRestDescription: "Set the battlefield alight.", oncePerRestRoll: "2d8" },
-  { id: "orc", name: "Orc", tagline: "Strong, direct, and relentless.", lore: "A brutal warlord whose blade and stomping fury shatter formations.", health: 30, armour: 6, attackRoll: "1d12+3", attackName: "Sword of Dread", specialAbility: "Thundering Stomp: 1d12+6 damage within 10ft; all within radius make a DEX save.", specialRoll: "1d12+6", statValues: [7, 14, 6, 12, 8], weaponName: "Sword of Dread", weaponDamageRoll: "1d12+3", oncePerTurnName: "Thundering Stomp", oncePerTurnDescription: "All within 10ft make a DEX save or take the damage.", oncePerTurnRoll: "1d12+6", oncePerRestName: "War Cry", oncePerRestDescription: "A terrifying roar that shakes the battlefield.", oncePerRestRoll: "2d12" },
-  { id: "mage", name: "Mage", tagline: "A fragile body with dangerous magic.", lore: "Frail in body but devastating in magic, favouring ranged spellfire over melee.", health: 14, armour: 1, attackRoll: "1d12+2", specialAbility: "Chosen Spell", oncePerRest: "Quick Teleport: burst of light to an unknown location within 1000ft.", statValues: [14, 7, 14, 6, 6], weaponName: "Arcane Staff", weaponDamageRoll: "1d6", weaponAttackKind: "melee", oncePerTurnName: "Chosen Spell", oncePerTurnDescription: "A focused bolt of destructive magic.", oncePerTurnRoll: "1d12+2", oncePerRestName: "Quick Teleport", oncePerRestDescription: "Teleport in a burst of light to an unknown location within 1000ft." },
+  { id: "average-npc", name: "Average NPC", tagline: "A capable everyday opponent.", lore: "A trained fighter following simple orders, dangerous in numbers and unremarkable alone.", health: 15, armour: 2, attackRoll: "1d6", statValues: [10, 10, 10, 10, 0], weaponName: "Club", weaponDamageRoll: "1d8", weaponAttackKind: "melee", oncePerTurnName: "Basic Strike", oncePerTurnDescription: "A straightforward attack.", oncePerTurnRoll: "1d6", oncePerRestName: "Second Wind", oncePerRestDescription: "Regain a little strength.", oncePerRestRoll: "1d6", oncePerRestType: "healing" },
+  { id: "strong-npc", name: "Strong NPC", tagline: "A hardened and dangerous foe.", lore: "Battle-scarred and unyielding, hitting harder than most and refusing to go down easy.", health: 15, armour: 4, attackRoll: "1d8", statValues: [8, 9, 8, 9, 0], weaponName: "Warhammer", weaponDamageRoll: "1d10+5", weaponAttackKind: "melee", oncePerTurnName: "Heavy Blow", oncePerTurnDescription: "A punishing strike that leaves room for no mistake.", oncePerTurnRoll: "1d8", oncePerRestName: "Bloodied Surge", oncePerRestDescription: "Fight harder when cornered.", oncePerRestRoll: "1d8+2" },
+  { id: "goblin", name: "Goblin (Basic)", tagline: "Small, scrappy, and spiteful.", lore: "Fast and sneaky, always looking for an opening to strike and flee.", health: 10, armour: 1, attackRoll: "1d8", statValues: [12, 10, 12, 10, 0], weaponName: "Rusty Dagger", weaponDamageRoll: "1d4+4", weaponAttackKind: "melee", oncePerTurnName: "Quick Stab", oncePerTurnDescription: "A darting opportunistic attack.", oncePerTurnRoll: "1d6", oncePerRestName: "Scurry Away", oncePerRestDescription: "Disengage and vanish into cover." },
+  { id: "fire-goblin", name: "Fire Goblin", tagline: "A goblin with a taste for flame.", lore: "Wreathed in embers, lashing out with searing strikes that leave lingering burns.", health: 12, armour: 2, attackRoll: "1d8", specialAbility: "1d8+2 Fire Damage. Roll Vitality; on fail, take 1d4 damage next turn.", specialRoll: "1d8+2", statValues: [11, 10, 9, 8, 11], weaponName: "Firebrand", weaponDamageRoll: "1d6+4", weaponAttackKind: "melee", oncePerTurnName: "Flame Lash", oncePerTurnDescription: "A whip of burning air.", oncePerTurnRoll: "1d8+2", oncePerRestName: "Ignite", oncePerRestDescription: "Set the battlefield alight.", oncePerRestRoll: "2d8" },
+  { id: "orc", name: "Orc", tagline: "Strong, direct, and relentless.", lore: "A brutal warlord whose blade and stomping fury shatter formations.", health: 30, armour: 6, attackRoll: "1d12+3", attackName: "Sword of Dread", specialAbility: "Thundering Stomp: 1d12+6 damage within 10ft; all within radius make a DEX save.", specialRoll: "1d12+6", statValues: [7, 14, 6, 12, 8], weaponName: "Sword of Dread", weaponDamageRoll: "1d10+5", weaponAttackKind: "melee", oncePerTurnName: "Thundering Stomp", oncePerTurnDescription: "All within 10ft make a DEX save or take the damage.", oncePerTurnRoll: "1d12+6", oncePerRestName: "War Cry", oncePerRestDescription: "A terrifying roar that shakes the battlefield.", oncePerRestRoll: "2d12" },
+  { id: "mage", name: "Mage", tagline: "A fragile body with dangerous magic.", lore: "Frail in body but devastating in magic, favouring ranged spellfire over melee.", health: 14, armour: 1, attackRoll: "1d12+2", specialAbility: "Chosen Spell", oncePerRest: "Quick Teleport: burst of light to an unknown location within 1000ft.", statValues: [14, 7, 14, 6, 6], weaponName: "Arcane Staff", weaponDamageRoll: "1d6+4", weaponAttackKind: "ranged", oncePerTurnName: "Chosen Spell", oncePerTurnDescription: "A focused bolt of destructive magic.", oncePerTurnRoll: "1d12+2", oncePerRestName: "Quick Teleport", oncePerRestDescription: "Teleport in a burst of light to an unknown location within 1000ft." },
 ];
 
 const MONSTER_LOOT = [
@@ -250,6 +253,22 @@ export default function CreateHeroScreen() {
   const [customClasses, setCustomClasses] = useState<CharClass[]>([]);
   const [customMonsterTypes, setCustomMonsterTypes] = useState<MonsterType[]>([]);
   const [presetModalKind, setPresetModalKind] = useState<CustomPresetKind | null>(null);
+  const [oncePerTurnAbility, setOncePerTurnAbility] = useState<Ability>(createEmptyAbility());
+  const [oncePerRestAbility, setOncePerRestAbility] = useState<Ability>(createEmptyAbility());
+  const [heroAbility, setHeroAbility] = useState<Ability>(createEmptyAbility());
+
+  const previewStats = useMemo(() => {
+    const stats = defaultHeroStats();
+    for (const st of stats) {
+      const mainKey = slotKey({ statKey: st.key, subIndex: null });
+      if (assigned[mainKey] != null) st.value = assigned[mainKey];
+      st.subs = st.subs.map((sub, i) => {
+        const k = slotKey({ statKey: st.key, subIndex: i });
+        return { ...sub, value: assigned[k] ?? sub.value };
+      });
+    }
+    return stats;
+  }, [assigned]);
 
   const refreshCustomPresets = async (targetKind: CustomPresetKind) => {
     const list = await loadCustomPresets(targetKind);
@@ -344,7 +363,7 @@ export default function CreateHeroScreen() {
     if (step === 1 && !charClass) return;
     if (step === 2 && pool.length === 0) return;
     if (step === 3 && !allAssigned) return;
-    setStep((s) => Math.min(4, s + 1) as Step);
+    setStep((s) => Math.min(5, s + 1) as Step);
   };
   const goBack = () => setStep((s) => Math.max(0, s - 1) as Step);
 
@@ -586,6 +605,9 @@ export default function CreateHeroScreen() {
         attackKind: w.attackKind,
         damageRoll: w.damageRoll,
       })),
+      oncePerTurn: [{ ...oncePerTurnAbility, id: genId(), used: false }],
+      oncePerRest: [{ ...oncePerRestAbility, id: genId(), used: false }],
+      heroAbilities: [{ ...heroAbility, id: genId(), used: false }],
       inventoryItems: starterItems,
       backstory: `${race.name} ${charClass.name}. ${charClass.tagline}`,
     };
@@ -698,7 +720,18 @@ export default function CreateHeroScreen() {
             onAutoFill={autoFill}
           />
         )}
-        {!isMonster && step === 4 && race && charClass && (
+        {!isMonster && step === 4 && (
+          <AbilitiesStep
+            stats={previewStats}
+            oncePerTurnAbility={oncePerTurnAbility}
+            onChangeOncePerTurn={setOncePerTurnAbility}
+            oncePerRestAbility={oncePerRestAbility}
+            onChangeOncePerRest={setOncePerRestAbility}
+            heroAbility={heroAbility}
+            onChangeHeroAbility={setHeroAbility}
+          />
+        )}
+        {!isMonster && step === 5 && race && charClass && (
           <FinalizeStep
             race={race}
             charClass={charClass}
@@ -730,7 +763,7 @@ export default function CreateHeroScreen() {
           <Text style={[styles.footerBtnText, { color: colors.onSurface }]}>Back</Text>
         </Pressable>
 
-        {step < (isMonster ? 3 : 4) ? (
+        {step < (isMonster ? 3 : 5) ? (
           <Pressable
             testID="creator-next"
             onPress={goNext}
@@ -764,7 +797,7 @@ export default function CreateHeroScreen() {
                 { color: colors.onBrandPrimary },
               ]}
             >
-              {step === (isMonster ? 2 : 3) ? "Review" : "Next"}
+              {step === (isMonster ? 2 : 4) ? "Review" : "Next"}
             </Text>
             <Icon name="chevron-right" size={18} color={colors.onBrandPrimary} />
           </Pressable>
@@ -1794,6 +1827,77 @@ function SlotChip({
       </Text>
       <Text style={styles.slotValue}>{value ?? "—"}</Text>
     </Pressable>
+  );
+}
+
+// ---------- Abilities step ----------
+function AbilitiesStep({
+  stats,
+  oncePerTurnAbility,
+  onChangeOncePerTurn,
+  oncePerRestAbility,
+  onChangeOncePerRest,
+  heroAbility,
+  onChangeHeroAbility,
+}: {
+  stats: ReturnType<typeof defaultHeroStats>;
+  oncePerTurnAbility: Ability;
+  onChangeOncePerTurn: (next: Ability) => void;
+  oncePerRestAbility: Ability;
+  onChangeOncePerRest: (next: Ability) => void;
+  heroAbility: Ability;
+  onChangeHeroAbility: (next: Ability) => void;
+}) {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+  const keyboardSpace = useKeyboardBottomSpace(240);
+  const noop = () => {};
+  return (
+    <ScrollView
+      contentContainerStyle={[styles.stepBody, { paddingBottom: 32 + keyboardSpace }]}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.stepHeading}>Set your abilities</Text>
+      <Text style={styles.stepSubHeading}>
+        One Once Per Turn, one Once Per Rest, and one Hero Ability. You can add more later.
+      </Text>
+      <View style={{ gap: 6, marginBottom: 18 }}>
+        <Text style={[styles.finalLabel, { marginBottom: 4 }]}>ONCE PER TURN</Text>
+        <AbilityCard
+          testID="create-hero-once-per-turn"
+          ability={oncePerTurnAbility}
+          stats={stats}
+          onChange={onChangeOncePerTurn}
+          onDelete={() => onChangeOncePerTurn(createEmptyAbility())}
+          onUse={noop}
+          onExport={noop}
+        />
+      </View>
+      <View style={{ gap: 6, marginBottom: 18 }}>
+        <Text style={[styles.finalLabel, { marginBottom: 4 }]}>ONCE PER REST</Text>
+        <AbilityCard
+          testID="create-hero-once-per-rest"
+          ability={oncePerRestAbility}
+          stats={stats}
+          onChange={onChangeOncePerRest}
+          onDelete={() => onChangeOncePerRest(createEmptyAbility())}
+          onUse={noop}
+          onExport={noop}
+        />
+      </View>
+      <View style={{ gap: 6 }}>
+        <Text style={[styles.finalLabel, { marginBottom: 4 }]}>HERO ABILITY</Text>
+        <AbilityCard
+          testID="create-hero-hero-ability"
+          ability={heroAbility}
+          stats={stats}
+          onChange={onChangeHeroAbility}
+          onDelete={() => onChangeHeroAbility(createEmptyAbility())}
+          onUse={noop}
+          onExport={noop}
+        />
+      </View>
+    </ScrollView>
   );
 }
 
