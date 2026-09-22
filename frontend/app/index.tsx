@@ -187,9 +187,9 @@ As human society grew more complex, humans expanded their claim across the land,
   },
   {
     key: "age-of-magic",
-    label: "Age of Magic",
+    label: "The Age of Magic",
     title: "The Age of Magic",
-    body: `The Age of Magic began approximately 500 years before the Wall was built. It began when the entity known as Khaliik scattered the Power Stones across the solar system, literally summoning Magic into existence.
+    body: `The Age of Magic began approximately 500 years before the Wall was built (). It began when the entity known as Khaliik scattered the Power Stones across the solar system, literally summoning Magic into existence.
 
 The forest-dwelling peoples of Aryndos benefited most. Elves quickly mastered many uses of Magic and enlisted Dwarves to mine for more stones. Only the Elves knew the proper rituals for harvesting them. Without those rituals, a Power Stone could bleed and become unstable.
 
