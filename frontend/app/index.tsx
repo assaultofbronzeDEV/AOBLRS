@@ -177,29 +177,28 @@ These stories are foundations for your own games, not limits. Use the gaps in th
   },
   {
     key: "early-ages",
-    label: "Early Ages",
-    title: "The Early Ages",
-    body: `The earliest recordings date to approximately 1,000 years before the Wall was built. The Early Ages were scarcely recorded, so they appear quiet, but the surviving records are incomplete.
+    label: "Early Ages (??? - 1A.M.)",
+    title: "The Early Ages (??? - 1A.M.)",
+    body: `The oldest surviving written recordings date to approximately 1,000 years before the Wall was built. The Early Ages were scarcely recorded, so they appear quiet, but the surviving records are incomplete.
 
-Aryndos thrived in harmony with nature for thousands of years. Humans, Orcs, Elves, Dwarves, and other peoples clashed from time to time, often fighting over territory and power. Of them all, the humans became the most prosperous.
+Aryndos seems to have thrived in harmony with nature for thousands of years. Humans, Orcs, Elves, Dwarves, and other peoples clashed from time to time, often fighting over territory and power. Of them all, the humans became the most prosperous.
 
-As human society grew more complex, humans expanded their claim across the land, deforesting it and pushing forest-dwelling peoples farther west. One of the strangest reports from this period concerns Maltherion, the Skinwalker, an apparently unkillable shapeshifter who caused havoc across the continent. No record explains what Maltherion was, where it came from, or what it truly wanted.`,
+As human society grew more complex, humans expanded their claim across the land, deforesting it and pushing forest-dwelling peoples farther west. One of the strangest reports from this period concerns MALTHERION - THE SKINWALKER, an apparently unkillable shapeshifter who caused havoc across the continent. No record explains what Maltherion was, where it came from, or what it truly wanted.`,
   },
   {
     key: "age-of-magic",
-    label: "The Age of Magic",
-    title: "The Age of Magic",
-    body: `The Age of Magic began approximately 500 years before the Wall was built (). It began when the entity known as Khaliik scattered the Power Stones across the solar system, literally summoning Magic into existence.
+    label: "The Age of Magic (1A.M. - 712A.M.)",
+    title: "The Age of Magic (1A.M. - 712A.M.)",
+    body: `The Age of Magic began when the entity later known as KHALIIK scattered the Power-Stones across the solar system.
 
 The forest-dwelling peoples of Aryndos benefited most. Elves quickly mastered many uses of Magic and enlisted Dwarves to mine for more stones. Only the Elves knew the proper rituals for harvesting them. Without those rituals, a Power Stone could bleed and become unstable.
 
 Humans paid little attention to the Power Stones or the godlike entity that had changed their world. They focused instead on expansion, building, and mining. Their colonies eventually united into a nation in the eastern half of the continent.
 
-The Wall
+THE WALL
+Around 400 years after the Age of Magic began, the Elven leader NIIRMATA grew alarmed by the rapid human expansion into central Aryndos. Niirmata built the Wall alone, it was an underwhelming sight: a 4-foot-tall stone barrier spanning from the northernmost point of the western continent to the southernmost point.
 
-Around 400 years after the Age of Magic began, the Elven leader Niirmata grew alarmed by the rapid human expansion into central Aryndos. Niirmata built the Wall alone, it was an underwhelming sight: a 4-foot-tall stone barrier spanning from the northernmost point of the western continent to the southernmost point.
-
-Niirmata placed a line of pure Power Stones beneath its entire length. After the Wall was completed, Niirmata performed a powerful spell, sacrificing his own life and that of his human lover to ensure that no human could cross the barrier.
+Niirmata placed a line of pure Power Stones beneath its entire length. After the Wall was completed, Niirmata performed a powerful spell, sacrificing his own life and that of his elderly human lover to ensure that no human could cross the barrier.
 
 Unable to understand the magic preventing them from crossing the seemingly insignificant structure, humans expanded farther east. They eventually covered the entire eastern side of the continent, and the threat of expansion into Magi territory was halted for another two centuries.`,
     imageBlocks: [
@@ -208,11 +207,9 @@ Unable to understand the magic preventing them from crossing the seemingly insig
   },
   {
     key: "age-of-war",
-    label: "The Age of War",
-    title: "The Age of War",
-    body: `The Age of War began when a trifecta of intense magical energy was performed. Magical balance was permanently shaken and a prophecy was set in motion.
-
-The Humans, after years of technological advancement due to the discovery of the Power Stones and the subsequent invention of the Power-Harness, finally had the upper hand.
+    label: "The Age of War (712A.M./1A.W - 884A.W.)",
+    title: "The Age of War (712A.M./1A.W - 884A.W.)",
+    body: `The Humans, after years of technological advancement due to the discovery of the Power Stones and the subsequent invention of the Power-Harness, finally had the upper hand.
 
 Weapons that the Magi would never have even considered possible were invented and the march to the Wall began. The Humans wanted more land, and thought that the Wall had stood in place for far too long.
 
@@ -220,25 +217,35 @@ Through the torture of many Dwarves, the Humans now knew that they could access 
 
 While the battle took place, the human commander, ARCHIBALD STELLARK, used a device to bleed the line of pure Power-Stone that ran along the Wall, permanently damaging it, breaking the elven enchantment that Niirmata had sacrificed his life for centuries before, and unleashing all manner of curses onto the tunnel due to years of corrupted Power-Stone energy.
 
-Once the underground attack was complete, the Humans crossed the Wall and the Age of War began.
+Once the underground attack was complete, the Humans crossed the Wall and the Age of War began.`,
+  },
+  {
+    key: "exodus-of-the-magi",
+    label: "The Exodus of the Magi (1A.W - 298A.W.)",
+    title: "The Exodus of the Magi (1A.W - 298A.W.)",
+    body: `The Battle of The Wall was quick and deadly, the adventurers: Elven Sorcerer ARMASAL, Dwarven Warrior KELIL SILVER-HAT and Halfling Rogue HORIK PROUDFOOT had banded together a large army of Dwarves, saved from the human mines, they fought for the Magi but were distracted by THE SKINWALKER disguised as a Dragon and unable to aid when the humans made their attack through the dwarven tunnels.
 
-THE BATTLE OF THE WALL (1AOW) was quick and deadly, the adventurers ARMASAL - an Elven Sorcerer, KELIL - a Dwarven Warrior and HORIK - a Halfling Rogue had amassed a large army of Dwarves - freed from slavery from the Power-Stone mines. The Magi People with the help of this Dwarven army fought with all their might, though eventually the immense power of the new Human Power-Stone technology lead to THE EXODUS OF THE MAGI - The beginning of the end of the Magi peoples time on the world of Aryndos, and the dawning of a new era on their new world far from the war. GARBA FIREST.`,
+    Armasal, Kelil and Horik united the three weapons of Khaliik - MYTHRIALIIS,  SYLVANDRAEL and TYRANOS and accomplished something never even thought possible, they slayed the Skinwalker, the ancient being that had long been thought unkillable, during the Battle of the Wall, Unfortunately Horik Proudfoot was killed in the battle.
+    
+    The magical instability caused by the death of the Skinwalker and the destruction of the wall gathered the attention of the being known as KHALIIK, a godly entity who sent an emissary in the form of RURIC THE GARDENER - a powerful druid tasked with restoring balance. This marked the third powerful magical event to happen that day.
+    
+    Ruric claimed Horiks weapon after his death and established the ARYNDOSIAN GARDENS in the north of the Magi nation, creating a portal linked to another world - GARBA FIREST, a forest world far from the grasp of the humans, named after the forest on Aryndos where Ruric had laid the portal. Ruric, along with other Magi leaders established the first off-planet colony ALLEYUIN and the mass exodus of the Magi began.`,
   },
   {
     key: "power-stones",
     label: "Power-Stones",
     title: "Power-Stones",
-    body: `In the Assault of Bronze universe, old magic used ingredients until the Power-Stones were introduced to the world. It was a day of reckoning: a meteor shower unlike any other. The power these stones held was second to none.
+    body: `In the Assault of Bronze universe, Magi of the Early ages used ingredients or drew upon their own lifeforce to cast spells until the Power-Stones were introduced to the world. It was a day of reckoning: a meteor shower unlike any other. The power these stones held was second to none.
 
-Power-Stones are the most powerful magical conduits when harvested and used in their pure form. The elves quickly became adept at making jewellery, wands, staffs, and other items with Power-Stones inside them, allowing the casting of spells without ingredients or the need to draw from one's own lifeforce.
+Power-Stones are the most powerful magical conduits when harvested. The elves quickly became adept at making jewellery, wands, staffs, and other items with Power-Stones inside them, allowing the casting of spells without ingredients or the need to draw from one's own lifeforce.
 
 All spellcasters must have some sort of magical conduit to perform spells in AOB lore.
 
-In later ages, approximately 500 years after the Age of Magic, the Power-Stones eventually set off an arms race and a space race that would decimate the planet of Aryndos entirely.`,
+In The Age of War, the Power-Stones eventually set off an arms race and a space race that would decimate the planet of Aryndos entirely.`,
   },
   {
     key: "map",
-    label: "Map",
+    label: "Aryndos Map (Age of Magic)",
     title: "Aryndos Map Explorer",
     body: "Use pinch and drag gestures to zoom in and explore the full Aryndos continent map.",
   },
