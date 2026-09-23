@@ -127,6 +127,7 @@ export default function CharacterSheetScreen() {
   const [potionPickerOpen, setPotionPickerOpen] = useState(false);
   const [customPotionModalOpen, setCustomPotionModalOpen] = useState(false);
   const [pendingPotionRoll, setPendingPotionRoll] = useState(false);
+  const [pendingPotionAbilityId, setPendingPotionAbilityId] = useState<string | null>(null);
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [entityToExport, setEntityToExport] = useState<{ type: ExportEntityType; value: ExportEntity } | null>(null);
@@ -324,10 +325,11 @@ export default function CharacterSheetScreen() {
         createEmptyInventoryItem(potion.name, `${potion.description} Cost: ${potion.ingredients} ingredients.`),
       ],
       oncePerRest: char.oncePerRest.map((ability) =>
-        ability.id === "brew-potion" ? { ...ability, used: true } : ability,
+        ability.id === pendingPotionAbilityId ? { ...ability, used: true } : ability,
       ),
     });
     setPotionPickerOpen(false);
+    setPendingPotionAbilityId(null);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -359,10 +361,12 @@ export default function CharacterSheetScreen() {
       return;
     }
 
-    if (ability.id === "brew-potion") {
+    const isBrewPotion = ability.id === "brew-potion" || ability.title.trim().toLowerCase() === "brew potion";
+    if (isBrewPotion) {
       const target = valueForRef(char.stats, ability.linkedStat);
       if (target == null) return;
       setPendingPotionRoll(true);
+      setPendingPotionAbilityId(ability.id);
       setRoll({
         label: `${ability.title || "Brew Potion"} · ${labelForRef(char.stats, ability.linkedStat)}`,
         target,
@@ -1257,6 +1261,7 @@ export default function CharacterSheetScreen() {
         onClose={() => {
           setRoll(null);
           setPendingPotionRoll(false);
+          setPendingPotionAbilityId(null);
         }}
         onLog={logRoll}
         onResolve={(verdict) => {
