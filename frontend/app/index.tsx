@@ -193,7 +193,15 @@ As human society grew more complex, humans expanded their claim across the land,
 
 The forest-dwelling peoples of Aryndos benefited most. Elves quickly mastered many uses of Magic and enlisted Dwarves to mine for more stones. Only the Elves knew the proper rituals for harvesting them. Without those rituals, a Power Stone could bleed and become unstable.
 
-Humans paid little attention to the Power Stones or the godlike entity that had changed their world. They focused instead on expansion, building, and mining. Their colonies eventually united into a nation in the eastern half of the continent.`,
+Humans paid little attention to the Power Stones or the godlike entity that had changed their world. They focused instead on expansion, building, and mining. Their colonies eventually united into a nation in the eastern half of the continent.
+Around 400 years after the Age of Magic began, the Elven leader Niirmata grew alarmed by the rapid human expansion into central Aryndos. Niirmata built the Wall alone, it was an underwhelming sight: a 4-foot-tall stone barrier spanning from the northernmost point of the western continent to the southernmost point.
+
+Niirmata placed a line of pure Power Stones beneath its entire length. After the Wall was completed, Niirmata performed a powerful spell, sacrificing his own life and that of his human lover to ensure that no human could cross the barrier.
+
+Unable to understand the magic preventing them from crossing the seemingly insignificant structure, humans expanded farther east. They eventually covered the entire eastern side of the continent, and the threat of expansion into Magi territory was halted for another two centuries.`,
+    imageBlocks: [
+      { after: "Niirmata placed a line of pure Power Stones beneath its entire length.", source: require("@/assets/images/Aryndos map Political divide.png") },
+    ],
   },
   {
     key: "age-of-war",
@@ -210,19 +218,6 @@ Through the torture of many Dwarves, the Humans now knew that they could access 
 While the battle took place, the human commander, ARCHIBALD STELLARK, used a device to bleed the line of pure Power-Stone that ran along the Wall, permanently damaging it, breaking the elven enchantment that Niirmata had sacrificed his life for centuries before, and unleashing all manner of curses onto the tunnel due to years of corrupted Power-Stone energy.
 
 Once the underground attack was complete, the Humans crossed the Wall and the Age of War began.`,
-  },
-  {
-    key: "the-wall",
-    label: "The Wall",
-    title: "Niirmata and the Wall",
-    body: `Around 400 years after the Age of Magic began, the Elven leader Niirmata grew alarmed by the rapid human expansion into central Aryndos. Niirmata built the Wall alone, it was an underwhelming sight: a 4-foot-tall stone barrier spanning from the northernmost point of the western continent to the southernmost point.
-
-Niirmata placed a line of pure Power Stones beneath its entire length. After the Wall was completed, Niirmata performed a powerful spell, sacrificing his own life and that of his human lover to ensure that no human could cross the barrier.
-
-Unable to understand the magic preventing them from crossing the seemingly insignificant structure, humans expanded farther east. They eventually covered the entire eastern side of the continent, and the threat of expansion into Magi territory was halted for another two centuries.`,
-    imageBlocks: [
-      { after: "Niirmata placed a line of pure Power Stones beneath its entire length.", source: require("@/assets/images/Aryndos map Political divide.png") },
-    ],
   },
   {
     key: "power-stones",

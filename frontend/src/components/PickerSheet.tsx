@@ -27,6 +27,7 @@ type Props = {
   onCustom: () => void;
   onImport?: () => void;
   onExport?: (preset: PickerEntry) => void;
+  notesBelowMeta?: boolean;
   testIDPrefix?: string;
 };
 
@@ -42,6 +43,7 @@ export default function PickerSheet({
   onCustom,
   onImport,
   onExport,
+  notesBelowMeta = false,
   testIDPrefix = "picker",
 }: Props) {
   const { colors } = useTheme();
@@ -158,6 +160,7 @@ export default function PickerSheet({
                     }}
                     style={({ pressed }) => [
                       styles.entryRow,
+                      notesBelowMeta && styles.entryRowWithNotesBelowMeta,
                       {
                         borderColor: colors.borderStrong,
                         backgroundColor: pressed
@@ -178,7 +181,7 @@ export default function PickerSheet({
                       <Text style={styles.entryName} numberOfLines={1}>
                         {p.name}
                       </Text>
-                      {p.notes ? (
+                      {p.notes && !notesBelowMeta ? (
                         <Text style={styles.entryNotes} numberOfLines={2}>
                           {p.notes}
                         </Text>
@@ -209,6 +212,11 @@ export default function PickerSheet({
                       </View>
                     ) : null}
                     <Icon name="plus-circle-outline" size={20} color={colors.brandPrimary} />
+                    {p.notes && notesBelowMeta ? (
+                      <Text style={styles.entryNotesBelowMeta}>
+                        {p.notes}
+                      </Text>
+                    ) : null}
                   </Pressable>
                 ))}
               </View>
@@ -324,6 +332,7 @@ const getStyles = (colors: ThemeColors) =>
       paddingVertical: 10,
       paddingHorizontal: 10,
     },
+    entryRowWithNotesBelowMeta: { flexWrap: "wrap" },
     entryName: {
       fontSize: 15,
       color: colors.onSurface,
@@ -336,6 +345,14 @@ const getStyles = (colors: ThemeColors) =>
       fontFamily: fonts.display,
       lineHeight: 16,
       marginTop: 2,
+    },
+    entryNotesBelowMeta: {
+      flexBasis: "100%",
+      fontSize: 12,
+      color: colors.muted,
+      fontFamily: fonts.display,
+      lineHeight: 17,
+      marginTop: 4,
     },
     metaChip: {
       borderWidth: 1.5,

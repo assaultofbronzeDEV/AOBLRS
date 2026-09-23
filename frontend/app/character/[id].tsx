@@ -1256,6 +1256,32 @@ export default function CharacterSheetScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      <PickerSheet
+        visible={potionPickerOpen}
+        testIDPrefix="potion-picker"
+        title="Potion Library"
+        subtitle={`Ingredients: ${char.currency.ingredients} · Locked potions require a higher level.`}
+        customLabel="Create custom potion"
+        onImport={() => setEntityImportType("potion")}
+        notesBelowMeta
+        presets={potionLibrary.map((potion) => ({
+          id: potion.id,
+          name: potion.name,
+          category: "Brewable Potions",
+          meta: `${potion.ingredients} ingredients · Lv ${potion.requiredLevel}`,
+          notes: potion.effectRoll ? `${potion.description} · ${potion.effectRoll}` : potion.description,
+          icon: "flask-outline",
+        }))}
+        categoryOrder={["Brewable Potions"]}
+        onClose={() => setPotionPickerOpen(false)}
+        onSelect={brewPotion}
+        onExport={(entry) => {
+          const potion = potionLibrary.find((candidate) => candidate.id === entry.id);
+          if (potion) exportEntity("potion", potion);
+        }}
+        onCustom={() => setCustomPotionModalOpen(true)}
+      />
+
       <DiceRollModal
         request={roll}
         onClose={() => {
@@ -1267,7 +1293,6 @@ export default function CharacterSheetScreen() {
         onResolve={(verdict) => {
           if (pendingPotionRoll) {
             setPendingPotionRoll(false);
-            setRoll(null);
             if (verdict === "success" || verdict === "crit-success") setPotionPickerOpen(true);
             return;
           }
@@ -1436,7 +1461,7 @@ export default function CharacterSheetScreen() {
               testID="hp-warning-title"
               style={[styles.warnTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
             >
-              Not Enough Hero Points
+              You can&apos;t do that
             </Text>
             <Text style={[styles.warnText, { color: colors.muted, fontFamily: fonts.display }]}>
               {heroPointsWarning}
@@ -1565,31 +1590,6 @@ export default function CharacterSheetScreen() {
         onCustom={() => {
           if (abilityPickerFor) addCustomAbility(abilityPickerFor);
         }}
-      />
-
-      <PickerSheet
-        visible={potionPickerOpen}
-        testIDPrefix="potion-picker"
-        title="Potion Library"
-        subtitle={`Ingredients: ${char.currency.ingredients} · Locked potions require a higher level.`}
-        customLabel="Create custom potion"
-        onImport={() => setEntityImportType("potion")}
-        presets={potionLibrary.map((potion) => ({
-          id: potion.id,
-          name: potion.name,
-          category: "Brewable Potions",
-          meta: `${potion.ingredients} ingredients · Lv ${potion.requiredLevel}`,
-          notes: potion.effectRoll ? `${potion.description} · ${potion.effectRoll}` : potion.description,
-          icon: "flask-outline",
-        }))}
-        categoryOrder={["Brewable Potions"]}
-        onClose={() => setPotionPickerOpen(false)}
-        onSelect={brewPotion}
-        onExport={(entry) => {
-          const potion = potionLibrary.find((candidate) => candidate.id === entry.id);
-          if (potion) exportEntity("potion", potion);
-        }}
-        onCustom={() => setCustomPotionModalOpen(true)}
       />
 
       <CustomPotionModal
