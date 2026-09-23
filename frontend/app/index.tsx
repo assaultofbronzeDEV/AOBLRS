@@ -194,6 +194,9 @@ As human society grew more complex, humans expanded their claim across the land,
 The forest-dwelling peoples of Aryndos benefited most. Elves quickly mastered many uses of Magic and enlisted Dwarves to mine for more stones. Only the Elves knew the proper rituals for harvesting them. Without those rituals, a Power Stone could bleed and become unstable.
 
 Humans paid little attention to the Power Stones or the godlike entity that had changed their world. They focused instead on expansion, building, and mining. Their colonies eventually united into a nation in the eastern half of the continent.
+
+The Wall
+
 Around 400 years after the Age of Magic began, the Elven leader Niirmata grew alarmed by the rapid human expansion into central Aryndos. Niirmata built the Wall alone, it was an underwhelming sight: a 4-foot-tall stone barrier spanning from the northernmost point of the western continent to the southernmost point.
 
 Niirmata placed a line of pure Power Stones beneath its entire length. After the Wall was completed, Niirmata performed a powerful spell, sacrificing his own life and that of his human lover to ensure that no human could cross the barrier.
@@ -213,11 +216,13 @@ The Humans, after years of technological advancement due to the discovery of the
 
 Weapons that the Magi would never have even considered possible were invented and the march to the Wall began. The Humans wanted more land, and thought that the Wall had stood in place for far too long.
 
-Through the torture of many Dwarves, the Humans now knew that they could access the Wall using the Dwarven tunnels that ran underneath the entire length of the Wall.
+Through the torture of many Dwarves, the Humans now knew that they could access the Wall using the Dwarven tunnels that ran underneath certain parts of it.
 
 While the battle took place, the human commander, ARCHIBALD STELLARK, used a device to bleed the line of pure Power-Stone that ran along the Wall, permanently damaging it, breaking the elven enchantment that Niirmata had sacrificed his life for centuries before, and unleashing all manner of curses onto the tunnel due to years of corrupted Power-Stone energy.
 
-Once the underground attack was complete, the Humans crossed the Wall and the Age of War began.`,
+Once the underground attack was complete, the Humans crossed the Wall and the Age of War began.
+
+THE BATTLE OF THE WALL (1AOW) was quick and deadly, the adventurers ARMASAL - an Elven Sorcerer, KELIL - a Dwarven Warrior and HORIK - a Halfling Rogue had amassed a large army of Dwarves - freed from slavery from the Power-Stone mines. The Magi People with the help of this Dwarven army fought with all their might, though eventually the immense power of the new Human Power-Stone technology lead to THE EXODUS OF THE MAGI - The beginning of the end of the Magi peoples time on the world of Aryndos, and the dawning of a new era on their new world far from the war. GARBA FIREST.`,
   },
   {
     key: "power-stones",

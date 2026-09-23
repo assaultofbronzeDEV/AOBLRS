@@ -1287,7 +1287,7 @@ export default function CharacterSheetScreen() {
         onClose={() => {
           setRoll(null);
           setPendingPotionRoll(false);
-          setPendingPotionAbilityId(null);
+          if (!potionPickerOpen) setPendingPotionAbilityId(null);
         }}
         onLog={logRoll}
         onResolve={(verdict) => {
