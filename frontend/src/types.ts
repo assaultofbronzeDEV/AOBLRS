@@ -1,5 +1,6 @@
 import { normalizeDiceNotation } from "@/src/utils/dice";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
+import type { PotionPreset } from "@/src/data/potions";
 
 export type SubSkill = {
   name: string;
@@ -95,6 +96,7 @@ export type Currency = {
   gold: number;
   silver: number;
   bronze: number;
+  ingredients: number;
 };
 
 export type Character = {
@@ -119,6 +121,7 @@ export type Character = {
   backstory: string;
   inventory: string;
   inventoryItems: InventoryItem[];
+  customPotions: PotionPreset[];
   notes: string;
   customSections: CustomSection[];
   weapons: Weapon[];
@@ -254,10 +257,11 @@ const createBase = (kind: EntityKind): Character => {
     oncePerRest: [],
     heroAbilities: [],
     heroPoints: 0,
-    currency: { gold: 0, silver: 0, bronze: 0 },
+    currency: { gold: 0, silver: 0, bronze: 0, ingredients: 0 },
     backstory: "",
     inventory: "",
     inventoryItems: [],
+    customPotions: [],
     notes: "",
     customSections: [],
     weapons: [],
@@ -351,10 +355,12 @@ export const migrateCharacter = (raw: any): Character => {
       gold: Number.isFinite(raw?.currency?.gold) ? Math.max(0, raw.currency.gold) : 0,
       silver: Number.isFinite(raw?.currency?.silver) ? Math.max(0, raw.currency.silver) : 0,
       bronze: Number.isFinite(raw?.currency?.bronze) ? Math.max(0, raw.currency.bronze) : 0,
+      ingredients: Number.isFinite(raw?.currency?.ingredients) ? Math.max(0, raw.currency.ingredients) : 0,
     },
     backstory: raw.backstory ?? "",
     inventory: raw.inventory ?? "",
     inventoryItems,
+    customPotions: Array.isArray(raw.customPotions) ? raw.customPotions : [],
     notes: raw.notes ?? "",
     customSections: asArr(raw.customSections),
     weapons: asArr(raw.weapons).map((weapon: any) => ({

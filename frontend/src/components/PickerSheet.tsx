@@ -25,6 +25,8 @@ type Props = {
   onClose: () => void;
   onSelect: (preset: PickerEntry) => void;
   onCustom: () => void;
+  onImport?: () => void;
+  onExport?: (preset: PickerEntry) => void;
   testIDPrefix?: string;
 };
 
@@ -38,6 +40,8 @@ export default function PickerSheet({
   onClose,
   onSelect,
   onCustom,
+  onImport,
+  onExport,
   testIDPrefix = "picker",
 }: Props) {
   const { colors } = useTheme();
@@ -103,25 +107,35 @@ export default function PickerSheet({
             </View>
 
             {/* Custom CTA */}
-            <Pressable
-              testID={`${testIDPrefix}-custom`}
-              onPress={() => {
-                onCustom();
-                onClose();
-              }}
-              style={({ pressed }) => [
-                styles.customBtn,
-                {
-                  borderColor: colors.brandPrimary,
-                  backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
-                },
-              ]}
-            >
-              <Icon name="pencil-plus" size={16} color={colors.onBrandPrimary} />
-              <Text style={[styles.customBtnText, { color: colors.onBrandPrimary }]}>
-                {customLabel}
-              </Text>
-            </Pressable>
+            <View style={styles.actionRow}>
+              <Pressable
+                testID={`${testIDPrefix}-custom`}
+                onPress={() => {
+                  onCustom();
+                  onClose();
+                }}
+                style={({ pressed }) => [
+                  styles.customBtn,
+                  { borderColor: colors.brandPrimary, backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary, flex: 1 },
+                ]}
+              >
+                <Icon name="pencil-plus" size={16} color={colors.onBrandPrimary} />
+                <Text style={[styles.customBtnText, { color: colors.onBrandPrimary }]}>{customLabel}</Text>
+              </Pressable>
+              {onImport && (
+                <Pressable
+                  testID={`${testIDPrefix}-import`}
+                  onPress={() => {
+                    onImport();
+                    onClose();
+                  }}
+                  style={({ pressed }) => [styles.importBtn, { borderColor: colors.brandPrimary, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+                  accessibilityLabel="Import JSON"
+                >
+                  <Icon name="file-import-outline" size={18} color={colors.brandPrimary} />
+                </Pressable>
+              )}
+            </View>
           </View>
 
           {/* Body */}
@@ -175,6 +189,19 @@ export default function PickerSheet({
                         <Text style={styles.metaChipText}>{p.meta}</Text>
                       </View>
                     ) : null}
+                    {onExport && (
+                      <Pressable
+                        testID={`${testIDPrefix}-export-${p.id}`}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          onExport(p);
+                        }}
+                        hitSlop={8}
+                        accessibilityLabel={`Export ${p.name}`}
+                      >
+                        <Icon name="file-export-outline" size={17} color={colors.brandPrimary} />
+                      </Pressable>
+                    )}
                     {p.price ? (
                       <View style={styles.priceChip}>
                         <Icon name="cash" size={13} color={colors.onBrandPrimary} />
@@ -261,6 +288,14 @@ const getStyles = (colors: ThemeColors) =>
       fontSize: 14,
       fontFamily: fonts.displayBold,
       letterSpacing: 1,
+    },
+    actionRow: { flexDirection: "row", gap: 8 },
+    importBtn: {
+      width: 42,
+      minHeight: 40,
+      borderWidth: 1.5,
+      alignItems: "center",
+      justifyContent: "center",
     },
     body: { padding: 12, gap: 14, paddingBottom: 24 },
     emptyText: {

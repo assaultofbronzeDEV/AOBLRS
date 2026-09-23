@@ -213,6 +213,15 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
 
   // ── Once Per Rest (powerful — 1d10 minimum) ───────────────
   {
+    id: "brew-potion",
+    name: "Brew Potion",
+    description: "Choose a potion to brew. Costs ingredients and requires an available formula level.",
+    category: "Once Per Rest",
+    effectType: "none",
+    linkedStat: INT_MAIN,
+    tag: "Alchemist",
+  },
+  {
     id: "fireball",
     name: "Fireball",
     description: "A ball of flame that you can throw up to 20ft, it's flame engulfs everything within a 20 ft radius.",

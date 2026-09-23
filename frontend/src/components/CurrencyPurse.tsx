@@ -9,7 +9,8 @@ type Props = {
   onChange: (next: Currency) => void;
 };
 
-type CoinKey = keyof Currency;
+type CoinKey = "gold" | "silver" | "bronze";
+type CurrencyKey = keyof Currency;
 
 const COIN_META: Record<
   CoinKey,
@@ -21,6 +22,7 @@ const COIN_META: Record<
 };
 
 const KEYS: CoinKey[] = ["gold", "silver", "bronze"];
+const INGREDIENTS_KEY: CurrencyKey = "ingredients";
 
 export default function CurrencyPurse({ value, onChange }: Props) {
   const { colors } = useTheme();
@@ -122,6 +124,47 @@ export default function CurrencyPurse({ value, onChange }: Props) {
           );
         })}
       </View>
+      <View style={[styles.ingredientsSection, { borderTopColor: colors.divider }]}>
+        <View style={styles.ingredientsTitleRow}>
+          <Icon name="flask-outline" size={15} color={colors.brandPrimary} />
+          <Text style={[styles.ingredientsLabel, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>INGREDIENTS</Text>
+        </View>
+        <View style={styles.stepper}>
+          <Pressable
+            testID="purse-ingredients-minus"
+            onPress={() => bump(INGREDIENTS_KEY, -1)}
+            onLongPress={() => bump(INGREDIENTS_KEY, -10)}
+            hitSlop={6}
+            style={({ pressed }) => [
+              styles.stepBtn,
+              { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface },
+            ]}
+          >
+            <Icon name="minus" size={12} color={colors.onSurface} />
+          </Pressable>
+          <TextInput
+            testID="purse-ingredients-value"
+            value={String(value.ingredients)}
+            onChangeText={(raw) => setRaw(INGREDIENTS_KEY, raw)}
+            keyboardType="number-pad"
+            maxLength={4}
+            disableFullscreenUI
+            style={[styles.valueInput, { color: colors.onSurface, borderColor: colors.borderStrong, backgroundColor: colors.surface, fontFamily: fonts.displayBold }]}
+          />
+          <Pressable
+            testID="purse-ingredients-plus"
+            onPress={() => bump(INGREDIENTS_KEY, 1)}
+            onLongPress={() => bump(INGREDIENTS_KEY, 10)}
+            hitSlop={6}
+            style={({ pressed }) => [
+              styles.stepBtn,
+              { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface },
+            ]}
+          >
+            <Icon name="plus" size={12} color={colors.onSurface} />
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }
@@ -145,6 +188,13 @@ const styles = StyleSheet.create({
     padding: 8,
     gap: 6,
   },
+  ingredientsSection: {
+    borderTopWidth: 1.5,
+    padding: 8,
+    gap: 4,
+  },
+  ingredientsTitleRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  ingredientsLabel: { fontSize: 11, letterSpacing: 1.5 },
   coinCol: { flex: 1, alignItems: "center", gap: 4 },
   coinTitleRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   coinDot: {

@@ -52,6 +52,7 @@ import InventoryList from "@/src/components/InventoryList";
 import RollHistoryList from "@/src/components/RollHistoryList";
 import PickerSheet, { PickerEntry } from "@/src/components/PickerSheet";
 import CurrencyPurse from "@/src/components/CurrencyPurse";
+import CustomPotionModal from "@/src/components/CustomPotionModal";
 import ExportSheetModal from "@/src/components/ExportSheetModal";
 import ImportEntityModal from "@/src/components/ImportEntityModal";
 import LevelUpModal, { AbilityChoiceKey } from "@/src/components/LevelUpModal";
@@ -60,6 +61,7 @@ import { valueForRef, labelForRef } from "@/src/components/StatPickerModal";
 import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 import { getAgeCatalog } from "@/src/ageCatalog";
+import { PotionPreset, POTION_PRESETS } from "@/src/data/potions";
 
 type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
 
@@ -122,6 +124,9 @@ export default function CharacterSheetScreen() {
   const [armourPickerOpen, setArmourPickerOpen] = useState(false);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [abilityPickerFor, setAbilityPickerFor] = useState<AbilityKey | null>(null);
+  const [potionPickerOpen, setPotionPickerOpen] = useState(false);
+  const [customPotionModalOpen, setCustomPotionModalOpen] = useState(false);
+  const [pendingPotionRoll, setPendingPotionRoll] = useState(false);
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [entityToExport, setEntityToExport] = useState<{ type: ExportEntityType; value: ExportEntity } | null>(null);
@@ -181,6 +186,7 @@ export default function CharacterSheetScreen() {
     if (!char || !entityImportType) return;
     if (entityImportType === "weapon") update({ weapons: [...char.weapons, entity as Weapon] });
     if (entityImportType === "item") update({ inventoryItems: [...char.inventoryItems, entity as InventoryItem] });
+    if (entityImportType === "potion") update({ customPotions: [...char.customPotions, entity as PotionPreset] });
     if (entityImportType === "ability" && abilityPickerFor) {
       setAbilities(abilityPickerFor, [...(char[abilityPickerFor] as Ability[]), entity as Ability]);
     }
@@ -298,6 +304,40 @@ export default function CharacterSheetScreen() {
     Haptics.selectionAsync();
   };
 
+  const brewPotion = (entry: PickerEntry) => {
+    if (!char) return;
+    const potion = potionLibrary.find((candidate) => candidate.id === entry.id);
+    if (!potion) return;
+    const level = parseInt(char.level, 10) || 1;
+    if (level < potion.requiredLevel) {
+      setHeroPointsWarning(`${potion.name} requires level ${potion.requiredLevel}.`);
+      return;
+    }
+    if (char.currency.ingredients < potion.ingredients) {
+      setHeroPointsWarning(`${potion.name} costs ${potion.ingredients} ingredients. You have ${char.currency.ingredients}.`);
+      return;
+    }
+    update({
+      currency: { ...char.currency, ingredients: char.currency.ingredients - potion.ingredients },
+      inventoryItems: [
+        ...char.inventoryItems,
+        createEmptyInventoryItem(potion.name, `${potion.description} Cost: ${potion.ingredients} ingredients.`),
+      ],
+      oncePerRest: char.oncePerRest.map((ability) =>
+        ability.id === "brew-potion" ? { ...ability, used: true } : ability,
+      ),
+    });
+    setPotionPickerOpen(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const potionLibrary = [...POTION_PRESETS, ...(char?.customPotions ?? [])];
+
+  const saveCustomPotion = (potion: PotionPreset) => {
+    update({ customPotions: [...(char?.customPotions ?? []), potion] });
+    setCustomPotionModalOpen(false);
+  };
+
   const useAbility = (ability: Ability) => {
     if (!char) return;
     const isHero = char.heroAbilities.some((a) => a.id === ability.id);
@@ -316,6 +356,21 @@ export default function CharacterSheetScreen() {
     if (isHero && ability.used) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       setHeroPointsWarning("Already used. Take a Long Rest to refresh this ability.");
+      return;
+    }
+
+    if (ability.id === "brew-potion") {
+      const target = valueForRef(char.stats, ability.linkedStat);
+      if (target == null) return;
+      setPendingPotionRoll(true);
+      setRoll({
+        label: `${ability.title || "Brew Potion"} · ${labelForRef(char.stats, ability.linkedStat)}`,
+        target,
+        mode: rollMode,
+        boost: boostPending,
+      });
+      if (rollMode !== "normal") setRollMode("normal");
+      if (boostPending) setBoostPending(false);
       return;
     }
 
@@ -1199,9 +1254,18 @@ export default function CharacterSheetScreen() {
 
       <DiceRollModal
         request={roll}
-        onClose={() => setRoll(null)}
+        onClose={() => {
+          setRoll(null);
+          setPendingPotionRoll(false);
+        }}
         onLog={logRoll}
         onResolve={(verdict) => {
+          if (pendingPotionRoll) {
+            setPendingPotionRoll(false);
+            setRoll(null);
+            if (verdict === "success" || verdict === "crit-success") setPotionPickerOpen(true);
+            return;
+          }
           if (char?.kind === "hero" && char.hp <= 0) {
             handleDeathSaveResult(verdict);
           }
@@ -1496,6 +1560,37 @@ export default function CharacterSheetScreen() {
         onCustom={() => {
           if (abilityPickerFor) addCustomAbility(abilityPickerFor);
         }}
+      />
+
+      <PickerSheet
+        visible={potionPickerOpen}
+        testIDPrefix="potion-picker"
+        title="Potion Library"
+        subtitle={`Ingredients: ${char.currency.ingredients} · Locked potions require a higher level.`}
+        customLabel="Create custom potion"
+        onImport={() => setEntityImportType("potion")}
+        presets={potionLibrary.map((potion) => ({
+          id: potion.id,
+          name: potion.name,
+          category: "Brewable Potions",
+          meta: `${potion.ingredients} ingredients · Lv ${potion.requiredLevel}`,
+          notes: potion.effectRoll ? `${potion.description} · ${potion.effectRoll}` : potion.description,
+          icon: "flask-outline",
+        }))}
+        categoryOrder={["Brewable Potions"]}
+        onClose={() => setPotionPickerOpen(false)}
+        onSelect={brewPotion}
+        onExport={(entry) => {
+          const potion = potionLibrary.find((candidate) => candidate.id === entry.id);
+          if (potion) exportEntity("potion", potion);
+        }}
+        onCustom={() => setCustomPotionModalOpen(true)}
+      />
+
+      <CustomPotionModal
+        visible={customPotionModalOpen}
+        onClose={() => setCustomPotionModalOpen(false)}
+        onSave={saveCustomPotion}
       />
 
       <LevelUpModal

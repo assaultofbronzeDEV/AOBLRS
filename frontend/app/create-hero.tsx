@@ -1829,6 +1829,7 @@ function AbilitySelectRow({
   hint,
   selectedName,
   onPress,
+  onRandomize,
   testID,
 }: {
   icon: string;
@@ -1836,34 +1837,45 @@ function AbilitySelectRow({
   hint: string;
   selectedName?: string;
   onPress: () => void;
+  onRandomize: () => void;
   testID: string;
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   return (
-    <Pressable
-      testID={testID}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.abilitySelectRow,
-        { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface },
-      ]}
-    >
-      <Icon name={icon as any} size={22} color={colors.brandPrimary} />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={[styles.finalLabel, { marginBottom: 2 }]}>{label}</Text>
-        <Text
-          numberOfLines={1}
-          style={[
-            styles.abilitySelectValue,
-            { color: selectedName ? colors.onSurface : colors.muted, fontFamily: fonts.display },
-          ]}
-        >
-          {selectedName ?? hint}
-        </Text>
-      </View>
-      <Icon name="chevron-right" size={20} color={colors.muted} />
-    </Pressable>
+    <View style={[styles.abilitySelectRow, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
+      <Pressable
+        testID={testID}
+        onPress={onPress}
+        style={({ pressed }) => [styles.abilitySelectMain, { backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+      >
+        <Icon name={icon as any} size={22} color={colors.brandPrimary} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[styles.finalLabel, { marginBottom: 2 }]}>{label}</Text>
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.abilitySelectValue,
+              { color: selectedName ? colors.onSurface : colors.muted, fontFamily: fonts.display },
+            ]}
+          >
+            {selectedName ?? hint}
+          </Text>
+        </View>
+        <Icon name="chevron-right" size={20} color={colors.muted} />
+      </Pressable>
+      <Pressable
+        testID={`${testID}-randomize`}
+        onPress={onRandomize}
+        accessibilityLabel={`Randomize ${label.toLowerCase()}`}
+        style={({ pressed }) => [
+          styles.abilityRandomize,
+          { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surfaceSecondary },
+        ]}
+      >
+        <Icon name="dice-d20" size={20} color={colors.brandPrimary} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -1908,11 +1920,23 @@ function AbilitiesStep({
     setPickerFor(null);
   };
 
-  const filteredPresets = options.filter((a) => {
-    if (pickerFor === "heroAbilities") return a.category === "Hero Abilities";
-    if (pickerFor === "oncePerRest") return a.category === "Once Per Rest";
+  const optionsFor = (key: AbilityWizardKey) => options.filter((a) => {
+    if (key === "heroAbilities") return a.category === "Hero Abilities";
+    if (key === "oncePerRest") return a.category === "Once Per Rest";
     return a.category === "Starter Spells" || a.category === "Class Specials";
   });
+
+  const randomize = (key: AbilityWizardKey) => {
+    const available = optionsFor(key);
+    const preset = available[Math.floor(Math.random() * available.length)];
+    if (!preset) return;
+    const ability = presetToAbility(preset);
+    if (key === "oncePerTurn") onSelectOncePerTurn(ability);
+    if (key === "oncePerRest") onSelectOncePerRest(ability);
+    if (key === "heroAbilities") onSelectHeroAbility(ability);
+  };
+
+  const filteredPresets = pickerFor ? optionsFor(pickerFor) : [];
 
   return (
     <ScrollView
@@ -1931,6 +1955,7 @@ function AbilitiesStep({
           hint="Tap to choose"
           selectedName={oncePerTurnAbility?.title}
           onPress={() => setPickerFor("oncePerTurn")}
+          onRandomize={() => randomize("oncePerTurn")}
         />
         <AbilitySelectRow
           testID="create-hero-once-per-rest"
@@ -1939,6 +1964,7 @@ function AbilitiesStep({
           hint="Tap to choose"
           selectedName={oncePerRestAbility?.title}
           onPress={() => setPickerFor("oncePerRest")}
+          onRandomize={() => randomize("oncePerRest")}
         />
         <AbilitySelectRow
           testID="create-hero-hero-ability"
@@ -1947,6 +1973,7 @@ function AbilitiesStep({
           hint="Tap to choose"
           selectedName={heroAbility?.title}
           onPress={() => setPickerFor("heroAbilities")}
+          onRandomize={() => randomize("heroAbilities")}
         />
       </View>
 
@@ -2451,10 +2478,24 @@ const getStyles = (colors: ThemeColors) =>
     abilitySelectRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
       borderWidth: 2,
-      padding: 14,
       minWidth: 0,
+    },
+    abilitySelectMain: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      padding: 14,
+    },
+    abilityRandomize: {
+      width: 48,
+      height: 48,
+      marginRight: 8,
+      borderWidth: 1.5,
+      alignItems: "center",
+      justifyContent: "center",
     },
     abilitySelectValue: {
       fontSize: 14,

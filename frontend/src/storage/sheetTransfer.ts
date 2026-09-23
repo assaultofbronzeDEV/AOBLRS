@@ -9,6 +9,7 @@ import {
 } from "@/src/types";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 import { CustomPreset } from "@/src/storage/customPresets";
+import type { PotionPreset } from "@/src/data/potions";
 
 export type StatRollPreset = {
   id: string;
@@ -28,8 +29,8 @@ export type ExportPayload = {
   characters?: Character[];
 };
 
-export type ExportEntityType = "ability" | "weapon" | "item" | "customPreset" | "statRoll";
-export type ExportEntity = Ability | Weapon | InventoryItem | CustomPreset | StatRollPreset;
+export type ExportEntityType = "ability" | "weapon" | "item" | "potion" | "customPreset" | "statRoll";
+export type ExportEntity = Ability | Weapon | InventoryItem | PotionPreset | CustomPreset | StatRollPreset;
 
 export type EntityExportPayload = {
   schema: "aob-entity-v1";
@@ -100,14 +101,14 @@ export function parseEntityImportJson(raw: string): ParseEntityImportResult {
 
   try {
     const parsed = JSON.parse(raw.trim());
-    const validTypes: ExportEntityType[] = ["ability", "weapon", "item", "customPreset", "statRoll"];
+    const validTypes: ExportEntityType[] = ["ability", "weapon", "item", "potion", "customPreset", "statRoll"];
     if (
       parsed?.schema !== "aob-entity-v1" ||
       !validTypes.includes(parsed.entityType) ||
       !parsed.entity ||
       typeof parsed.entity !== "object"
     ) {
-      return { success: false, error: "Unrecognized ability, weapon, or item export." };
+      return { success: false, error: "Unrecognized ability, weapon, item, or potion export." };
     }
     return { success: true, entityType: parsed.entityType, entity: parsed.entity };
   } catch (err: any) {
