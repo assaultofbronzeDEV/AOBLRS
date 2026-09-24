@@ -225,11 +225,11 @@ Once the underground attack was complete, the Humans crossed the Wall and the Ag
     title: "The Exodus of the Magi (1A.W - 298A.W.)",
     body: `The Battle of The Wall was quick and deadly, the adventurers: Elven Sorcerer ARMASAL, Dwarven Warrior KELIL SILVER-HAT and Halfling Rogue HORIK PROUDFOOT had banded together a large army of Dwarves, saved from the human mines, they fought for the Magi but were distracted by THE SKINWALKER disguised as a Dragon and unable to aid when the humans made their attack through the dwarven tunnels.
 
-    Armasal, Kelil and Horik united the three weapons of Khaliik - MYTHRIALIIS,  SYLVANDRAEL and TYRANOS and accomplished something never even thought possible, they slayed the Skinwalker, the ancient being that had long been thought unkillable, during the Battle of the Wall, Unfortunately Horik Proudfoot was killed in the battle.
+  Armasal, Kelil and Horik united the three weapons of Khaliik - MYTHRIALIIS,  SYLVANDRAEL and TYRANOS and accomplished something never even thought possible, they slayed the Skinwalker, the ancient being that had long been thought unkillable, during the Battle of the Wall, Unfortunately Horik Proudfoot was killed in the battle.
     
-    The magical instability caused by the death of the Skinwalker and the destruction of the wall gathered the attention of the being known as KHALIIK, a godly entity who sent an emissary in the form of RURIC THE GARDENER - a powerful druid tasked with restoring balance. This marked the third powerful magical event to happen that day.
+  The magical instability caused by the death of the Skinwalker and the destruction of the wall gathered the attention of the being known as KHALIIK, a godly entity who sent an emissary in the form of RURIC THE GARDENER - a powerful druid tasked with restoring balance. This marked the third powerful magical event to happen that day.
     
-    Ruric claimed Horiks weapon after his death and established the ARYNDOSIAN GARDENS in the north of the Magi nation, creating a portal linked to another world - GARBA FIREST, a forest world far from the grasp of the humans, named after the forest on Aryndos where Ruric had laid the portal. Ruric, along with other Magi leaders established the first off-planet colony ALLEYUIN and the mass exodus of the Magi began.`,
+  Ruric claimed Horiks weapon after his death and established the ARYNDOSIAN GARDENS in the north of the Magi nation, creating a portal linked to another world - GARBA FIREST, a forest world far from the grasp of the humans, named after the forest on Aryndos where Ruric had laid the portal. Ruric, along with other Magi leaders established the first off-planet colony ALLEYUIN and the mass exodus of the Magi began.`,
   },
   {
     key: "power-stones",
