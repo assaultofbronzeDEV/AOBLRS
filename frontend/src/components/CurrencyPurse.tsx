@@ -128,7 +128,7 @@ export default function CurrencyPurse({ value, onChange }: Props) {
       <View style={[styles.resourcesRow, { borderTopColor: colors.divider }]}>
         <View style={styles.resourceSection}>
           <View style={styles.resourceTitleRow}>
-            <Icon name="flask-outline" size={15} color={colors.brandPrimary} />
+            <Icon name="flask-outline" size={15} color={colors.brandPrimary} style={styles.resourceTitleIcon} />
             <Text style={[styles.ingredientsLabel, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>INGREDIENTS</Text>
           </View>
           <View style={styles.stepper}>
@@ -163,7 +163,7 @@ export default function CurrencyPurse({ value, onChange }: Props) {
         </View>
         <View style={styles.resourceSection}>
           <View style={styles.resourceTitleRow}>
-            <Icon name="credit-card-outline" size={15} color={colors.brandPrimary} />
+            <Icon name="bird" size={15} color={colors.brandPrimary} style={styles.resourceTitleIcon} />
             <Text style={[styles.ingredientsLabel, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>FEDERATION CREDITS</Text>
           </View>
           <View style={styles.stepper}>
@@ -228,13 +228,19 @@ const styles = StyleSheet.create({
   },
   resourceSection: { flex: 1, gap: 4, minWidth: 0 },
   resourceTitleRow: {
+    position: "relative",
     height: 32,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
   },
-  ingredientsLabel: { fontSize: 11, letterSpacing: 1.5, textAlign: "center", flexShrink: 1 },
+  resourceTitleIcon: { position: "absolute", left: 0 },
+  ingredientsLabel: {
+    fontSize: 11,
+    letterSpacing: 1.5,
+    textAlign: "center",
+    flexShrink: 1,
+    paddingHorizontal: 18,
+  },
   coinCol: { flex: 1, alignItems: "center", gap: 4 },
   coinTitleRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   coinDot: {
