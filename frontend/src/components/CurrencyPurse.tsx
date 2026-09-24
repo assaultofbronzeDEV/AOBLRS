@@ -23,15 +23,16 @@ const COIN_META: Record<
 
 const KEYS: CoinKey[] = ["gold", "silver", "bronze"];
 const INGREDIENTS_KEY: CurrencyKey = "ingredients";
+const FEDERATION_CREDITS_KEY: CurrencyKey = "federationCredits";
 
 export default function CurrencyPurse({ value, onChange }: Props) {
   const { colors } = useTheme();
 
-  const bump = (key: CoinKey, delta: number) => {
+  const bump = (key: CurrencyKey, delta: number) => {
     onChange({ ...value, [key]: Math.max(0, Math.min(9999, value[key] + delta)) });
   };
 
-  const setRaw = (key: CoinKey, raw: string) => {
+  const setRaw = (key: CurrencyKey, raw: string) => {
     const n = parseInt(raw.replace(/\D/g, ""), 10);
     onChange({ ...value, [key]: Number.isFinite(n) ? Math.max(0, Math.min(9999, n)) : 0 });
   };
@@ -124,45 +125,76 @@ export default function CurrencyPurse({ value, onChange }: Props) {
           );
         })}
       </View>
-      <View style={[styles.ingredientsSection, { borderTopColor: colors.divider }]}>
-        <View style={styles.ingredientsTitleRow}>
-          <Icon name="flask-outline" size={15} color={colors.brandPrimary} />
-          <Text style={[styles.ingredientsLabel, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>INGREDIENTS</Text>
+      <View style={[styles.resourcesRow, { borderTopColor: colors.divider }]}>
+        <View style={styles.resourceSection}>
+          <View style={styles.ingredientsTitleRow}>
+            <Icon name="flask-outline" size={15} color={colors.brandPrimary} />
+            <Text style={[styles.ingredientsLabel, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>INGREDIENTS</Text>
+          </View>
+          <View style={styles.stepper}>
+            <Pressable
+              testID="purse-ingredients-minus"
+              onPress={() => bump(INGREDIENTS_KEY, -1)}
+              onLongPress={() => bump(INGREDIENTS_KEY, -10)}
+              hitSlop={6}
+              style={({ pressed }) => [styles.stepBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+            >
+              <Icon name="minus" size={12} color={colors.onSurface} />
+            </Pressable>
+            <TextInput
+              testID="purse-ingredients-value"
+              value={String(value.ingredients)}
+              onChangeText={(raw) => setRaw(INGREDIENTS_KEY, raw)}
+              keyboardType="number-pad"
+              maxLength={4}
+              disableFullscreenUI
+              style={[styles.valueInput, { color: colors.onSurface, borderColor: colors.borderStrong, backgroundColor: colors.surface, fontFamily: fonts.displayBold }]}
+            />
+            <Pressable
+              testID="purse-ingredients-plus"
+              onPress={() => bump(INGREDIENTS_KEY, 1)}
+              onLongPress={() => bump(INGREDIENTS_KEY, 10)}
+              hitSlop={6}
+              style={({ pressed }) => [styles.stepBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+            >
+              <Icon name="plus" size={12} color={colors.onSurface} />
+            </Pressable>
+          </View>
         </View>
-        <View style={styles.stepper}>
-          <Pressable
-            testID="purse-ingredients-minus"
-            onPress={() => bump(INGREDIENTS_KEY, -1)}
-            onLongPress={() => bump(INGREDIENTS_KEY, -10)}
-            hitSlop={6}
-            style={({ pressed }) => [
-              styles.stepBtn,
-              { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface },
-            ]}
-          >
-            <Icon name="minus" size={12} color={colors.onSurface} />
-          </Pressable>
-          <TextInput
-            testID="purse-ingredients-value"
-            value={String(value.ingredients)}
-            onChangeText={(raw) => setRaw(INGREDIENTS_KEY, raw)}
-            keyboardType="number-pad"
-            maxLength={4}
-            disableFullscreenUI
-            style={[styles.valueInput, { color: colors.onSurface, borderColor: colors.borderStrong, backgroundColor: colors.surface, fontFamily: fonts.displayBold }]}
-          />
-          <Pressable
-            testID="purse-ingredients-plus"
-            onPress={() => bump(INGREDIENTS_KEY, 1)}
-            onLongPress={() => bump(INGREDIENTS_KEY, 10)}
-            hitSlop={6}
-            style={({ pressed }) => [
-              styles.stepBtn,
-              { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface },
-            ]}
-          >
-            <Icon name="plus" size={12} color={colors.onSurface} />
-          </Pressable>
+        <View style={styles.resourceSection}>
+          <View style={styles.ingredientsTitleRow}>
+            <Icon name="credit-card-outline" size={15} color={colors.brandPrimary} />
+            <Text style={[styles.ingredientsLabel, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>FEDERATION CREDITS</Text>
+          </View>
+          <View style={styles.stepper}>
+            <Pressable
+              testID="purse-federation-credits-minus"
+              onPress={() => bump(FEDERATION_CREDITS_KEY, -1)}
+              onLongPress={() => bump(FEDERATION_CREDITS_KEY, -10)}
+              hitSlop={6}
+              style={({ pressed }) => [styles.stepBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+            >
+              <Icon name="minus" size={12} color={colors.onSurface} />
+            </Pressable>
+            <TextInput
+              testID="purse-federation-credits-value"
+              value={String(value.federationCredits)}
+              onChangeText={(raw) => setRaw(FEDERATION_CREDITS_KEY, raw)}
+              keyboardType="number-pad"
+              maxLength={4}
+              disableFullscreenUI
+              style={[styles.valueInput, { color: colors.onSurface, borderColor: colors.borderStrong, backgroundColor: colors.surface, fontFamily: fonts.displayBold }]}
+            />
+            <Pressable
+              testID="purse-federation-credits-plus"
+              onPress={() => bump(FEDERATION_CREDITS_KEY, 1)}
+              onLongPress={() => bump(FEDERATION_CREDITS_KEY, 10)}
+              hitSlop={6}
+              style={({ pressed }) => [styles.stepBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+            >
+              <Icon name="plus" size={12} color={colors.onSurface} />
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>
@@ -188,11 +220,13 @@ const styles = StyleSheet.create({
     padding: 8,
     gap: 6,
   },
-  ingredientsSection: {
+  resourcesRow: {
+    flexDirection: "row",
     borderTopWidth: 1.5,
     padding: 8,
-    gap: 4,
+    gap: 8,
   },
+  resourceSection: { flex: 1, gap: 4, minWidth: 0 },
   ingredientsTitleRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   ingredientsLabel: { fontSize: 11, letterSpacing: 1.5 },
   coinCol: { flex: 1, alignItems: "center", gap: 4 },

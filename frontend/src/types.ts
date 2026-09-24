@@ -97,6 +97,7 @@ export type Currency = {
   silver: number;
   bronze: number;
   ingredients: number;
+  federationCredits: number;
 };
 
 export type Character = {
@@ -257,7 +258,7 @@ const createBase = (kind: EntityKind): Character => {
     oncePerRest: [],
     heroAbilities: [],
     heroPoints: 0,
-    currency: { gold: 0, silver: 0, bronze: 0, ingredients: 0 },
+    currency: { gold: 0, silver: 0, bronze: 0, ingredients: 0, federationCredits: 0 },
     backstory: "",
     inventory: "",
     inventoryItems: [],
@@ -356,6 +357,7 @@ export const migrateCharacter = (raw: any): Character => {
       silver: Number.isFinite(raw?.currency?.silver) ? Math.max(0, raw.currency.silver) : 0,
       bronze: Number.isFinite(raw?.currency?.bronze) ? Math.max(0, raw.currency.bronze) : 0,
       ingredients: Number.isFinite(raw?.currency?.ingredients) ? Math.max(0, raw.currency.ingredients) : 0,
+      federationCredits: Number.isFinite(raw?.currency?.federationCredits) ? Math.max(0, raw.currency.federationCredits) : 0,
     },
     backstory: raw.backstory ?? "",
     inventory: raw.inventory ?? "",
