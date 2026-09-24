@@ -25,12 +25,14 @@ import {
   defaultMonsterStats,
   genId,
   HP_MAX,
+  StatBlock,
   StatKey,
 } from "@/src/types";
 import { upsertCharacter } from "@/src/storage/characters";
 import { CLASSES, RACES, Race, CharClass, TraitRef, traitKey } from "@/src/data/lineages";
 import type { AbilityPreset } from "@/src/data/abilities";
 import PickerSheet from "@/src/components/PickerSheet";
+import AbilityCard from "@/src/components/AbilityCard";
 import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 import { getAgeCatalog } from "@/src/ageCatalog";
@@ -719,6 +721,7 @@ export default function CreateHeroScreen() {
             onSelectOncePerRest={setOncePerRestAbility}
             heroAbility={heroAbility}
             onSelectHeroAbility={setHeroAbility}
+            stats={defaultHeroStats()}
           />
         )}
         {!isMonster && step === 5 && race && charClass && (
@@ -1828,6 +1831,7 @@ function AbilitySelectRow({
   label,
   hint,
   selectedName,
+  selectedDescription,
   onPress,
   onRandomize,
   testID,
@@ -1836,6 +1840,7 @@ function AbilitySelectRow({
   label: string;
   hint: string;
   selectedName?: string;
+  selectedDescription?: string;
   onPress: () => void;
   onRandomize: () => void;
   testID: string;
@@ -1861,6 +1866,11 @@ function AbilitySelectRow({
           >
             {selectedName ?? hint}
           </Text>
+          {selectedDescription ? (
+            <Text numberOfLines={2} style={[styles.abilitySelectDescription, { color: colors.muted }]}>
+              {selectedDescription}
+            </Text>
+          ) : null}
         </View>
         <Icon name="chevron-right" size={20} color={colors.muted} />
       </Pressable>
@@ -1888,15 +1898,17 @@ function AbilitiesStep({
   onSelectOncePerRest,
   heroAbility,
   onSelectHeroAbility,
+  stats,
 }: {
   options: AbilityPreset[];
   categoryOrder: string[];
   oncePerTurnAbility: Ability | null;
-  onSelectOncePerTurn: (a: Ability) => void;
+  onSelectOncePerTurn: (a: Ability | null) => void;
   oncePerRestAbility: Ability | null;
-  onSelectOncePerRest: (a: Ability) => void;
+  onSelectOncePerRest: (a: Ability | null) => void;
   heroAbility: Ability | null;
-  onSelectHeroAbility: (a: Ability) => void;
+  onSelectHeroAbility: (a: Ability | null) => void;
+  stats: StatBlock[];
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -1954,6 +1966,7 @@ function AbilitiesStep({
           label="ONCE PER TURN"
           hint="Tap to choose"
           selectedName={oncePerTurnAbility?.title}
+          selectedDescription={oncePerTurnAbility?.description}
           onPress={() => setPickerFor("oncePerTurn")}
           onRandomize={() => randomize("oncePerTurn")}
         />
@@ -1963,6 +1976,7 @@ function AbilitiesStep({
           label="ONCE PER REST"
           hint="Tap to choose"
           selectedName={oncePerRestAbility?.title}
+          selectedDescription={oncePerRestAbility?.description}
           onPress={() => setPickerFor("oncePerRest")}
           onRandomize={() => randomize("oncePerRest")}
         />
@@ -1972,10 +1986,45 @@ function AbilitiesStep({
           label="HERO ABILITY"
           hint="Tap to choose"
           selectedName={heroAbility?.title}
+          selectedDescription={heroAbility?.description}
           onPress={() => setPickerFor("heroAbilities")}
           onRandomize={() => randomize("heroAbilities")}
         />
       </View>
+
+      {oncePerTurnAbility && (
+        <AbilityCard
+          ability={oncePerTurnAbility}
+          stats={stats}
+          onChange={onSelectOncePerTurn}
+          onDelete={() => onSelectOncePerTurn(null)}
+          onUse={() => undefined}
+          onExport={() => undefined}
+          testID="create-hero-once-per-turn-editor"
+        />
+      )}
+      {oncePerRestAbility && (
+        <AbilityCard
+          ability={oncePerRestAbility}
+          stats={stats}
+          onChange={onSelectOncePerRest}
+          onDelete={() => onSelectOncePerRest(null)}
+          onUse={() => undefined}
+          onExport={() => undefined}
+          testID="create-hero-once-per-rest-editor"
+        />
+      )}
+      {heroAbility && (
+        <AbilityCard
+          ability={heroAbility}
+          stats={stats}
+          onChange={onSelectHeroAbility}
+          onDelete={() => onSelectHeroAbility(null)}
+          onUse={() => undefined}
+          onExport={() => undefined}
+          testID="create-hero-hero-ability-editor"
+        />
+      )}
 
       <PickerSheet
         visible={pickerFor != null}
@@ -2499,6 +2548,12 @@ const getStyles = (colors: ThemeColors) =>
     },
     abilitySelectValue: {
       fontSize: 14,
+    },
+    abilitySelectDescription: {
+      fontSize: 12,
+      lineHeight: 16,
+      marginTop: 2,
+      fontFamily: fonts.body,
     },
     nameInput: {
       borderWidth: 2,
