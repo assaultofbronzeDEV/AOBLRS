@@ -18,7 +18,13 @@ export type StatRollPreset = {
   pool: number[];
 };
 
-export type LootBundleItem = { name: string; notes?: string };
+export type LootBundleItem = {
+  name: string;
+  notes?: string;
+  kind?: "weapon" | "armour" | "potion" | "item";
+  attackKind?: "melee" | "ranged";
+  damageRoll?: string;
+};
 export type LootBundleCurrency = { gold: number; silver: number; bronze: number };
 export type LootBundle = { items: LootBundleItem[]; currency: LootBundleCurrency };
 
@@ -125,7 +131,13 @@ export function parseLootBundleImportJson(raw: string): ParseLootBundleResult {
     }
     const items: LootBundleItem[] = parsed.items
       .filter((item: any) => item && typeof item.name === "string")
-      .map((item: any) => ({ name: item.name, notes: typeof item.notes === "string" ? item.notes : undefined }));
+      .map((item: any) => ({
+        name: item.name,
+        notes: typeof item.notes === "string" ? item.notes : undefined,
+        kind: ["weapon", "armour", "potion", "item"].includes(item.kind) ? item.kind : undefined,
+        attackKind: item.attackKind === "melee" || item.attackKind === "ranged" ? item.attackKind : undefined,
+        damageRoll: typeof item.damageRoll === "string" ? item.damageRoll : undefined,
+      }));
     const currency: LootBundleCurrency = {
       gold: Number.isFinite(parsed.currency?.gold) ? parsed.currency.gold : 0,
       silver: Number.isFinite(parsed.currency?.silver) ? parsed.currency.silver : 0,

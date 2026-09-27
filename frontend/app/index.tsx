@@ -36,6 +36,7 @@ import { genId } from "@/src/types";
 import DiceRollModal, { RollRequest } from "@/src/components/DiceRollModal";
 import ExportSheetModal from "@/src/components/ExportSheetModal";
 import ImportSheetModal from "@/src/components/ImportSheetModal";
+import ShoppingModal, { CartLine, ShopTabConfig } from "@/src/components/ShoppingModal";
 
 import { partyManager } from "@/src/party/PartyManager";
 
@@ -45,7 +46,7 @@ import { getAgeCatalog } from "@/src/ageCatalog";
 import { POTION_PRESETS } from "@/src/data/potions";
 import { buildLootCandidates, rollRandomLoot } from "@/src/utils/loot";
 import { bronzeToCurrency } from "@/src/utils/currency";
-import { createLootBundleExportJson, LootBundle, triggerExportShare } from "@/src/storage/sheetTransfer";
+import { LootBundle, LootBundleItem } from "@/src/storage/sheetTransfer";
 
 const HELP_TABS = [
   {
@@ -407,6 +408,9 @@ export default function CharacterListScreen() {
   const [importOpen, setImportOpen] = useState(false);
   const [activeAge, setActiveAge] = useState<AgeId>(DEFAULT_AGE_ID);
   const [gmLootBundle, setGmLootBundle] = useState<LootBundle | null>(null);
+  const [gmLootExportOpen, setGmLootExportOpen] = useState(false);
+  const [gmLootShopOpen, setGmLootShopOpen] = useState(false);
+  const ageCatalog = getAgeCatalog(activeAge);
 
   useEffect(() => {
     if (panel === "help") {
@@ -641,7 +645,6 @@ export default function CharacterListScreen() {
   };
 
   const generateGmLoot = () => {
-    const ageCatalog = getAgeCatalog(activeAge);
     const candidates = buildLootCandidates({
       weapons: ageCatalog.weapons,
       armour: ageCatalog.armour,
@@ -652,15 +655,105 @@ export default function CharacterListScreen() {
     const zeroCurrency: Currency = { gold: 0, silver: 0, bronze: 0, ingredients: 0, federationCredits: 0 };
     const coins = bronzeToCurrency(bonusBronze, zeroCurrency);
     setGmLootBundle({
-      items: items.map((item) => ({ name: item.label, notes: item.notes })),
+      items: items.map((item) => ({
+        name: item.label,
+        notes: item.notes,
+        kind: item.kind,
+        attackKind: item.attackKind,
+        damageRoll: item.damageRoll,
+      })),
       currency: { gold: coins.gold, silver: coins.silver, bronze: coins.bronze },
     });
   };
 
-  const exportGmLoot = async () => {
-    if (!gmLootBundle) return;
-    const json = createLootBundleExportJson(gmLootBundle, activeAge);
-    await triggerExportShare("loot-bundle", json, "Assault of Bronze Loot Bundle");
+  const gmShopTabs: ShopTabConfig[] = [
+    {
+      key: "blacksmith",
+      label: "Blacksmith",
+      icon: "sword",
+      subtitle: "Melee weapons — free for loot curation.",
+      categoryOrder: ["Blades", "Big Steel", "Hafted", "Brawler"],
+      entries: ageCatalog.weapons
+        .filter((w) => w.attackKind === "melee")
+        .map((w) => ({
+          id: w.id,
+          name: w.name,
+          category: w.category,
+          meta: w.damageRoll,
+          notes: w.notes,
+          icon: "sword",
+          priceBronze: 0,
+          priceLabel: "Free",
+          payload: { kind: "weapon" as const, name: w.name, notes: w.notes, attackKind: w.attackKind, damageRoll: w.damageRoll },
+        })),
+    },
+    {
+      key: "armoury",
+      label: "Armoury",
+      icon: "shield-outline",
+      subtitle: "Armour sets — free for loot curation.",
+      categoryOrder: ageCatalog.armourCategoryOrder,
+      entries: ageCatalog.armour.map((a) => ({
+        id: a.id,
+        name: a.name,
+        category: a.category,
+        meta: `DR ${a.damageReduction}`,
+        notes: a.description,
+        icon: "shield-outline",
+        priceBronze: 0,
+        priceLabel: "Free",
+        payload: { kind: "armour" as const, name: a.name, notes: a.description },
+      })),
+    },
+    {
+      key: "alchemist",
+      label: "Alchemist",
+      icon: "flask-outline",
+      subtitle: "Potions — free for loot curation.",
+      categoryOrder: ["Brewable Potions"],
+      entries: POTION_PRESETS.map((potion) => ({
+        id: potion.id,
+        name: potion.name,
+        category: "Brewable Potions",
+        meta: `Lv ${potion.requiredLevel}`,
+        notes: potion.effectRoll ? `${potion.description} · ${potion.effectRoll}` : potion.description,
+        icon: "flask-outline",
+        priceBronze: 0,
+        priceLabel: "Free",
+        payload: { kind: "potion" as const, name: potion.name, notes: potion.description },
+      })),
+    },
+    {
+      key: "general",
+      label: "General Store",
+      icon: "cart-outline",
+      subtitle: "Everyday gear — free for loot curation.",
+      categoryOrder: ageCatalog.itemCategoryOrder,
+      entries: ageCatalog.items.map((it) => ({
+        id: it.id,
+        name: it.name,
+        category: it.category,
+        notes: it.notes,
+        icon: "package-variant-closed",
+        priceBronze: 0,
+        priceLabel: "Free",
+        payload: { kind: "item" as const, name: it.name, notes: it.notes },
+      })),
+    },
+  ];
+
+  const handleGmShopAdd = (cart: CartLine[]) => {
+    const additions: LootBundleItem[] = [];
+    for (const line of cart) {
+      const payload = line.payload as { kind: "weapon" | "armour" | "potion" | "item"; name: string; notes?: string; attackKind?: "melee" | "ranged"; damageRoll?: string };
+      for (let i = 0; i < line.qty; i++) {
+        additions.push({ name: payload.name, notes: payload.notes, kind: payload.kind, attackKind: payload.attackKind, damageRoll: payload.damageRoll });
+      }
+    }
+    setGmLootBundle((prev) => ({
+      items: [...(prev?.items ?? []), ...additions],
+      currency: prev?.currency ?? { gold: 0, silver: 0, bronze: 0 },
+    }));
   };
 
   const createLanServer = async () => {
@@ -1296,6 +1389,10 @@ export default function CharacterListScreen() {
                 <Icon name="dice-multiple" size={18} color={colors.onBrandPrimary} />
                 <Text style={[styles.gmButtonText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>Generate Loot Bundle</Text>
               </Pressable>
+              <Pressable testID="gm-loot-add" onPress={() => setGmLootShopOpen(true)} style={[styles.gmSecondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
+                <Icon name="plus-box-outline" size={17} color={colors.brandPrimary} />
+                <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Add Items to Loot</Text>
+              </Pressable>
               {gmLootBundle && (
                 <>
                   <View style={styles.gmWeaponList}>
@@ -1306,10 +1403,30 @@ export default function CharacterListScreen() {
                       </View>
                     ))}
                   </View>
-                  <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>
-                    Coin: {gmLootBundle.currency.gold}g {gmLootBundle.currency.silver}s {gmLootBundle.currency.bronze}b
-                  </Text>
-                  <Pressable testID="gm-loot-export" onPress={exportGmLoot} style={[styles.gmSecondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
+                  <Text style={[styles.gmLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>Coin</Text>
+                  <View style={styles.gmCoinRow}>
+                    {([
+                      ["gold", "G"],
+                      ["silver", "S"],
+                      ["bronze", "B"],
+                    ] as const).map(([key, short]) => (
+                      <View key={key} style={styles.gmCoinField}>
+                        <Text style={[styles.gmCoinLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>{short}</Text>
+                        <TextInput
+                          testID={`gm-loot-coin-${key}`}
+                          value={String(gmLootBundle.currency[key])}
+                          onChangeText={(value) => {
+                            const n = Math.max(0, parseInt(value.replace(/\D/g, ""), 10) || 0);
+                            setGmLootBundle((prev) => (prev ? { ...prev, currency: { ...prev.currency, [key]: n } } : prev));
+                          }}
+                          keyboardType="number-pad"
+                          disableFullscreenUI
+                          style={[styles.gmCoinInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.displayBold }]}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                  <Pressable testID="gm-loot-export" onPress={() => setGmLootExportOpen(true)} style={[styles.gmSecondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
                     <Icon name="file-export-outline" size={17} color={colors.brandSecondary} />
                     <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Export Loot Bundle</Text>
                   </Pressable>
@@ -1494,6 +1611,21 @@ export default function CharacterListScreen() {
         visible={exportAllOpen}
         onClose={() => setExportAllOpen(false)}
         characters={characters}
+      />
+
+      <ExportSheetModal
+        visible={gmLootExportOpen}
+        onClose={() => setGmLootExportOpen(false)}
+        lootBundle={gmLootBundle}
+        age={activeAge}
+      />
+
+      <ShoppingModal
+        visible={gmLootShopOpen}
+        currency={{ gold: 0, silver: 0, bronze: 0, ingredients: 0, federationCredits: 0 }}
+        tabs={gmShopTabs}
+        onClose={() => setGmLootShopOpen(false)}
+        onCheckout={handleGmShopAdd}
       />
 
       <ImportSheetModal
@@ -1850,6 +1982,10 @@ const styles = StyleSheet.create({
   gmWeaponBtn: { padding: 9, borderWidth: 1.5 },
   gmWeaponName: { fontSize: 14 },
   gmWeaponMeta: { fontSize: 12, marginTop: 2 },
+  gmCoinRow: { flexDirection: "row", gap: 10, marginTop: 4 },
+  gmCoinField: { flex: 1, alignItems: "center", gap: 3 },
+  gmCoinLabel: { fontSize: 11, letterSpacing: 1 },
+  gmCoinInput: { width: "100%", borderWidth: 1.5, paddingVertical: 6, textAlign: "center", fontSize: 14 },
   gmHistoryHeader: { flexDirection: "row", alignItems: "center", gap: 7, borderTopWidth: 1.5, paddingTop: 16, marginTop: 14 },
   gmHistoryGroup: { gap: 5, marginTop: 8 },
   gmHistoryGroupToggle: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 2 },

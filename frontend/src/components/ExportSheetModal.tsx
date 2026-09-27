@@ -18,8 +18,10 @@ import {
   createCharacterExportJson,
   createAllCharactersExportJson,
   createEntityExportJson,
+  createLootBundleExportJson,
   ExportEntity,
   ExportEntityType,
+  LootBundle,
   triggerExportShare,
   sanitizeFilename,
 } from "@/src/storage/sheetTransfer";
@@ -30,10 +32,11 @@ type Props = {
   character?: Character | null;
   characters?: Character[] | null;
   entity?: { type: ExportEntityType; value: ExportEntity } | null;
+  lootBundle?: LootBundle | null;
   age?: AgeId;
 };
 
-export default function ExportSheetModal({ visible, onClose, character, characters, entity, age = DEFAULT_AGE_ID }: Props) {
+export default function ExportSheetModal({ visible, onClose, character, characters, entity, lootBundle, age = DEFAULT_AGE_ID }: Props) {
   const { colors } = useTheme();
   const [copied, setCopied] = useState(false);
   const [sharingStatus, setSharingStatus] = useState<string | null>(null);
@@ -42,6 +45,9 @@ export default function ExportSheetModal({ visible, onClose, character, characte
 
   const jsonContent = useMemo(() => {
     if (!visible) return "";
+    if (lootBundle) {
+      return createLootBundleExportJson(lootBundle, age);
+    }
     if (character) {
       return createCharacterExportJson(character);
     }
@@ -52,9 +58,12 @@ export default function ExportSheetModal({ visible, onClose, character, characte
       return createEntityExportJson(entity.type, entity.value, age);
     }
     return "";
-  }, [visible, character, characters, entity, age]);
+  }, [visible, character, characters, entity, lootBundle, age]);
 
   const exportTitle = useMemo(() => {
+    if (lootBundle) {
+      return `Loot Bundle (${lootBundle.items.length} item${lootBundle.items.length === 1 ? "" : "s"})`;
+    }
     if (character) {
       return `${character.name || "Unnamed"} (${character.kind === "monster" ? "Enemy" : "Hero"})`;
     }
@@ -66,9 +75,13 @@ export default function ExportSheetModal({ visible, onClose, character, characte
       return name || `Unnamed ${entity.type}`;
     }
     return "Export Sheet";
-  }, [character, characters, entity]);
+  }, [character, characters, entity, lootBundle]);
 
   const filename = useMemo(() => {
+    const dateStr = new Date().toISOString().split("T")[0];
+    if (lootBundle) {
+      return `aob_loot_bundle_${dateStr}`;
+    }
     if (character) {
       return `aob_${character.kind}_${sanitizeFilename(character.name || "unnamed")}`;
     }
@@ -76,9 +89,8 @@ export default function ExportSheetModal({ visible, onClose, character, characte
       const name = "title" in entity.value ? entity.value.title : entity.value.name;
       return `aob_${entity.type}_${sanitizeFilename(name || "unnamed")}`;
     }
-    const dateStr = new Date().toISOString().split("T")[0];
     return `aob_all_sheets_backup_${dateStr}`;
-  }, [character, entity]);
+  }, [character, entity, lootBundle]);
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -119,17 +131,19 @@ export default function ExportSheetModal({ visible, onClose, character, characte
           <View style={[styles.header, { borderBottomColor: colors.borderStrong }]}>
             <View style={styles.headerLeft}>
               <Icon
-                name={isBundle ? "archive-arrow-down" : "file-export"}
+                name={lootBundle ? "treasure-chest" : isBundle ? "archive-arrow-down" : "file-export"}
                 size={22}
                 color={colors.brandPrimary}
               />
               <View style={styles.headerTitles}>
                 <Text style={[styles.title, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
-                  {isBundle
-                    ? "Export All Sheets"
-                    : entity
-                      ? `Export ${entity.type === "item" ? "Item" : entity.type === "customPreset" ? "Custom Preset" : entity.type === "statRoll" ? "Stat Roll" : entity.type[0].toUpperCase() + entity.type.slice(1)}`
-                      : "Export Sheet"}
+                  {lootBundle
+                    ? "Export Loot Bundle"
+                    : isBundle
+                      ? "Export All Sheets"
+                      : entity
+                        ? `Export ${entity.type === "item" ? "Item" : entity.type === "customPreset" ? "Custom Preset" : entity.type === "statRoll" ? "Stat Roll" : entity.type[0].toUpperCase() + entity.type.slice(1)}`
+                        : "Export Sheet"}
                 </Text>
                 <Text numberOfLines={1} style={[styles.subtitle, { color: colors.muted, fontFamily: fonts.body }]}>
                   {exportTitle}
@@ -144,11 +158,13 @@ export default function ExportSheetModal({ visible, onClose, character, characte
           {/* Body */}
           <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
             <Text style={[styles.description, { color: colors.onSurface, fontFamily: fonts.body }]}>
-              {isBundle
-                ? "This backup file contains all hero and enemy sheets with full stats, abilities, notes, weapons, custom sections, and inventory."
-                : entity
-                  ? `This file contains this ${entity.type} and can be shared or saved as a standalone JSON file.`
-                  : "This file contains the complete sheet data: stats, skills, weapons, abilities, backstory, notes, custom sections, and equipment."}
+              {lootBundle
+                ? "This file contains the generated loot bundle (items and coin) and can be shared with your players to import into their sheets."
+                : isBundle
+                  ? "This backup file contains all hero and enemy sheets with full stats, abilities, notes, weapons, custom sections, and inventory."
+                  : entity
+                    ? `This file contains this ${entity.type} and can be shared or saved as a standalone JSON file.`
+                    : "This file contains the complete sheet data: stats, skills, weapons, abilities, backstory, notes, custom sections, and equipment."}
             </Text>
 
             {/* Action Buttons */}

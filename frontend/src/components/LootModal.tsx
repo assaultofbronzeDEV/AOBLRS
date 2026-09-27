@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TextInput } from "react-native";
+import React, { useMemo, useRef, useState } from "react";
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TextInput, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/material-design-icons";
 import * as Haptics from "expo-haptics";
@@ -18,8 +18,17 @@ export default function LootModal({ visible, onClose, onGenerate, onImport }: Pr
   const insets = useSafeAreaInsets();
   const styles = getStyles(colors);
   const [jsonText, setJsonText] = useState("");
+  const fileInputRef = useRef<any>(null);
 
   const result = useMemo(() => (jsonText.trim() ? parseLootBundleImportJson(jsonText) : null), [jsonText]);
+
+  const handleFileChange = (event: any) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setJsonText(String(reader.result || ""));
+    reader.readAsText(file);
+  };
 
   const handleClose = () => {
     setJsonText("");
@@ -75,7 +84,20 @@ export default function LootModal({ visible, onClose, onGenerate, onImport }: Pr
 
               <View style={styles.section}>
                 <Text style={styles.sectionHeading}>Import Loot</Text>
-                <Text style={styles.sectionText}>Paste a loot bundle exported by your GM to add its contents to your inventory.</Text>
+                <Text style={styles.sectionText}>Choose a loot bundle file, or paste the JSON exported by your GM, to add its contents to your inventory.</Text>
+                {Platform.OS === "web" && (
+                  <>
+                    <input ref={fileInputRef} type="file" accept=".json,application/json" style={{ display: "none" }} onChange={handleFileChange} />
+                    <Pressable
+                      testID="loot-import-file"
+                      onPress={() => fileInputRef.current?.click()}
+                      style={({ pressed }) => [styles.fileBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+                    >
+                      <Icon name="folder-open-outline" size={18} color={colors.brandPrimary} />
+                      <Text style={[styles.fileBtnText, { color: colors.onSurface }]}>Choose JSON File</Text>
+                    </Pressable>
+                  </>
+                )}
                 <TextInput
                   testID="loot-import-input"
                   multiline
@@ -152,6 +174,8 @@ const getStyles = (colors: ThemeColors) =>
     divider: { height: 2, width: "100%" },
     primaryBtn: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 2.5, paddingHorizontal: 18, paddingVertical: 12, alignSelf: "stretch", justifyContent: "center" },
     primaryBtnText: { fontSize: 14, fontFamily: fonts.displayBold, letterSpacing: 1 },
+    fileBtn: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 9, alignSelf: "stretch", justifyContent: "center" },
+    fileBtnText: { fontSize: 13, fontFamily: fonts.displayBold },
     importInput: { minHeight: 100, borderWidth: 1.5, padding: 10, fontSize: 12, textAlignVertical: "top", alignSelf: "stretch" },
     statusText: { fontSize: 12, fontFamily: fonts.body, alignSelf: "flex-start" },
   });

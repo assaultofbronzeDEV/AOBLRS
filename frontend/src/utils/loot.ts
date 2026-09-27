@@ -1,18 +1,38 @@
 // Pure random-loot helpers shared by the hero sheet's Loot button and GM Tools.
-export type LootCandidate = { label: string; notes?: string };
+export type LootCandidate = {
+  label: string;
+  notes?: string;
+  kind: "weapon" | "armour" | "potion" | "item";
+  attackKind?: "melee" | "ranged"; // weapons only
+  damageRoll?: string; // weapons only
+};
 
 export type LootCatalogInput = {
-  weapons: { name: string; price?: string; notes?: string }[];
+  weapons: { name: string; price?: string; notes?: string; attackKind: "melee" | "ranged"; damageRoll: string }[];
   armour: { name: string; price?: string; description?: string }[];
   potions: { name: string; description?: string }[];
   items: { name: string; price?: string; notes?: string }[];
 };
 
 export function buildLootCandidates(catalog: LootCatalogInput): LootCandidate[] {
-  const weapons = catalog.weapons.map((w) => ({ label: w.price ? `${w.name} (${w.price})` : w.name, notes: w.notes }));
-  const armour = catalog.armour.map((a) => ({ label: a.price ? `${a.name} (${a.price})` : a.name, notes: a.description }));
-  const potions = catalog.potions.map((p) => ({ label: p.name, notes: p.description }));
-  const items = catalog.items.map((i) => ({ label: i.price ? `${i.name} (${i.price})` : i.name, notes: i.notes }));
+  const weapons: LootCandidate[] = catalog.weapons.map((w) => ({
+    label: w.price ? `${w.name} (${w.price})` : w.name,
+    notes: w.notes,
+    kind: "weapon",
+    attackKind: w.attackKind,
+    damageRoll: w.damageRoll,
+  }));
+  const armour: LootCandidate[] = catalog.armour.map((a) => ({
+    label: a.price ? `${a.name} (${a.price})` : a.name,
+    notes: a.description,
+    kind: "armour",
+  }));
+  const potions: LootCandidate[] = catalog.potions.map((p) => ({ label: p.name, notes: p.description, kind: "potion" }));
+  const items: LootCandidate[] = catalog.items.map((i) => ({
+    label: i.price ? `${i.name} (${i.price})` : i.name,
+    notes: i.notes,
+    kind: "item",
+  }));
   return [...weapons, ...armour, ...potions, ...items];
 }
 

@@ -310,7 +310,7 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
                   marginTop: -4,
                 }}
               >
-                {request.queuedBonus.label} {request.queuedBonus.notation} ({queuedBonusRoll.total >= 0 ? "+" : ""}
+                1d20 ({rolled}) + {request.queuedBonus.label} {request.queuedBonus.notation} ({queuedBonusRoll.total >= 0 ? "+" : ""}
                 {queuedBonusRoll.total}) = {finalTotal}
               </Text>
             )}

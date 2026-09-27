@@ -44,13 +44,23 @@ export function labelForStatRef(statRef: StatRef): string {
 // Matches wording like "+1d4 to your next Intelligence roll" or "-1d6 to defensive rolls".
 const NEXT_ROLL_RE = /([+-]\d+d\d+(?:[+-]\d+)?)\s+to\s+(?:your\s+)?(?:next\s+)?([a-z][a-z\s-]*?)\s*rolls?\b/gi;
 
-export function parseNextRollBonus(description: string): { notation: string; statRef: StatRef } | null {
+// Matches wording like "Gain advantage on your next Stealth roll" or "disadvantage on next Strength rolls".
+const NEXT_ROLL_MODE_RE = /\b(advantage|disadvantage)\b(?:\s+on)?\s+(?:your\s+)?(?:next\s+)?([a-z][a-z\s-]*?)\s*rolls?\b/gi;
+
+export type QueuedRollEffect = { notation: string; mode?: "advantage" | "disadvantage"; statRef: StatRef };
+
+export function parseNextRollBonus(description: string): QueuedRollEffect | null {
   if (!description) return null;
   NEXT_ROLL_RE.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = NEXT_ROLL_RE.exec(description))) {
     const statRef = resolveStatFromPhrase(match[2]);
     if (statRef) return { notation: match[1], statRef };
+  }
+  NEXT_ROLL_MODE_RE.lastIndex = 0;
+  while ((match = NEXT_ROLL_MODE_RE.exec(description))) {
+    const statRef = resolveStatFromPhrase(match[2]);
+    if (statRef) return { notation: "", mode: match[1].toLowerCase() as "advantage" | "disadvantage", statRef };
   }
   return null;
 }

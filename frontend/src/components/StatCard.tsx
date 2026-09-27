@@ -48,6 +48,11 @@ export default function StatCard({ block, onChange, onRoll, pendingBonuses }: Pr
     onChange({ ...block, subs });
   };
 
+  const bonusBadgeText = (bonus: PendingRollBonus): string => {
+    const modeText = bonus.mode === "advantage" ? "ADV" : bonus.mode === "disadvantage" ? "DISADV" : "";
+    return [bonus.notation, modeText].filter(Boolean).join(" ");
+  };
+
   const mainBonus = pendingBonuses?.find((b) => b.statRef.kind === "main" && b.statRef.statKey === block.key);
 
   return (
@@ -77,7 +82,7 @@ export default function StatCard({ block, onChange, onRoll, pendingBonuses }: Pr
           </Text>
           {mainBonus && (
             <Text testID={`stat-bonus-${block.key}`} style={[styles.bonusBadge, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
-              {mainBonus.notation}
+              {bonusBadgeText(mainBonus)}
             </Text>
           )}
         </View>
@@ -102,7 +107,7 @@ export default function StatCard({ block, onChange, onRoll, pendingBonuses }: Pr
                 </Text>
                 {subBonus && (
                   <Text testID={`sub-bonus-${block.key}-${i}`} style={[styles.bonusBadge, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
-                    {subBonus.notation}
+                    {bonusBadgeText(subBonus)}
                   </Text>
                 )}
               </View>

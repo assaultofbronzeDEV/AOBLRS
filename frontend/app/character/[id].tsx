@@ -212,7 +212,7 @@ export default function CharacterSheetScreen() {
     setRoll({
       label,
       target,
-      mode: rollMode,
+      mode: bonus?.mode ?? rollMode,
       boost: boostPending,
       queuedBonus: bonus ? { notation: bonus.notation, label: bonus.label } : undefined,
     });
@@ -915,28 +915,58 @@ export default function CharacterSheetScreen() {
       items: ageCatalog.items,
     });
     const { items: picks, bonusBronze } = rollRandomLoot(candidates);
-    const newItems = picks.map((p) => createEmptyInventoryItem(p.label, p.notes ?? ""));
+    const newWeapons: Weapon[] = picks
+      .filter((p) => p.kind === "weapon")
+      .map((p) => ({
+        id: genId(),
+        name: p.label,
+        description: p.notes ?? "",
+        attackKind: p.attackKind ?? "melee",
+        damageRoll: p.damageRoll ?? "1d6",
+      }));
+    const newItems = picks
+      .filter((p) => p.kind !== "weapon")
+      .map((p) => createEmptyInventoryItem(p.label, p.notes ?? ""));
     const nextCurrency = bronzeToCurrency(currencyToBronze(char.currency) + bonusBronze, char.currency);
-    update({ inventoryItems: [...char.inventoryItems, ...newItems], currency: nextCurrency });
+    update({
+      weapons: [...char.weapons, ...newWeapons],
+      inventoryItems: [...char.inventoryItems, ...newItems],
+      currency: nextCurrency,
+    });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setInfoMessage({
       icon: "treasure-chest",
       title: "Loot Found!",
-      body: `You found: ${newItems.map((p) => p.name).join(", ")}, and ${formatBronze(bonusBronze)}.`,
+      body: `You found: ${picks.map((p) => p.label).join(", ")}, and ${formatBronze(bonusBronze)}.`,
     });
   };
 
   const importLoot = (bundle: LootBundle) => {
     if (!char) return;
-    const newItems = bundle.items.map((item) => createEmptyInventoryItem(item.name, item.notes ?? ""));
+    const newWeapons: Weapon[] = bundle.items
+      .filter((item) => item.kind === "weapon")
+      .map((item) => ({
+        id: genId(),
+        name: item.name,
+        description: item.notes ?? "",
+        attackKind: item.attackKind ?? "melee",
+        damageRoll: item.damageRoll ?? "1d6",
+      }));
+    const newItems = bundle.items
+      .filter((item) => item.kind !== "weapon")
+      .map((item) => createEmptyInventoryItem(item.name, item.notes ?? ""));
     const bonusBronze = bundle.currency.gold * 100 + bundle.currency.silver * 10 + bundle.currency.bronze;
     const nextCurrency = bronzeToCurrency(currencyToBronze(char.currency) + bonusBronze, char.currency);
-    update({ inventoryItems: [...char.inventoryItems, ...newItems], currency: nextCurrency });
+    update({
+      weapons: [...char.weapons, ...newWeapons],
+      inventoryItems: [...char.inventoryItems, ...newItems],
+      currency: nextCurrency,
+    });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setInfoMessage({
       icon: "treasure-chest",
       title: "Loot Imported!",
-      body: `Added: ${newItems.map((p) => p.name).join(", ") || "nothing"}${bonusBronze > 0 ? ` and ${formatBronze(bonusBronze)}` : ""}.`,
+      body: `Added: ${bundle.items.map((p) => p.name).join(", ") || "nothing"}${bonusBronze > 0 ? ` and ${formatBronze(bonusBronze)}` : ""}.`,
     });
   };
 
@@ -952,14 +982,19 @@ export default function CharacterSheetScreen() {
       update({
         pendingRollBonuses: [
           ...char.pendingRollBonuses,
-          { id: genId(), statRef: rollBonus.statRef, notation: rollBonus.notation, label: item.name.trim() || "Item" },
+          { id: genId(), statRef: rollBonus.statRef, notation: rollBonus.notation, mode: rollBonus.mode, label: item.name.trim() || "Item" },
         ],
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const effectLabel = rollBonus.mode
+        ? rollBonus.notation
+          ? `${rollBonus.notation} with ${rollBonus.mode}`
+          : rollBonus.mode
+        : rollBonus.notation;
       setInfoMessage({
         icon: "arrow-up-bold-circle-outline",
         title: "Effect Queued",
-        body: `${item.name.trim() || "Item"} will add ${rollBonus.notation} to your next ${statLabel} roll.`,
+        body: `${item.name.trim() || "Item"} will add ${effectLabel} to your next ${statLabel} roll.`,
       });
       return;
     }

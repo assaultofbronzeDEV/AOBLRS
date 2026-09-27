@@ -103,7 +103,8 @@ export type Currency = {
 export type PendingRollBonus = {
   id: string;
   statRef: StatRef;
-  notation: string; // signed dice, e.g. "+1d4" or "-1d6"
+  notation: string; // signed dice, e.g. "+1d4" or "-1d6" (empty string if mode-only)
+  mode?: "advantage" | "disadvantage";
   label: string; // source item/potion name
 };
 
