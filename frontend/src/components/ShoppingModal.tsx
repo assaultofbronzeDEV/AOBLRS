@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "@react-native-vector-icons/material-design-icons";
 import { fonts, useTheme, ThemeColors } from "@/src/theme";
@@ -18,7 +18,14 @@ export type ShopEntry = {
   payload: unknown;
 };
 
-export type ShopTabKey = "blacksmith" | "armoury" | "alchemist" | "general" | "loot";
+export type ShopTabKey = "blacksmith" | "armoury" | "alchemist" | "general";
+
+export type CustomShopForm = {
+  extraLabel?: string; // e.g. "Damage Roll", "Damage Reduction", "Effect Roll (optional)"
+  extraPlaceholder?: string;
+  extraRequired?: boolean;
+  buildEntry: (input: { name: string; price: string; notes: string; extra: string }) => ShopEntry | null;
+};
 
 export type ShopTabConfig = {
   key: ShopTabKey;
@@ -28,7 +35,7 @@ export type ShopTabConfig = {
   entries: ShopEntry[];
   categoryOrder?: string[];
   customLabel?: string;
-  onCustom?: () => void;
+  customForm?: CustomShopForm;
   onImport?: () => void;
   onExport?: (entry: ShopEntry) => void;
 };
@@ -50,15 +57,19 @@ type Props = {
   tabs: ShopTabConfig[];
   onClose: () => void;
   onCheckout: (cart: CartLine[]) => void;
-  onGenerateLoot: () => void;
 };
 
-export default function ShoppingModal({ visible, currency, tabs, onClose, onCheckout, onGenerateLoot }: Props) {
+export default function ShoppingModal({ visible, currency, tabs, onClose, onCheckout }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = getStyles(colors);
   const [activeTab, setActiveTab] = useState<ShopTabKey>(tabs[0]?.key ?? "blacksmith");
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [customFormOpen, setCustomFormOpen] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
+  const [customNotes, setCustomNotes] = useState("");
+  const [customExtra, setCustomExtra] = useState("");
 
   const purseBronze = currencyToBronze(currency);
   const totalBronze = cart.reduce((sum, line) => sum + line.priceBronze * line.qty, 0);
@@ -116,8 +127,35 @@ export default function ShoppingModal({ visible, currency, tabs, onClose, onChec
     );
   };
 
+  const resetCustomForm = () => {
+    setCustomName("");
+    setCustomPrice("");
+    setCustomNotes("");
+    setCustomExtra("");
+  };
+
+  const openCustomForm = () => {
+    resetCustomForm();
+    setCustomFormOpen(true);
+  };
+
+  const submitCustomForm = () => {
+    if (!activeConfig?.customForm) return;
+    const entry = activeConfig.customForm.buildEntry({
+      name: customName,
+      price: customPrice,
+      notes: customNotes,
+      extra: customExtra,
+    });
+    if (!entry) return;
+    addToCart(entry);
+    resetCustomForm();
+    setCustomFormOpen(false);
+  };
+
   const handleClose = () => {
     setCart([]);
+    setCustomFormOpen(false);
     onClose();
   };
 
@@ -140,7 +178,7 @@ export default function ShoppingModal({ visible, currency, tabs, onClose, onChec
                 <View style={{ flex: 1 }}>
                   <Text style={styles.title} numberOfLines={1}>Shopping</Text>
                   <Text style={styles.subtitle} numberOfLines={2}>
-                    {activeConfig?.subtitle ?? "Visit a store or roll for random loot."}
+                    {activeConfig?.subtitle ?? "Visit a store to buy gear."}
                   </Text>
                 </View>
                 <Pressable
@@ -178,15 +216,12 @@ export default function ShoppingModal({ visible, currency, tabs, onClose, onChec
                 })}
               </View>
 
-              {activeConfig && activeTab !== "loot" && (activeConfig.onCustom || activeConfig.onImport) && (
+              {activeConfig && (activeConfig.customForm || activeConfig.onImport) && (
                 <View style={styles.actionRow}>
-                  {activeConfig.onCustom && (
+                  {activeConfig.customForm && (
                     <Pressable
                       testID={`shopping-custom-${activeTab}`}
-                      onPress={() => {
-                        activeConfig.onCustom?.();
-                        handleClose();
-                      }}
+                      onPress={openCustomForm}
                       style={({ pressed }) => [
                         styles.customBtn,
                         { borderColor: colors.brandPrimary, backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary, flex: 1 },
@@ -215,26 +250,7 @@ export default function ShoppingModal({ visible, currency, tabs, onClose, onChec
               )}
             </View>
 
-            {activeTab === "loot" ? (
-              <View style={styles.lootBody}>
-                <Icon name="treasure-chest" size={40} color={colors.brandPrimary} />
-                <Text style={styles.lootText}>
-                  Roll for a random haul of everyday supplies, straight to your inventory. Free — no cart needed.
-                </Text>
-                <Pressable
-                  testID="shopping-generate-loot"
-                  onPress={onGenerateLoot}
-                  style={({ pressed }) => [
-                    styles.lootBtn,
-                    { borderColor: colors.brandPrimary, backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary },
-                  ]}
-                >
-                  <Icon name="dice-multiple" size={18} color={colors.onBrandPrimary} />
-                  <Text style={[styles.lootBtnText, { color: colors.onBrandPrimary }]}>Generate Random Loot</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.body}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.body}>
                 {grouped.length === 0 && <Text style={styles.emptyText}>Nothing in stock right now.</Text>}
                 {grouped.map(({ key, items }) => (
                   <View key={key} style={{ gap: 6 }}>
@@ -288,10 +304,8 @@ export default function ShoppingModal({ visible, currency, tabs, onClose, onChec
                   </View>
                 ))}
               </ScrollView>
-            )}
 
-            {activeTab !== "loot" && (
-              <View style={[styles.cartBar, { borderTopColor: colors.divider, backgroundColor: colors.surfaceSecondary }]}>
+            <View style={[styles.cartBar, { borderTopColor: colors.divider, backgroundColor: colors.surfaceSecondary }]}>
                 {cart.length === 0 ? (
                   <Text style={styles.cartEmptyText}>Your cart is empty — tap an item to add it.</Text>
                 ) : (
@@ -335,10 +349,88 @@ export default function ShoppingModal({ visible, currency, tabs, onClose, onChec
                   </Pressable>
                 </View>
               </View>
-            )}
           </View>
         </View>
       </View>
+
+      <Modal
+        visible={customFormOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCustomFormOpen(false)}
+      >
+        <View style={styles.formBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setCustomFormOpen(false)} />
+          <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
+            <Text style={styles.formTitle}>{activeConfig?.customLabel ?? "Create custom item"}</Text>
+            <TextInput
+              testID="shopping-custom-name"
+              value={customName}
+              onChangeText={setCustomName}
+              placeholder="Name"
+              placeholderTextColor={colors.muted}
+              style={[styles.formInput, { color: colors.onSurface, borderColor: colors.borderStrong }]}
+            />
+            <TextInput
+              testID="shopping-custom-price"
+              value={customPrice}
+              onChangeText={setCustomPrice}
+              placeholder="Price (e.g. 10g, 5s, 2b)"
+              placeholderTextColor={colors.muted}
+              autoCapitalize="none"
+              style={[styles.formInput, { color: colors.onSurface, borderColor: colors.borderStrong }]}
+            />
+            {activeConfig?.customForm?.extraLabel && (
+              <TextInput
+                testID="shopping-custom-extra"
+                value={customExtra}
+                onChangeText={setCustomExtra}
+                placeholder={activeConfig.customForm.extraPlaceholder ?? activeConfig.customForm.extraLabel}
+                placeholderTextColor={colors.muted}
+                style={[styles.formInput, { color: colors.onSurface, borderColor: colors.borderStrong }]}
+              />
+            )}
+            <TextInput
+              testID="shopping-custom-notes"
+              value={customNotes}
+              onChangeText={setCustomNotes}
+              placeholder="Description / notes (optional)"
+              placeholderTextColor={colors.muted}
+              multiline
+              style={[styles.formInput, styles.formInputMultiline, { color: colors.onSurface, borderColor: colors.borderStrong }]}
+            />
+            <View style={styles.formActions}>
+              <Pressable
+                testID="shopping-custom-cancel"
+                onPress={() => setCustomFormOpen(false)}
+                style={({ pressed }) => [styles.formCancelBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.surface }]}
+              >
+                <Text style={[styles.formCancelText, { color: colors.onSurface }]}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                testID="shopping-custom-submit"
+                onPress={submitCustomForm}
+                disabled={!customName.trim() || (!!activeConfig?.customForm?.extraRequired && !customExtra.trim())}
+                style={({ pressed }) => [
+                  styles.formSubmitBtn,
+                  {
+                    borderColor: colors.brandPrimary,
+                    backgroundColor:
+                      !customName.trim() || (!!activeConfig?.customForm?.extraRequired && !customExtra.trim())
+                        ? colors.surfaceTertiary
+                        : pressed
+                          ? colors.brandSecondary
+                          : colors.brandPrimary,
+                  },
+                ]}
+              >
+                <Icon name="cart-plus" size={16} color={colors.onBrandPrimary} />
+                <Text style={[styles.formSubmitText, { color: colors.onBrandPrimary }]}>Add to Cart</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -422,8 +514,14 @@ const getStyles = (colors: ThemeColors) =>
     cartTotalText: { fontSize: 15, fontFamily: fonts.displayBold, letterSpacing: 0.5 },
     checkoutBtn: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 2, paddingHorizontal: 14, paddingVertical: 10 },
     checkoutBtnText: { fontSize: 14, fontFamily: fonts.displayBold, letterSpacing: 1 },
-    lootBody: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, padding: 24 },
-    lootText: { fontSize: 13, color: colors.muted, fontFamily: fonts.display, textAlign: "center", lineHeight: 18 },
-    lootBtn: { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 2.5, paddingHorizontal: 18, paddingVertical: 12 },
-    lootBtnText: { fontSize: 14, fontFamily: fonts.displayBold, letterSpacing: 1 },
+    formBackdrop: { flex: 1, backgroundColor: "rgba(20,14,8,0.6)", alignItems: "center", justifyContent: "center", padding: 20 },
+    formCard: { width: "100%", maxWidth: 420, borderWidth: 3, padding: 16, gap: 10 },
+    formTitle: { fontSize: 16, fontFamily: fonts.displayBold, letterSpacing: 1, marginBottom: 4 },
+    formInput: { borderWidth: 1.5, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14 },
+    formInputMultiline: { minHeight: 70, textAlignVertical: "top" },
+    formActions: { flexDirection: "row", gap: 10, marginTop: 4 },
+    formCancelBtn: { flex: 1, borderWidth: 1.5, alignItems: "center", justifyContent: "center", paddingVertical: 10 },
+    formCancelText: { fontSize: 14, fontFamily: fonts.displayBold, letterSpacing: 0.5 },
+    formSubmitBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 2, paddingVertical: 10 },
+    formSubmitText: { fontSize: 14, fontFamily: fonts.displayBold, letterSpacing: 0.5 },
   });

@@ -18,6 +18,20 @@ export type StatRollPreset = {
   pool: number[];
 };
 
+export type LootBundleItem = { name: string; notes?: string };
+export type LootBundleCurrency = { gold: number; silver: number; bronze: number };
+export type LootBundle = { items: LootBundleItem[]; currency: LootBundleCurrency };
+
+export type LootBundlePayload = {
+  schema: "aob-loot-v1";
+  exportedAt: string;
+  app: "Assault of Bronze";
+  version: "1.0.0";
+  age: AgeId;
+  items: LootBundleItem[];
+  currency: LootBundleCurrency;
+};
+
 export type ExportPayload = {
   schema: "aob-sheet-v1";
   exportedAt: string;
@@ -79,6 +93,48 @@ export function createEntityExportJson(entityType: ExportEntityType, entity: Exp
     entity,
   };
   return JSON.stringify(payload, null, 2);
+}
+
+export function createLootBundleExportJson(bundle: LootBundle, age: AgeId = DEFAULT_AGE_ID): string {
+  const payload: LootBundlePayload = {
+    schema: "aob-loot-v1",
+    exportedAt: new Date().toISOString(),
+    app: "Assault of Bronze",
+    version: "1.0.0",
+    age,
+    items: bundle.items,
+    currency: bundle.currency,
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+export type ParseLootBundleResult = {
+  success: boolean;
+  bundle?: LootBundle;
+  error?: string;
+};
+
+export function parseLootBundleImportJson(raw: string): ParseLootBundleResult {
+  if (!raw || !raw.trim()) {
+    return { success: false, error: "Input is empty. Please provide valid JSON." };
+  }
+  try {
+    const parsed = JSON.parse(raw.trim());
+    if (parsed?.schema !== "aob-loot-v1" || !Array.isArray(parsed.items)) {
+      return { success: false, error: "Unrecognized loot bundle export." };
+    }
+    const items: LootBundleItem[] = parsed.items
+      .filter((item: any) => item && typeof item.name === "string")
+      .map((item: any) => ({ name: item.name, notes: typeof item.notes === "string" ? item.notes : undefined }));
+    const currency: LootBundleCurrency = {
+      gold: Number.isFinite(parsed.currency?.gold) ? parsed.currency.gold : 0,
+      silver: Number.isFinite(parsed.currency?.silver) ? parsed.currency.silver : 0,
+      bronze: Number.isFinite(parsed.currency?.bronze) ? parsed.currency.bronze : 0,
+    };
+    return { success: true, bundle: { items, currency } };
+  } catch (err: any) {
+    return { success: false, error: `Invalid JSON: ${err.message || "parsing failed"}` };
+  }
 }
 
 export type ParseImportResult = {

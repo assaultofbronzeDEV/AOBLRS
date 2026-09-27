@@ -131,7 +131,8 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
           d20 = d1;
         }
         const bRoll = useBoost ? 1 + Math.floor(Math.random() * 6) : 0;
-        const qRoll = request.queuedBonus ? rollDice(request.queuedBonus.notation) : null;
+        // Strip a leading "+" — rollDice rejects an explicit "+" on the first term.
+        const qRoll = request.queuedBonus ? rollDice(request.queuedBonus.notation.replace(/^\+/, "")) : null;
         const finalTotal = d20 + bRoll + (qRoll?.total ?? 0);
         setRolled(d20);
         setD20Pair(pair);

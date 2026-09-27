@@ -57,13 +57,15 @@ import CustomPotionModal from "@/src/components/CustomPotionModal";
 import ExportSheetModal from "@/src/components/ExportSheetModal";
 import ImportEntityModal from "@/src/components/ImportEntityModal";
 import LevelUpModal, { AbilityChoiceKey } from "@/src/components/LevelUpModal";
-import { ExportEntity, ExportEntityType } from "@/src/storage/sheetTransfer";
+import { ExportEntity, ExportEntityType, LootBundle } from "@/src/storage/sheetTransfer";
 import { valueForRef, labelForRef } from "@/src/components/StatPickerModal";
 import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 import { getAgeCatalog } from "@/src/ageCatalog";
 import { PotionPreset, POTION_PRESETS } from "@/src/data/potions";
 import ShoppingModal, { CartLine, ShopTabConfig } from "@/src/components/ShoppingModal";
+import LootModal from "@/src/components/LootModal";
+import { buildLootCandidates, rollRandomLoot } from "@/src/utils/loot";
 import { bronzeToCurrency, currencyToBronze, formatBronze, parsePriceToBronze } from "@/src/utils/currency";
 import { labelForStatRef, parseNextRollBonus, statRefsMatch } from "@/src/utils/effectParsing";
 
@@ -103,19 +105,6 @@ function SheetColumns({ wide, children }: { wide: boolean; children: React.React
   return <View style={styles.sheetColumnsWide}>{children}</View>;
 }
 
-// Kept outside the component so the randomness isn't flagged as an impure render call.
-function rollRandomLoot(pool: { name: string; price: string; notes?: string }[]) {
-  const count = 2 + Math.floor(Math.random() * 3);
-  const picks: { name: string; notes?: string }[] = [];
-  for (let i = 0; i < count; i++) {
-    const preset = pool[Math.floor(Math.random() * pool.length)];
-    const label = preset.price ? `${preset.name} (${preset.price})` : preset.name;
-    picks.push({ name: label, notes: preset.notes });
-  }
-  const bonusBronze = 5 + Math.floor(Math.random() * 46);
-  return { picks, bonusBronze };
-}
-
 export default function CharacterSheetScreen() {
   const { colors, mode } = useTheme();
   const { width } = useWindowDimensions();
@@ -124,6 +113,8 @@ export default function CharacterSheetScreen() {
   const isWideScreen = width >= 768;
   const [actionRowWidth, setActionRowWidth] = useState(0);
   const isCompactActionRow = actionRowWidth > 0 && actionRowWidth < 340;
+  const [shopRowWidth, setShopRowWidth] = useState(0);
+  const isCompactShopRow = shopRowWidth > 0 && shopRowWidth < 340;
   const { id, age } = useLocalSearchParams<{ id: string; age?: string }>();
   const characterAge: AgeId = age === "age-of-war" ? "age-of-war" : DEFAULT_AGE_ID;
   const ageCatalog = getAgeCatalog(characterAge);
@@ -148,6 +139,7 @@ export default function CharacterSheetScreen() {
   const [pendingPotionAbilityId, setPendingPotionAbilityId] = useState<string | null>(null);
   const [pendingLongRest, setPendingLongRest] = useState(false);
   const [shoppingOpen, setShoppingOpen] = useState(false);
+  const [lootOpen, setLootOpen] = useState(false);
   const [infoMessage, setInfoMessage] = useState<{ icon: string; title: string; body: string } | null>(null);
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -697,7 +689,26 @@ export default function CharacterSheetScreen() {
           subtitle: "Melee weapons, fresh off the forge.",
           categoryOrder: ["Blades", "Big Steel", "Hafted", "Brawler"],
           customLabel: "Create custom weapon",
-          onCustom: addCustomWeapon,
+          customForm: {
+            extraLabel: "Damage Roll",
+            extraPlaceholder: "1d6+2",
+            extraRequired: true,
+            buildEntry: ({ name, price, notes, extra }) => {
+              if (!name.trim() || !extra.trim()) return null;
+              const priceLabel = price.trim() || "Free";
+              return {
+                id: `custom-${genId()}`,
+                name: name.trim(),
+                category: "Custom",
+                meta: extra.trim(),
+                notes: notes.trim(),
+                icon: "sword",
+                priceBronze: parsePriceToBronze(priceLabel),
+                priceLabel,
+                payload: { name: name.trim(), price: priceLabel, notes: notes.trim(), attackKind: "melee" as const, damageRoll: extra.trim() },
+              };
+            },
+          },
           onImport: () => setEntityImportType("weapon"),
           entries: ageCatalog.weapons
             .filter((w) => w.attackKind === "melee")
@@ -720,7 +731,26 @@ export default function CharacterSheetScreen() {
           subtitle: "Equips immediately — extra sets go to your inventory.",
           categoryOrder: ageCatalog.armourCategoryOrder,
           customLabel: "Create custom armour",
-          onCustom: () => equipArmour(createEmptyArmour()),
+          customForm: {
+            extraLabel: "Damage Reduction",
+            extraPlaceholder: "1",
+            extraRequired: true,
+            buildEntry: ({ name, price, notes, extra }) => {
+              if (!name.trim() || !extra.trim()) return null;
+              const priceLabel = price.trim() || "Free";
+              return {
+                id: `custom-${genId()}`,
+                name: name.trim(),
+                category: "Custom",
+                meta: `DR ${extra.trim()}`,
+                notes: notes.trim(),
+                icon: "shield-outline",
+                priceBronze: parsePriceToBronze(priceLabel),
+                priceLabel,
+                payload: { name: name.trim(), description: notes.trim(), movementSpeed: "30", damageReduction: extra.trim() },
+              };
+            },
+          },
           entries: ageCatalog.armour.map((a) => ({
             id: a.id,
             name: a.name,
@@ -740,7 +770,32 @@ export default function CharacterSheetScreen() {
           subtitle: "Ready-made potions — no ingredients required.",
           categoryOrder: ["Brewable Potions"],
           customLabel: "Create custom potion",
-          onCustom: () => setCustomPotionModalOpen(true),
+          customForm: {
+            extraLabel: "Effect Roll (optional)",
+            extraPlaceholder: "2d8 healing",
+            buildEntry: ({ name, price, notes, extra }) => {
+              if (!name.trim()) return null;
+              const priceLabel = price.trim() || "Free";
+              const potionPayload: PotionPreset = {
+                id: `custom-${genId()}`,
+                name: name.trim(),
+                description: notes.trim(),
+                ingredients: 0,
+                requiredLevel: 1,
+                effectRoll: extra.trim() || undefined,
+              };
+              return {
+                id: potionPayload.id,
+                name: potionPayload.name,
+                category: "Brewable Potions",
+                notes: notes.trim(),
+                icon: "flask-outline",
+                priceBronze: parsePriceToBronze(priceLabel),
+                priceLabel,
+                payload: potionPayload,
+              };
+            },
+          },
           onImport: () => setEntityImportType("potion"),
           onExport: (entry) => {
             const potion = potionLibrary.find((candidate) => candidate.id === entry.id);
@@ -768,7 +823,22 @@ export default function CharacterSheetScreen() {
           subtitle: "Everyday gear, tools, and supplies.",
           categoryOrder: ageCatalog.itemCategoryOrder,
           customLabel: "Create custom item",
-          onCustom: addCustomInventoryItem,
+          customForm: {
+            buildEntry: ({ name, price, notes }) => {
+              if (!name.trim()) return null;
+              const priceLabel = price.trim() || "Free";
+              return {
+                id: `custom-${genId()}`,
+                name: name.trim(),
+                category: "Custom",
+                notes: notes.trim(),
+                icon: "package-variant-closed",
+                priceBronze: parsePriceToBronze(priceLabel),
+                priceLabel,
+                payload: { name: name.trim(), price: priceLabel, notes: notes.trim() },
+              };
+            },
+          },
           onImport: () => setEntityImportType("item"),
           entries: ageCatalog.items.map((it) => ({
             id: it.id,
@@ -780,13 +850,6 @@ export default function CharacterSheetScreen() {
             priceLabel: it.price,
             payload: it,
           })),
-        },
-        {
-          key: "loot",
-          label: "Random Loot",
-          icon: "treasure-chest",
-          subtitle: "Roll for a random haul of supplies.",
-          entries: [],
         },
       ];
 
@@ -845,8 +908,14 @@ export default function CharacterSheetScreen() {
 
   const generateRandomLoot = () => {
     if (!char) return;
-    const { picks, bonusBronze } = rollRandomLoot(ageCatalog.items);
-    const newItems = picks.map((p) => createEmptyInventoryItem(p.name, p.notes ?? ""));
+    const candidates = buildLootCandidates({
+      weapons: ageCatalog.weapons,
+      armour: ageCatalog.armour,
+      potions: potionLibrary,
+      items: ageCatalog.items,
+    });
+    const { items: picks, bonusBronze } = rollRandomLoot(candidates);
+    const newItems = picks.map((p) => createEmptyInventoryItem(p.label, p.notes ?? ""));
     const nextCurrency = bronzeToCurrency(currencyToBronze(char.currency) + bonusBronze, char.currency);
     update({ inventoryItems: [...char.inventoryItems, ...newItems], currency: nextCurrency });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -854,6 +923,20 @@ export default function CharacterSheetScreen() {
       icon: "treasure-chest",
       title: "Loot Found!",
       body: `You found: ${newItems.map((p) => p.name).join(", ")}, and ${formatBronze(bonusBronze)}.`,
+    });
+  };
+
+  const importLoot = (bundle: LootBundle) => {
+    if (!char) return;
+    const newItems = bundle.items.map((item) => createEmptyInventoryItem(item.name, item.notes ?? ""));
+    const bonusBronze = bundle.currency.gold * 100 + bundle.currency.silver * 10 + bundle.currency.bronze;
+    const nextCurrency = bronzeToCurrency(currencyToBronze(char.currency) + bonusBronze, char.currency);
+    update({ inventoryItems: [...char.inventoryItems, ...newItems], currency: nextCurrency });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setInfoMessage({
+      icon: "treasure-chest",
+      title: "Loot Imported!",
+      body: `Added: ${newItems.map((p) => p.name).join(", ") || "nothing"}${bonusBronze > 0 ? ` and ${formatBronze(bonusBronze)}` : ""}.`,
     });
   };
 
@@ -1236,22 +1319,59 @@ export default function CharacterSheetScreen() {
 
           {char.kind === "hero" && (
             <>
-              <Pressable
-                testID="open-shopping"
-                onPress={() => {
-                  setShoppingOpen(true);
-                  Haptics.selectionAsync();
-                }}
-                style={({ pressed }) => [
-                  styles.shoppingBtn,
-                  { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary },
-                ]}
+              <View
+                style={styles.actionRow}
+                onLayout={(e) => setShopRowWidth(e.nativeEvent.layout.width)}
               >
-                <Icon name="cart-outline" size={18} color={colors.onBrandPrimary} />
-                <Text style={[styles.shoppingBtnText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
-                  Shopping
-                </Text>
-              </Pressable>
+                <Pressable
+                  testID="open-shopping"
+                  onPress={() => {
+                    setShoppingOpen(true);
+                    Haptics.selectionAsync();
+                  }}
+                  style={({ pressed }) => [
+                    styles.actionChip,
+                    isCompactShopRow && styles.actionChipCompact,
+                    { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary },
+                  ]}
+                >
+                  <Icon name="cart-outline" size={16} color={colors.onBrandPrimary} />
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.actionText,
+                      isCompactShopRow && styles.actionTextCompact,
+                      { color: colors.onBrandPrimary, fontFamily: fonts.displayBold },
+                    ]}
+                  >
+                    Shopping
+                  </Text>
+                </Pressable>
+                <Pressable
+                  testID="open-loot"
+                  onPress={() => {
+                    setLootOpen(true);
+                    Haptics.selectionAsync();
+                  }}
+                  style={({ pressed }) => [
+                    styles.actionChip,
+                    isCompactShopRow && styles.actionChipCompact,
+                    { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary },
+                  ]}
+                >
+                  <Icon name="treasure-chest" size={16} color={colors.onBrandPrimary} />
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.actionText,
+                      isCompactShopRow && styles.actionTextCompact,
+                      { color: colors.onBrandPrimary, fontFamily: fonts.displayBold },
+                    ]}
+                  >
+                    Loot
+                  </Text>
+                </Pressable>
+              </View>
               <CurrencyPurse
                 value={char.currency}
                 onChange={(currency) => update({ currency })}
@@ -1511,7 +1631,15 @@ export default function CharacterSheetScreen() {
           tabs={shopTabs}
           onClose={() => setShoppingOpen(false)}
           onCheckout={handleShopCheckout}
-          onGenerateLoot={generateRandomLoot}
+        />
+      )}
+
+      {char.kind === "hero" && (
+        <LootModal
+          visible={lootOpen}
+          onClose={() => setLootOpen(false)}
+          onGenerate={generateRandomLoot}
+          onImport={importLoot}
         />
       )}
 
@@ -2477,15 +2605,6 @@ const styles = StyleSheet.create({
   },
   actionText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
   actionTextCompact: { fontSize: 11, letterSpacing: 0.2 },
-  shoppingBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderWidth: 2,
-    paddingVertical: 10,
-  },
-  shoppingBtnText: { fontSize: 14, letterSpacing: 1 },
 
   sectionHeader: {
     borderWidth: 2,

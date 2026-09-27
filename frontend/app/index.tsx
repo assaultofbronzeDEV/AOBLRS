@@ -27,7 +27,7 @@ import Icon from "@react-native-vector-icons/material-design-icons";
 
 import { fonts, setThemeAge, setThemeMode, useTheme } from "@/src/theme";
 
-import { Character, RollHistoryEntry } from "@/src/types";
+import { Character, Currency, RollHistoryEntry } from "@/src/types";
 
 import { deleteCharacter, loadAllCharacters, upsertCharacter } from "@/src/storage/characters";
 
@@ -41,6 +41,11 @@ import { partyManager } from "@/src/party/PartyManager";
 
 import { usePartyState } from "@/src/party/usePartyState";
 import { AGE_DEFINITIONS, AgeId, DEFAULT_AGE_ID } from "@/src/ages";
+import { getAgeCatalog } from "@/src/ageCatalog";
+import { POTION_PRESETS } from "@/src/data/potions";
+import { buildLootCandidates, rollRandomLoot } from "@/src/utils/loot";
+import { bronzeToCurrency } from "@/src/utils/currency";
+import { createLootBundleExportJson, LootBundle, triggerExportShare } from "@/src/storage/sheetTransfer";
 
 const HELP_TABS = [
   {
@@ -401,6 +406,7 @@ export default function CharacterListScreen() {
   const [exportAllOpen, setExportAllOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [activeAge, setActiveAge] = useState<AgeId>(DEFAULT_AGE_ID);
+  const [gmLootBundle, setGmLootBundle] = useState<LootBundle | null>(null);
 
   useEffect(() => {
     if (panel === "help") {
@@ -632,6 +638,29 @@ export default function CharacterListScreen() {
       effect: { notation: cleanNotation, type: "damage" },
       resultLabel: damage?.trim() ? undefined : "YOU ROLLED",
     });
+  };
+
+  const generateGmLoot = () => {
+    const ageCatalog = getAgeCatalog(activeAge);
+    const candidates = buildLootCandidates({
+      weapons: ageCatalog.weapons,
+      armour: ageCatalog.armour,
+      potions: POTION_PRESETS,
+      items: ageCatalog.items,
+    });
+    const { items, bonusBronze } = rollRandomLoot(candidates);
+    const zeroCurrency: Currency = { gold: 0, silver: 0, bronze: 0, ingredients: 0, federationCredits: 0 };
+    const coins = bronzeToCurrency(bonusBronze, zeroCurrency);
+    setGmLootBundle({
+      items: items.map((item) => ({ name: item.label, notes: item.notes })),
+      currency: { gold: coins.gold, silver: coins.silver, bronze: coins.bronze },
+    });
+  };
+
+  const exportGmLoot = async () => {
+    if (!gmLootBundle) return;
+    const json = createLootBundleExportJson(gmLootBundle, activeAge);
+    await triggerExportShare("loot-bundle", json, "Assault of Bronze Loot Bundle");
   };
 
   const createLanServer = async () => {
@@ -1256,6 +1285,36 @@ export default function CharacterListScreen() {
                   </Pressable>
                 ))}
               </View>
+
+              <View style={styles.gmSectionHeader}>
+                <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Loot</Text>
+              </View>
+              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>
+                Roll a random haul from every storefront category, then export it for your players to import.
+              </Text>
+              <Pressable testID="gm-loot-generate" onPress={generateGmLoot} style={[styles.gmPrimaryBtn, { backgroundColor: colors.brandPrimary, borderColor: colors.borderStrong }]}>
+                <Icon name="dice-multiple" size={18} color={colors.onBrandPrimary} />
+                <Text style={[styles.gmButtonText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>Generate Loot Bundle</Text>
+              </Pressable>
+              {gmLootBundle && (
+                <>
+                  <View style={styles.gmWeaponList}>
+                    {gmLootBundle.items.map((item, index) => (
+                      <View key={`${item.name}-${index}`} style={[styles.gmWeaponBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+                        <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{item.name}</Text>
+                        {item.notes ? <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{item.notes}</Text> : null}
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>
+                    Coin: {gmLootBundle.currency.gold}g {gmLootBundle.currency.silver}s {gmLootBundle.currency.bronze}b
+                  </Text>
+                  <Pressable testID="gm-loot-export" onPress={exportGmLoot} style={[styles.gmSecondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
+                    <Icon name="file-export-outline" size={17} color={colors.brandSecondary} />
+                    <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Export Loot Bundle</Text>
+                  </Pressable>
+                </>
+              )}
 
               <View style={styles.gmSectionHeader}>
                 <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Initiative</Text>
