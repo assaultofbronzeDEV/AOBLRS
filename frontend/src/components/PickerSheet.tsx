@@ -12,7 +12,10 @@ export type PickerEntry = {
   price?: string;
   notes?: string;
   icon?: string; // material-design-icons name
+  disabled?: boolean; // grey out and block closing the sheet on select
 };
+
+export type PickerTab = { key: string; label: string };
 
 type Props = {
   visible: boolean;
@@ -22,6 +25,9 @@ type Props = {
   categoryOrder?: string[]; // preferred display order for section headers
   customLabel?: string; // e.g. "Create custom weapon"
   emptyMetaHint?: string; // hint to show at bottom if no meta info
+  tabs?: PickerTab[];
+  activeTab?: string;
+  onTabChange?: (key: string) => void;
   onClose: () => void;
   onSelect: (preset: PickerEntry) => void;
   onCustom: () => void;
@@ -38,6 +44,9 @@ export default function PickerSheet({
   presets,
   categoryOrder,
   customLabel = "Create custom",
+  tabs,
+  activeTab,
+  onTabChange,
   onClose,
   onSelect,
   onCustom,
@@ -138,6 +147,37 @@ export default function PickerSheet({
                 </Pressable>
               )}
             </View>
+
+            {tabs && tabs.length > 0 && (
+              <View style={styles.tabRow}>
+                {tabs.map((tab) => {
+                  const isActive = tab.key === activeTab;
+                  return (
+                    <Pressable
+                      key={tab.key}
+                      testID={`${testIDPrefix}-tab-${tab.key}`}
+                      onPress={() => onTabChange?.(tab.key)}
+                      style={({ pressed }) => [
+                        styles.tabBtn,
+                        {
+                          borderColor: colors.borderStrong,
+                          backgroundColor: isActive ? colors.brandPrimary : pressed ? colors.brandTertiary : colors.surface,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.tabBtnText,
+                          { color: isActive ? colors.onBrandPrimary : colors.onSurface },
+                        ]}
+                      >
+                        {tab.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           {/* Body */}
@@ -156,16 +196,17 @@ export default function PickerSheet({
                     testID={`${testIDPrefix}-preset-${p.id}`}
                     onPress={() => {
                       onSelect(p);
-                      onClose();
+                      if (!p.disabled) onClose();
                     }}
                     style={({ pressed }) => [
                       styles.entryRow,
                       notesBelowMeta && styles.entryRowWithNotesBelowMeta,
                       {
                         borderColor: colors.borderStrong,
-                        backgroundColor: pressed
+                        backgroundColor: pressed && !p.disabled
                           ? colors.brandTertiary
                           : colors.surface,
+                        opacity: p.disabled ? 0.45 : 1,
                       },
                     ]}
                   >
@@ -211,7 +252,7 @@ export default function PickerSheet({
                         <Text style={styles.priceChipText}>{p.price}</Text>
                       </View>
                     ) : null}
-                    <Icon name="plus-circle-outline" size={20} color={colors.brandPrimary} />
+                    <Icon name={p.disabled ? "lock-outline" : "plus-circle-outline"} size={20} color={p.disabled ? colors.muted : colors.brandPrimary} />
                     {p.notes && notesBelowMeta ? (
                       <Text style={styles.entryNotesBelowMeta}>
                         {p.notes}
@@ -298,6 +339,17 @@ const getStyles = (colors: ThemeColors) =>
       letterSpacing: 1,
     },
     actionRow: { flexDirection: "row", gap: 8 },
+    tabRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 },
+    tabBtn: {
+      borderWidth: 1.5,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    tabBtnText: {
+      fontSize: 12,
+      fontFamily: fonts.displayBold,
+      letterSpacing: 0.5,
+    },
     importBtn: {
       width: 42,
       minHeight: 40,

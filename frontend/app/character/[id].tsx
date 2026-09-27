@@ -125,9 +125,11 @@ export default function CharacterSheetScreen() {
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [abilityPickerFor, setAbilityPickerFor] = useState<AbilityKey | null>(null);
   const [potionPickerOpen, setPotionPickerOpen] = useState(false);
+  const [potionTab, setPotionTab] = useState("1");
   const [customPotionModalOpen, setCustomPotionModalOpen] = useState(false);
   const [pendingPotionRoll, setPendingPotionRoll] = useState(false);
   const [pendingPotionAbilityId, setPendingPotionAbilityId] = useState<string | null>(null);
+  const [pendingLongRest, setPendingLongRest] = useState(false);
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [entityToExport, setEntityToExport] = useState<{ type: ExportEntityType; value: ExportEntity } | null>(null);
@@ -334,6 +336,13 @@ export default function CharacterSheetScreen() {
   };
 
   const potionLibrary = [...POTION_PRESETS, ...(char?.customPotions ?? [])];
+
+  const POTION_TABS = [
+    { key: "1", label: "Lv 1", min: 1, max: 1 },
+    { key: "3", label: "Lv 3", min: 3, max: 3 },
+    { key: "5", label: "Lv 5", min: 5, max: 5 },
+    { key: "10", label: "Lv 10", min: 10, max: 10 },
+  ];
 
   const saveCustomPotion = (potion: PotionPreset) => {
     update({ customPotions: [...(char?.customPotions ?? []), potion] });
@@ -543,13 +552,15 @@ export default function CharacterSheetScreen() {
     Haptics.selectionAsync();
   };
 
-  const applyLongRest = (nextChar?: Character) => {
+  const applyLongRest = (nextChar?: Character, restoreHp?: boolean) => {
     const source = nextChar ?? char;
     if (!source || source.kind !== "hero") return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const clearUsed = (list: Ability[]) => list.map((a) => ({ ...a, used: false }));
+    const missingHp = Math.max(0, source.maxHp - source.hp);
+    const hpGain = restoreHp && missingHp > 0 ? Math.max(1, Math.floor(missingHp / 2)) : 0;
     update({
-      hp: source.maxHp,
+      hp: Math.min(source.maxHp, source.hp + hpGain),
       oncePerTurn: clearUsed(source.oncePerTurn),
       oncePerRest: clearUsed(source.oncePerRest),
       heroAbilities: clearUsed(source.heroAbilities),
@@ -557,7 +568,9 @@ export default function CharacterSheetScreen() {
   };
 
   const longRest = () => {
-    applyLongRest();
+    if (!char || char.kind !== "hero") return;
+    setPendingLongRest(true);
+    setRoll({ label: "Long Rest · Vitality", target: vitalitySaveTarget, mode: "normal" });
   };
 
   const triggerDeathSave = () => {
@@ -610,7 +623,7 @@ export default function CharacterSheetScreen() {
 
   const recoverFromDeath = () => {
     if (!char || char.kind !== "hero") return;
-    applyLongRest();
+    applyLongRest(undefined, true);
     setDeathSaveState({ open: false, failures: 0, successes: 0, dead: false });
     setRoll(null);
   };
@@ -1260,18 +1273,32 @@ export default function CharacterSheetScreen() {
         visible={potionPickerOpen}
         testIDPrefix="potion-picker"
         title="Potion Library"
-        subtitle={`Ingredients: ${char.currency.ingredients} · Locked potions require a higher level.`}
+        subtitle={`Ingredients: ${char.currency.ingredients} · Greyed-out potions are locked by level or ingredients.`}
         customLabel="Create custom potion"
         onImport={() => setEntityImportType("potion")}
         notesBelowMeta
-        presets={potionLibrary.map((potion) => ({
-          id: potion.id,
-          name: potion.name,
-          category: "Brewable Potions",
-          meta: `${potion.ingredients} ingredients · Lv ${potion.requiredLevel}`,
-          notes: potion.effectRoll ? `${potion.description} · ${potion.effectRoll}` : potion.description,
-          icon: "flask-outline",
-        }))}
+        tabs={POTION_TABS.map((t) => ({ key: t.key, label: t.label }))}
+        activeTab={potionTab}
+        onTabChange={setPotionTab}
+        presets={potionLibrary
+          .filter((potion) => {
+            const tab = POTION_TABS.find((t) => t.key === potionTab);
+            return !tab || (potion.requiredLevel >= tab.min && potion.requiredLevel <= tab.max);
+          })
+          .map((potion) => {
+            const level = parseInt(char.level, 10) || 1;
+            const lockedByLevel = level < potion.requiredLevel;
+            const lockedByIngredients = char.currency.ingredients < potion.ingredients;
+            return {
+              id: potion.id,
+              name: potion.name,
+              category: "Brewable Potions",
+              meta: `${potion.ingredients} ingredients · Lv ${potion.requiredLevel}`,
+              notes: potion.effectRoll ? `${potion.description} · ${potion.effectRoll}` : potion.description,
+              icon: "flask-outline",
+              disabled: lockedByLevel || lockedByIngredients,
+            };
+          })}
         categoryOrder={["Brewable Potions"]}
         onClose={() => setPotionPickerOpen(false)}
         onSelect={brewPotion}
@@ -1287,6 +1314,7 @@ export default function CharacterSheetScreen() {
         onClose={() => {
           setRoll(null);
           setPendingPotionRoll(false);
+          setPendingLongRest(false);
           if (!potionPickerOpen) setPendingPotionAbilityId(null);
         }}
         onLog={logRoll}
@@ -1294,6 +1322,12 @@ export default function CharacterSheetScreen() {
           if (pendingPotionRoll) {
             setPendingPotionRoll(false);
             if (verdict === "success" || verdict === "crit-success") setPotionPickerOpen(true);
+            return;
+          }
+          if (pendingLongRest) {
+            setPendingLongRest(false);
+            const restored = verdict === "success" || verdict === "crit-success";
+            applyLongRest(undefined, restored);
             return;
           }
           if (char?.kind === "hero" && char.hp <= 0) {
