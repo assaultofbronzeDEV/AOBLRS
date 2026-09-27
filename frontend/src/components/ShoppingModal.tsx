@@ -273,8 +273,8 @@ export default function ShoppingModal({ visible, currency, tabs, onClose, onChec
                         >
                           {entry.icon ? <Icon name={entry.icon as any} size={18} color={colors.brandPrimary} /> : null}
                           <View style={{ flex: 1, minWidth: 0 }}>
-                            <Text style={styles.entryName} numberOfLines={1}>{entry.name}</Text>
-                            {entry.notes ? <Text style={styles.entryNotes} numberOfLines={2}>{entry.notes}</Text> : null}
+                            <Text style={styles.entryName}>{entry.name}</Text>
+                            {entry.notes ? <Text style={styles.entryNotes}>{entry.notes}</Text> : null}
                           </View>
                           {entry.meta ? (
                             <View style={styles.metaChip}>
@@ -481,7 +481,7 @@ const getStyles = (colors: ThemeColors) =>
       paddingBottom: 3,
       marginTop: 4,
     },
-    entryRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 2, paddingVertical: 10, paddingHorizontal: 10 },
+    entryRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, borderWidth: 2, paddingVertical: 10, paddingHorizontal: 10 },
     entryName: { fontSize: 15, color: colors.onSurface, fontFamily: fonts.displayBold, letterSpacing: 0.5 },
     entryNotes: { fontSize: 12, color: colors.muted, fontFamily: fonts.display, lineHeight: 16, marginTop: 2 },
     metaChip: {

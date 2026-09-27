@@ -219,11 +219,11 @@ export default function PickerSheet({
                       />
                     ) : null}
                     <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.entryName} numberOfLines={1}>
+                      <Text style={styles.entryName}>
                         {p.name}
                       </Text>
                       {p.notes && !notesBelowMeta ? (
-                        <Text style={styles.entryNotes} numberOfLines={2}>
+                        <Text style={styles.entryNotes}>
                           {p.notes}
                         </Text>
                       ) : null}
@@ -378,7 +378,7 @@ const getStyles = (colors: ThemeColors) =>
     },
     entryRow: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       gap: 10,
       borderWidth: 2,
       paddingVertical: 10,
