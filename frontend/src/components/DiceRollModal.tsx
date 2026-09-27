@@ -21,6 +21,7 @@ export type RollRequest = {
   resultLabel?: string;
   mode?: RollMode; // advantage / disadvantage on the d20 check
   boost?: boolean; // add 1d6 to the d20 roll for this check
+  queuedBonus?: { notation: string; label: string }; // signed dice queued from an item/potion effect
 };
 
 type Props = {
@@ -47,6 +48,7 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
   const [invalidNotation, setInvalidNotation] = useState<string | null>(null);
   const [d20Pair, setD20Pair] = useState<number[] | null>(null);
   const [boostRoll, setBoostRoll] = useState<number | null>(null);
+  const [queuedBonusRoll, setQueuedBonusRoll] = useState<DiceRollResult | null>(null);
   const scale = useSharedValue(0.4);
   const rotate = useSharedValue(0);
 
@@ -58,6 +60,7 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
       setInvalidNotation(null);
       setD20Pair(null);
       setBoostRoll(null);
+      setQueuedBonusRoll(null);
       return;
     }
     setRolled(null);
@@ -66,6 +69,7 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
     setInvalidNotation(null);
     setD20Pair(null);
     setBoostRoll(null);
+    setQueuedBonusRoll(null);
     scale.value = 0.4;
     rotate.value = 0;
     scale.value = withSequence(
@@ -127,10 +131,12 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
           d20 = d1;
         }
         const bRoll = useBoost ? 1 + Math.floor(Math.random() * 6) : 0;
-        const finalTotal = d20 + bRoll;
+        const qRoll = request.queuedBonus ? rollDice(request.queuedBonus.notation) : null;
+        const finalTotal = d20 + bRoll + (qRoll?.total ?? 0);
         setRolled(d20);
         setD20Pair(pair);
         setBoostRoll(useBoost ? bRoll : null);
+        setQueuedBonusRoll(qRoll);
         const target = request.target ?? 0;
         // Crit checks on the d20 alone; other verdicts use total.
         let v: Verdict;
@@ -157,7 +163,7 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
         onLog?.({
           id: genId(),
           at: new Date().toISOString(),
-          label: request.label + (useBoost ? " (Boosted)" : ""),
+          label: request.label + (useBoost ? " (Boosted)" : "") + (request.queuedBonus ? ` (+${request.queuedBonus.label})` : ""),
           target,
           rolled: finalTotal,
           d20All: pair ?? undefined,
@@ -186,7 +192,7 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
   if (!request) return null;
 
   const onlyEffect = request.target == null;
-  const finalTotal = rolled != null ? rolled + (boostRoll ?? 0) : null;
+  const finalTotal = rolled != null ? rolled + (boostRoll ?? 0) + (queuedBonusRoll?.total ?? 0) : null;
   const display = onlyEffect
     ? effect?.total ?? tickValue ?? "?"
     : finalTotal ?? tickValue ?? "?";
@@ -293,6 +299,21 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
               </Text>
             )}
 
+            {queuedBonusRoll != null && rolled != null && request.queuedBonus && (
+              <Text
+                testID="dice-queued-bonus"
+                style={{
+                  color: colors.brandPrimary,
+                  fontFamily: fonts.displayBold,
+                  fontSize: 14,
+                  marginTop: -4,
+                }}
+              >
+                {request.queuedBonus.label} {request.queuedBonus.notation} ({queuedBonusRoll.total >= 0 ? "+" : ""}
+                {queuedBonusRoll.total}) = {finalTotal}
+              </Text>
+            )}
+
             <Text
               testID="dice-verdict-text"
               style={[styles.verdict, { color: resultColor, fontFamily: fonts.displayBold }]}
@@ -312,7 +333,7 @@ export default function DiceRollModal({ request, onClose, onLog, onResolve }: Pr
                   marginTop: -6,
                 }}
               >
-                Could not roll "{invalidNotation}". Try a format like "1d6", "2d8+3", or "1d20+1d10".
+                Could not roll &quot;{invalidNotation}&quot;. Try a format like &quot;1d6&quot;, &quot;2d8+3&quot;, or &quot;1d20+1d10&quot;.
               </Text>
             )}
 

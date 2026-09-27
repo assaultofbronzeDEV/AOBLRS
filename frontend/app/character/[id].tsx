@@ -29,6 +29,7 @@ import {
   RollMode,
   RollVerdict,
   StatBlock,
+  StatRef,
   Weapon,
   ROLL_HISTORY_MAX,
   createEmptyAbility,
@@ -62,6 +63,9 @@ import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 import { getAgeCatalog } from "@/src/ageCatalog";
 import { PotionPreset, POTION_PRESETS } from "@/src/data/potions";
+import ShoppingModal, { CartLine, ShopTabConfig } from "@/src/components/ShoppingModal";
+import { bronzeToCurrency, currencyToBronze, formatBronze, parsePriceToBronze } from "@/src/utils/currency";
+import { labelForStatRef, parseNextRollBonus, statRefsMatch } from "@/src/utils/effectParsing";
 
 type AbilityKey = "oncePerTurn" | "oncePerRest" | "heroAbilities";
 
@@ -99,6 +103,19 @@ function SheetColumns({ wide, children }: { wide: boolean; children: React.React
   return <View style={styles.sheetColumnsWide}>{children}</View>;
 }
 
+// Kept outside the component so the randomness isn't flagged as an impure render call.
+function rollRandomLoot(pool: { name: string; price: string; notes?: string }[]) {
+  const count = 2 + Math.floor(Math.random() * 3);
+  const picks: { name: string; notes?: string }[] = [];
+  for (let i = 0; i < count; i++) {
+    const preset = pool[Math.floor(Math.random() * pool.length)];
+    const label = preset.price ? `${preset.name} (${preset.price})` : preset.name;
+    picks.push({ name: label, notes: preset.notes });
+  }
+  const bonusBronze = 5 + Math.floor(Math.random() * 46);
+  return { picks, bonusBronze };
+}
+
 export default function CharacterSheetScreen() {
   const { colors, mode } = useTheme();
   const { width } = useWindowDimensions();
@@ -130,6 +147,8 @@ export default function CharacterSheetScreen() {
   const [pendingPotionRoll, setPendingPotionRoll] = useState(false);
   const [pendingPotionAbilityId, setPendingPotionAbilityId] = useState<string | null>(null);
   const [pendingLongRest, setPendingLongRest] = useState(false);
+  const [shoppingOpen, setShoppingOpen] = useState(false);
+  const [infoMessage, setInfoMessage] = useState<{ icon: string; title: string; body: string } | null>(null);
   const [levelUpOpen, setLevelUpOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [entityToExport, setEntityToExport] = useState<{ type: ExportEntityType; value: ExportEntity } | null>(null);
@@ -195,9 +214,19 @@ export default function CharacterSheetScreen() {
     }
   };
 
-  const triggerStatRoll = (label: string, target: number) => {
+  const triggerStatRoll = (label: string, target: number, statRef?: StatRef) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setRoll({ label, target, mode: rollMode, boost: boostPending });
+    const bonus = statRef ? char?.pendingRollBonuses.find((b) => statRefsMatch(b.statRef, statRef)) : undefined;
+    setRoll({
+      label,
+      target,
+      mode: rollMode,
+      boost: boostPending,
+      queuedBonus: bonus ? { notation: bonus.notation, label: bonus.label } : undefined,
+    });
+    if (bonus) {
+      update({ pendingRollBonuses: char!.pendingRollBonuses.filter((b) => b.id !== bonus.id) });
+    }
     if (rollMode !== "normal") setRollMode("normal");
     if (boostPending) setBoostPending(false);
   };
@@ -658,12 +687,199 @@ export default function CharacterSheetScreen() {
     Haptics.selectionAsync();
   };
 
+  const shopTabs: ShopTabConfig[] = !char
+    ? []
+    : [
+        {
+          key: "blacksmith",
+          label: "Blacksmith",
+          icon: "sword",
+          subtitle: "Melee weapons, fresh off the forge.",
+          categoryOrder: ["Blades", "Big Steel", "Hafted", "Brawler"],
+          customLabel: "Create custom weapon",
+          onCustom: addCustomWeapon,
+          onImport: () => setEntityImportType("weapon"),
+          entries: ageCatalog.weapons
+            .filter((w) => w.attackKind === "melee")
+            .map((w) => ({
+              id: w.id,
+              name: w.name,
+              category: w.category,
+              meta: w.damageRoll,
+              notes: w.notes,
+              icon: "sword",
+              priceBronze: parsePriceToBronze(w.price),
+              priceLabel: w.price,
+              payload: w,
+            })),
+        },
+        {
+          key: "armoury",
+          label: "Armoury",
+          icon: "shield-outline",
+          subtitle: "Equips immediately — extra sets go to your inventory.",
+          categoryOrder: ageCatalog.armourCategoryOrder,
+          customLabel: "Create custom armour",
+          onCustom: () => equipArmour(createEmptyArmour()),
+          entries: ageCatalog.armour.map((a) => ({
+            id: a.id,
+            name: a.name,
+            category: a.category,
+            meta: `DR ${a.damageReduction}`,
+            notes: a.description,
+            icon: "shield-outline",
+            priceBronze: parsePriceToBronze(a.price),
+            priceLabel: a.price,
+            payload: a,
+          })),
+        },
+        {
+          key: "alchemist",
+          label: "Alchemist",
+          icon: "flask-outline",
+          subtitle: "Ready-made potions — no ingredients required.",
+          categoryOrder: ["Brewable Potions"],
+          customLabel: "Create custom potion",
+          onCustom: () => setCustomPotionModalOpen(true),
+          onImport: () => setEntityImportType("potion"),
+          onExport: (entry) => {
+            const potion = potionLibrary.find((candidate) => candidate.id === entry.id);
+            if (potion) exportEntity("potion", potion);
+          },
+          entries: potionLibrary.map((potion) => {
+            const priceLabel = `${potion.ingredients * 5}g`;
+            return {
+              id: potion.id,
+              name: potion.name,
+              category: "Brewable Potions",
+              meta: `Lv ${potion.requiredLevel}`,
+              notes: potion.effectRoll ? `${potion.description} · ${potion.effectRoll}` : potion.description,
+              icon: "flask-outline",
+              priceBronze: parsePriceToBronze(priceLabel),
+              priceLabel,
+              payload: potion,
+            };
+          }),
+        },
+        {
+          key: "general",
+          label: "General Store",
+          icon: "cart-outline",
+          subtitle: "Everyday gear, tools, and supplies.",
+          categoryOrder: ageCatalog.itemCategoryOrder,
+          customLabel: "Create custom item",
+          onCustom: addCustomInventoryItem,
+          onImport: () => setEntityImportType("item"),
+          entries: ageCatalog.items.map((it) => ({
+            id: it.id,
+            name: it.name,
+            category: it.category,
+            notes: it.notes,
+            icon: "package-variant-closed",
+            priceBronze: parsePriceToBronze(it.price),
+            priceLabel: it.price,
+            payload: it,
+          })),
+        },
+        {
+          key: "loot",
+          label: "Random Loot",
+          icon: "treasure-chest",
+          subtitle: "Roll for a random haul of supplies.",
+          entries: [],
+        },
+      ];
+
+  const handleShopCheckout = (cart: CartLine[]) => {
+    if (!char) return;
+    const newWeapons: Weapon[] = [];
+    const newItems: InventoryItem[] = [];
+    let newEquippedArmour: Armour | null = null;
+
+    for (const line of cart) {
+      if (line.tab === "blacksmith") {
+        const preset = line.payload as { name: string; price: string; notes?: string; attackKind: Weapon["attackKind"]; damageRoll: string };
+        for (let i = 0; i < line.qty; i++) {
+          newWeapons.push({
+            id: genId(),
+            name: `${preset.name} (${preset.price})`,
+            description: preset.notes ?? "",
+            attackKind: preset.attackKind,
+            damageRoll: preset.damageRoll,
+          });
+        }
+      } else if (line.tab === "armoury") {
+        const preset = line.payload as { name: string; description: string; movementSpeed: string; damageReduction: string };
+        for (let i = 0; i < line.qty; i++) {
+          if (!newEquippedArmour) {
+            newEquippedArmour = { id: genId(), name: preset.name, description: preset.description, movementSpeed: preset.movementSpeed, damageReduction: preset.damageReduction };
+          } else {
+            newItems.push(createEmptyInventoryItem(`${preset.name} (Spare Armour)`, preset.description));
+          }
+        }
+      } else if (line.tab === "alchemist") {
+        const preset = line.payload as PotionPreset;
+        for (let i = 0; i < line.qty; i++) {
+          newItems.push(createEmptyInventoryItem(preset.name, `${preset.description} Cost: ${line.priceLabel}.`));
+        }
+      } else if (line.tab === "general") {
+        const preset = line.payload as { name: string; price: string; notes?: string };
+        for (let i = 0; i < line.qty; i++) {
+          const label = preset.price ? `${preset.name} (${preset.price})` : preset.name;
+          newItems.push(createEmptyInventoryItem(label, preset.notes ?? ""));
+        }
+      }
+    }
+
+    const totalBronze = cart.reduce((sum, line) => sum + line.priceBronze * line.qty, 0);
+    const nextCurrency = bronzeToCurrency(Math.max(0, currencyToBronze(char.currency) - totalBronze), char.currency);
+
+    update({
+      weapons: [...char.weapons, ...newWeapons],
+      inventoryItems: [...char.inventoryItems, ...newItems],
+      ...(newEquippedArmour ? { equippedArmour: newEquippedArmour, armour: newEquippedArmour.damageReduction } : {}),
+      currency: nextCurrency,
+    });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const generateRandomLoot = () => {
+    if (!char) return;
+    const { picks, bonusBronze } = rollRandomLoot(ageCatalog.items);
+    const newItems = picks.map((p) => createEmptyInventoryItem(p.name, p.notes ?? ""));
+    const nextCurrency = bronzeToCurrency(currencyToBronze(char.currency) + bonusBronze, char.currency);
+    update({ inventoryItems: [...char.inventoryItems, ...newItems], currency: nextCurrency });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setInfoMessage({
+      icon: "treasure-chest",
+      title: "Loot Found!",
+      body: `You found: ${newItems.map((p) => p.name).join(", ")}, and ${formatBronze(bonusBronze)}.`,
+    });
+  };
+
   const setInventoryItems = (items: InventoryItem[]) => {
     update({ inventoryItems: items });
   };
 
   const useInventoryItem = (item: InventoryItem) => {
     if (!char || !item.description) return;
+    const rollBonus = parseNextRollBonus(item.description);
+    if (rollBonus) {
+      const statLabel = labelForStatRef(rollBonus.statRef);
+      update({
+        pendingRollBonuses: [
+          ...char.pendingRollBonuses,
+          { id: genId(), statRef: rollBonus.statRef, notation: rollBonus.notation, label: item.name.trim() || "Item" },
+        ],
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setInfoMessage({
+        icon: "arrow-up-bold-circle-outline",
+        title: "Effect Queued",
+        body: `${item.name.trim() || "Item"} will add ${rollBonus.notation} to your next ${statLabel} roll.`,
+      });
+      return;
+    }
     const diceMatch = item.description.match(/\b(\d+\s*[xX*]?\s*d\s*\d+(?:(?:\s*[+-]\s*)(?:\d+\s*[xX*]?\s*d\s*\d+|\d+))*)\b/i);
     if (!diceMatch) return;
     const type = /\b(heal|heals|healing|healed|restore|restores|restored)\b/i.test(item.description)
@@ -1019,10 +1235,28 @@ export default function CharacterSheetScreen() {
           </View>
 
           {char.kind === "hero" && (
-            <CurrencyPurse
-              value={char.currency}
-              onChange={(currency) => update({ currency })}
-            />
+            <>
+              <Pressable
+                testID="open-shopping"
+                onPress={() => {
+                  setShoppingOpen(true);
+                  Haptics.selectionAsync();
+                }}
+                style={({ pressed }) => [
+                  styles.shoppingBtn,
+                  { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandTertiary : colors.brandPrimary },
+                ]}
+              >
+                <Icon name="cart-outline" size={18} color={colors.onBrandPrimary} />
+                <Text style={[styles.shoppingBtnText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
+                  Shopping
+                </Text>
+              </Pressable>
+              <CurrencyPurse
+                value={char.currency}
+                onChange={(currency) => update({ currency })}
+              />
+            </>
           )}
 
           {char.kind === "monster"
@@ -1047,6 +1281,7 @@ export default function CharacterSheetScreen() {
                         block={block}
                         onChange={(next) => updateStat(rowIdx * 2 + colIdx, next)}
                         onRoll={triggerStatRoll}
+                        pendingBonuses={char.pendingRollBonuses}
                       />
                     ) : (
                       <View key={`empty-${colIdx}`} style={{ flex: 1 }} />
@@ -1268,6 +1503,49 @@ export default function CharacterSheetScreen() {
           </SheetColumns>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {char.kind === "hero" && (
+        <ShoppingModal
+          visible={shoppingOpen}
+          currency={char.currency}
+          tabs={shopTabs}
+          onClose={() => setShoppingOpen(false)}
+          onCheckout={handleShopCheckout}
+          onGenerateLoot={generateRandomLoot}
+        />
+      )}
+
+      <Modal
+        transparent
+        visible={infoMessage != null}
+        animationType="fade"
+        onRequestClose={() => setInfoMessage(null)}
+      >
+        <Pressable style={styles.warnBackdrop} onPress={() => setInfoMessage(null)}>
+          <Pressable
+            style={[styles.warnCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Icon name={(infoMessage?.icon ?? "information-outline") as any} size={36} color={colors.brandPrimary} />
+            <Text style={[styles.warnTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>
+              {infoMessage?.title}
+            </Text>
+            <Text style={[styles.warnText, { color: colors.muted, fontFamily: fonts.display }]}>
+              {infoMessage?.body}
+            </Text>
+            <Pressable
+              testID="info-message-ok"
+              onPress={() => setInfoMessage(null)}
+              style={({ pressed }) => [
+                styles.warnBtn,
+                { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary },
+              ]}
+            >
+              <Text style={[styles.warnBtnText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>OK</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <PickerSheet
         visible={potionPickerOpen}
@@ -2199,6 +2477,15 @@ const styles = StyleSheet.create({
   },
   actionText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
   actionTextCompact: { fontSize: 11, letterSpacing: 0.2 },
+  shoppingBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 2,
+    paddingVertical: 10,
+  },
+  shoppingBtnText: { fontSize: 14, letterSpacing: 1 },
 
   sectionHeader: {
     borderWidth: 2,

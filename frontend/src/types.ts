@@ -100,6 +100,13 @@ export type Currency = {
   federationCredits: number;
 };
 
+export type PendingRollBonus = {
+  id: string;
+  statRef: StatRef;
+  notation: string; // signed dice, e.g. "+1d4" or "-1d6"
+  label: string; // source item/potion name
+};
+
 export type Character = {
   id: string;
   age: AgeId;
@@ -127,6 +134,7 @@ export type Character = {
   customSections: CustomSection[];
   weapons: Weapon[];
   rollHistory: RollHistoryEntry[];
+  pendingRollBonuses: PendingRollBonus[];
   createdAt: string;
   updatedAt: string;
 };
@@ -267,6 +275,7 @@ const createBase = (kind: EntityKind): Character => {
     customSections: [],
     weapons: [],
     rollHistory: [],
+    pendingRollBonuses: [],
     createdAt: now,
     updatedAt: now,
   };
@@ -370,6 +379,7 @@ export const migrateCharacter = (raw: any): Character => {
       description: weapon?.description ?? "",
     })),
     rollHistory: Array.isArray(raw.rollHistory) ? raw.rollHistory.slice(0, ROLL_HISTORY_MAX) : [],
+    pendingRollBonuses: Array.isArray(raw.pendingRollBonuses) ? raw.pendingRollBonuses : [],
     createdAt: raw.createdAt ?? now,
     updatedAt: raw.updatedAt ?? now,
   };

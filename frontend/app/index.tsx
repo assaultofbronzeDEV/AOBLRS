@@ -215,7 +215,7 @@ Weapons that the Magi would never have even considered possible were invented an
 
 Through the torture of many Dwarves, the Humans now knew that they could access the Wall using the Dwarven tunnels that ran underneath certain parts of it.
 
-While the battle took place, the human commander, ARCHIBALD STELLARK, used a device to bleed the line of pure Power-Stone that ran along the Wall, permanently damaging it, breaking the elven enchantment that Niirmata had sacrificed his life for centuries before, and unleashing all manner of curses onto the tunnel due to years of corrupted Power-Stone energy.
+While the BATTLE OF THE WALL took place, the human commander, ARCHIBALD STELLARK, used a device to bleed the line of pure Power-Stone that ran along the Wall, permanently damaging it, breaking the elven enchantment that Niirmata had sacrificed his life for centuries before, and unleashing all manner of curses onto the tunnel due to years of corrupted Power-Stone energy.
 
 Once the underground attack was complete, the Humans crossed the Wall and the Age of War began.`,
   },

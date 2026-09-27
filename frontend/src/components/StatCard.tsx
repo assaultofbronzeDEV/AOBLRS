@@ -1,12 +1,13 @@
 import React from "react";
 import { View, Text, StyleSheet, TextInput } from "react-native";
 import { fonts, useTheme } from "@/src/theme";
-import { StatBlock as StatBlockType } from "@/src/types";
+import { PendingRollBonus, StatBlock as StatBlockType, StatRef } from "@/src/types";
 
 type Props = {
   block: StatBlockType;
   onChange: (next: StatBlockType) => void;
-  onRoll: (label: string, target: number) => void;
+  onRoll: (label: string, target: number, statRef: StatRef) => void;
+  pendingBonuses?: PendingRollBonus[];
 };
 
 function NumberField({
@@ -38,7 +39,7 @@ function NumberField({
   );
 }
 
-export default function StatCard({ block, onChange, onRoll }: Props) {
+export default function StatCard({ block, onChange, onRoll, pendingBonuses }: Props) {
   const { colors } = useTheme();
 
   const setMain = (n: number) => onChange({ ...block, value: n });
@@ -46,6 +47,8 @@ export default function StatCard({ block, onChange, onRoll }: Props) {
     const subs = block.subs.map((s, idx) => (idx === i ? { ...s, value: n } : s));
     onChange({ ...block, subs });
   };
+
+  const mainBonus = pendingBonuses?.find((b) => b.statRef.kind === "main" && b.statRef.statKey === block.key);
 
   return (
     <View
@@ -60,7 +63,7 @@ export default function StatCard({ block, onChange, onRoll }: Props) {
         <View style={styles.headerNameCell}>
           <Text
             testID={`stat-main-${block.key}`}
-            onPress={() => onRoll(block.name, block.value)}
+            onPress={() => onRoll(block.name, block.value, { kind: "main", statKey: block.key })}
             numberOfLines={1}
             style={[styles.headerName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}
           >
@@ -72,30 +75,45 @@ export default function StatCard({ block, onChange, onRoll }: Props) {
           >
             {block.name}
           </Text>
+          {mainBonus && (
+            <Text testID={`stat-bonus-${block.key}`} style={[styles.bonusBadge, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
+              {mainBonus.notation}
+            </Text>
+          )}
         </View>
         <NumberField value={block.value} onChange={setMain} testID={`stat-main-value-${block.key}`} />
       </View>
 
       <View style={styles.subs}>
-        {block.subs.map((s, i) => (
-          <View key={s.name} style={[styles.subRow, { borderBottomColor: colors.divider }]}>
-            <View style={styles.subNameCell}>
-              <Text
-                testID={`sub-skill-${block.key}-${i}`}
-                onPress={() => onRoll(s.name, s.value)}
-                numberOfLines={2}
-                style={[styles.subName, { color: colors.onSurface, fontFamily: fonts.display }]}
-              >
-                {s.name}
-              </Text>
+        {block.subs.map((s, i) => {
+          const subBonus = pendingBonuses?.find(
+            (b) => b.statRef.kind === "sub" && b.statRef.statKey === block.key && b.statRef.subIndex === i,
+          );
+          return (
+            <View key={s.name} style={[styles.subRow, { borderBottomColor: colors.divider }]}>
+              <View style={styles.subNameCell}>
+                <Text
+                  testID={`sub-skill-${block.key}-${i}`}
+                  onPress={() => onRoll(s.name, s.value, { kind: "sub", statKey: block.key, subIndex: i })}
+                  numberOfLines={2}
+                  style={[styles.subName, { color: colors.onSurface, fontFamily: fonts.display }]}
+                >
+                  {s.name}
+                </Text>
+                {subBonus && (
+                  <Text testID={`sub-bonus-${block.key}-${i}`} style={[styles.bonusBadge, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
+                    {subBonus.notation}
+                  </Text>
+                )}
+              </View>
+              <NumberField
+                value={s.value}
+                onChange={(n) => setSub(i, n)}
+                testID={`sub-skill-value-${block.key}-${i}`}
+              />
             </View>
-            <NumberField
-              value={s.value}
-              onChange={(n) => setSub(i, n)}
-              testID={`sub-skill-value-${block.key}-${i}`}
-            />
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );
@@ -129,6 +147,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginTop: -2,
     textTransform: "uppercase",
+  },
+  bonusBadge: {
+    fontSize: 11,
+    marginTop: 2,
   },
   subs: {
     paddingHorizontal: 8,
