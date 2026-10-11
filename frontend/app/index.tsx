@@ -385,12 +385,12 @@ function GmSection({
   return (
     <View style={styles.gmBox}>
       <View style={[styles.gmBoxHeader, { backgroundColor: colors.surfaceTertiary, borderColor: colors.borderStrong, borderBottomWidth: open ? 0 : 2 }]}>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${open ? "Collapse" : "Expand"} ${title}`} onPress={() => setOpen((v) => !v)} style={styles.gmBoxToggle}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${open ? "Collapse" : "Expand"} ${title}`} onPress={() => setOpen((v) => !v)} style={[styles.gmBoxToggle, landscape && { justifyContent: "center" }]}>
           <Icon name={icon as any} size={19} color={colors.brandPrimary} />
-          <Text style={[styles.gmBoxTitle, { color: colors.onSurfaceTertiary, fontFamily: fonts.displayBold, textAlign: landscape ? "center" : "left" }]}>{title}</Text>
+          <Text style={[styles.gmBoxTitle, { color: colors.onSurfaceTertiary, fontFamily: fonts.displayBold, flex: landscape ? 0 : 1 }]}>{title}</Text>
           <Icon name={open ? "chevron-up" : "chevron-down"} size={22} color={colors.onSurfaceTertiary} />
         </Pressable>
-        {right}
+        {right ? <View style={landscape ? styles.gmBoxRightFloat : undefined}>{right}</View> : null}
       </View>
       {open && <View style={[styles.gmBoxBody, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}><View style={styles.gmBoxInner}>{children}</View></View>}
     </View>
@@ -2064,7 +2064,8 @@ const styles = StyleSheet.create({
   initiativeTracker: { borderWidth: 2, borderRadius: 6, padding: 8, gap: 8 },
   gmBoxHeader: { flexDirection: "row", alignItems: "center", borderWidth: 2, borderBottomWidth: 0, paddingRight: 10 },
   gmBoxToggle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 9 },
-  gmBoxTitle: { flex: 1, fontSize: 18, letterSpacing: 1 },
+  gmBoxTitle: { fontSize: 18, letterSpacing: 1 },
+  gmBoxRightFloat: { position: "absolute", right: 10, top: 0, bottom: 0, justifyContent: "center" },
   gmBoxBody: { borderWidth: 2, padding: 12 },
   gmBoxInner: { gap: 10, width: "100%", maxWidth: 640, alignSelf: "center" },
   gmSectionTitle: { fontSize: 18, letterSpacing: 1 },
