@@ -13,6 +13,7 @@ import {
   PARTY_HEARTBEAT_INTERVAL_MS,
   PARTY_HEARTBEAT_TIMEOUT_MS,
   PARTY_MAX_PORTRAIT_CHARS,
+  PARTY_MAX_GIF_CHARS,
   PARTY_PORTRAIT_PATTERN,
   PARTY_PROTOCOL_VERSION,
   isValidRoomCode,
@@ -102,6 +103,13 @@ function shrinkOnWeb(uri: string): Promise<string | null> {
   });
 }
 
+const GIF_BASE64_PREFIX = /^data:image\/[a-z]+;base64,R0lGOD/;
+
+function gifPortrait(uri: string | undefined): string | null {
+  if (!uri || uri.length > PARTY_MAX_GIF_CHARS || !GIF_BASE64_PREFIX.test(uri)) return null;
+  return uri.replace(/^data:image\/[a-z]+;/, "data:image/gif;");
+}
+
 function acceptablePortrait(uri: string): boolean {
   return uri.length <= PARTY_MAX_PORTRAIT_CHARS && PARTY_PORTRAIT_PATTERN.test(uri);
 }
@@ -122,6 +130,8 @@ class PartyManager {
   private publishTimer: ReturnType<typeof setTimeout> | null = null;
   private lastServerBeatAt = 0;
   private restoreStarted = false;
+  private incomingGifs = new Map<string, string>();
+  private sentGifs = new Map<string, string>();
 
   constructor() {
     onCharacterSaved((character) => this.handleCharacterSaved(character));
@@ -343,6 +353,7 @@ class PartyManager {
         peerId: session.peerId,
         secret: session.secret,
       });
+      this.sentGifs.clear();
       this.publishNow();
       this.startHeartbeat(socket);
     };
@@ -401,7 +412,7 @@ class PartyManager {
           reconnecting: false,
           error: null,
           peers: msg.peers,
-          sharedHeroes: this.sanitizeIncoming(msg.sharedHeroes),
+          sharedHeroes: this.withGifs(this.sanitizeIncoming(msg.sharedHeroes)),
           rollNotes: this.sanitizeNotes(msg.rollNotes),
         });
         break;
@@ -412,9 +423,17 @@ class PartyManager {
       case "PLAYER_LEFT":
         this.setState({ peers: this.state.peers.filter((p) => p.id !== msg.peerId) });
         break;
+      case "PORTRAIT": {
+        if (typeof msg.heroId !== "string") break;
+        const uri = msg.uri === null ? null : gifPortrait(msg.uri);
+        if (uri) this.incomingGifs.set(msg.heroId, uri);
+        else this.incomingGifs.delete(msg.heroId);
+        this.setState({ sharedHeroes: this.withGifs(this.state.sharedHeroes) });
+        break;
+      }
       case "PARTY_STATE":
         this.setState({
-          sharedHeroes: this.sanitizeIncoming(msg.sharedHeroes),
+          sharedHeroes: this.withGifs(this.sanitizeIncoming(msg.sharedHeroes)),
           rollNotes: this.sanitizeNotes(msg.rollNotes),
         });
         break;
@@ -503,7 +522,40 @@ class PartyManager {
 
   private publishNow(): void {
     if (!this.socket || this.state.role === "idle") return;
-    this.sendOn(this.socket, { t: "CHARACTER_UPDATE", characters: this.shareableHeroes() });
+    const shared = this.shareableHeroes();
+    this.sendOn(this.socket, { t: "CHARACTER_UPDATE", characters: shared });
+    this.publishGifs(this.socket, shared);
+  }
+
+  // Animated portraits are sent once per change, separately from hero updates.
+  private publishGifs(socket: WebSocket, shared: Character[]): void {
+    const current = new Map<string, string>();
+    const selected = new Set(shared.map((c) => c.id));
+    this.heroesOnly(this.myCharacters).forEach((c) => {
+      const gif = selected.has(c.id) ? gifPortrait(c.portraitUri) : null;
+      if (gif) current.set(c.id, gif);
+    });
+    current.forEach((uri, heroId) => {
+      if (this.sentGifs.get(heroId) === uri) return;
+      this.sentGifs.set(heroId, uri);
+      this.sendOn(socket, { t: "PORTRAIT_SET", heroId, uri });
+    });
+    [...this.sentGifs.keys()].forEach((heroId) => {
+      if (current.has(heroId)) return;
+      this.sentGifs.delete(heroId);
+      this.sendOn(socket, { t: "PORTRAIT_SET", heroId, uri: null });
+    });
+  }
+
+  private withGifs(heroes: Character[]): Character[] {
+    const ids = new Set(heroes.map((h) => h.id));
+    [...this.incomingGifs.keys()].forEach((id) => {
+      if (!ids.has(id)) this.incomingGifs.delete(id);
+    });
+    return heroes.map((h) => {
+      const gif = this.incomingGifs.get(h.id);
+      return gif ? { ...h, portraitUri: gif } : h;
+    });
   }
 
   // Any hero-sheet save (e.g. HP edits on the sheet screen) goes live without

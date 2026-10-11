@@ -14,6 +14,8 @@ import {
   PARTY_MAX_HERO_CHARS,
   PARTY_MAX_PORTRAIT_CHARS,
   PARTY_PORTRAIT_PATTERN,
+  PARTY_MAX_GIF_CHARS,
+  PARTY_GIF_PATTERN,
   PARTY_MAX_HEROES_PER_PEER,
   PARTY_MAX_MESSAGE_CHARS,
   PARTY_MAX_PLAYERS,
@@ -100,6 +102,7 @@ type Peer = {
   lastSeen: number;
   disconnectedAt: number | null;
   heroes: Character[];
+  gifs: Map<string, string>;
 };
 
 function cleanName(value: unknown, fallback: string): string {
@@ -261,6 +264,10 @@ export class PartyRoom extends DurableObject<Env> {
     });
     this.broadcast({ t: "PLAYER_JOINED", peer: this.info(peer) }, peer.id);
     this.broadcastState(peer.id);
+    this.peers.forEach((other) => {
+      if (!other.socket || other.id === peer!.id) return;
+      other.gifs.forEach((uri, heroId) => this.sendTo(socket, { t: "PORTRAIT", heroId, uri }));
+    });
     return peer;
   }
 
@@ -271,8 +278,23 @@ export class PartyRoom extends DurableObject<Env> {
         break;
       case "CHARACTER_UPDATE":
         peer.heroes = this.sanitizeHeroes(peer, msg.characters);
+        peer.gifs.forEach((_, id) => {
+          if (!peer.heroes.some((h) => h.id === id)) peer.gifs.delete(id);
+        });
         this.broadcastState();
         break;
+      case "PORTRAIT_SET": {
+        const heroId = msg.heroId;
+        if (typeof heroId !== "string" || !peer.heroes.some((h) => h.id === heroId)) break;
+        const uri = msg.uri;
+        if (uri === null) {
+          if (peer.gifs.delete(heroId)) this.broadcast({ t: "PORTRAIT", heroId, uri: null }, peer.id);
+        } else if (typeof uri === "string" && uri.length <= PARTY_MAX_GIF_CHARS && PARTY_GIF_PATTERN.test(uri)) {
+          peer.gifs.set(heroId, uri);
+          this.broadcast({ t: "PORTRAIT", heroId, uri }, peer.id);
+        }
+        break;
+      }
       case "ROLL_NOTES_UPDATE": {
         if (peer.role !== "gm") {
           this.sendTo(peer.socket, { t: "ERROR", message: "Only the GM can edit roll notes." });
@@ -298,7 +320,7 @@ export class PartyRoom extends DurableObject<Env> {
 
   // A peer can only publish heroes it owns. An id that is already owned by a
   // different peer is ignored, so nobody can overwrite or hijack another
-  // player's mini sheet. Portraits are never shared.
+  // player's mini sheet.
   private sanitizeHeroes(peer: Peer, raw: unknown): Character[] {
     if (!Array.isArray(raw)) return peer.heroes;
     const claimedElsewhere = new Set<string>();
@@ -337,6 +359,7 @@ export class PartyRoom extends DurableObject<Env> {
       lastSeen: Date.now(),
       disconnectedAt: null,
       heroes: [],
+      gifs: new Map(),
     };
   }
 

@@ -164,6 +164,41 @@ test("heroes published by players are shared live, read-only, with portrait and 
   [gm, alice, bob].forEach((c) => c.close());
 });
 
+test("animated GIF portraits are relayed separately, owner-only, and validated", async () => {
+  const room = await createRoom();
+  const gm = await joinGm(room);
+  const alice = await joinPlayer(room.code, "Alice");
+  const gif = "data:image/gif;base64,R0lGODlh" + "A".repeat(300_000);
+
+  alice.send({ t: "CHARACTER_UPDATE", characters: [hero("a1", "Alice Hero", 10)] });
+  await gm.waitForState((s) => s.sharedHeroes.length === 1);
+  alice.send({ t: "PORTRAIT_SET", heroId: "a1", uri: gif });
+  const got = await gm.waitFor((m) => m.t === "PORTRAIT" && m.heroId === "a1");
+  assert.equal(got.uri, gif);
+
+  // State updates never carry the gif.
+  alice.send({ t: "CHARACTER_UPDATE", characters: [hero("a1", "Alice Hero", 7)] });
+  const state = await gm.waitForState((s) => s.sharedHeroes[0]?.hp === 7);
+  assert.notEqual(state.sharedHeroes[0].portraitUri, gif);
+
+  // A late joiner receives it on join.
+  const bob = await joinPlayer(room.code, "Bob");
+  assert.equal((await bob.waitFor((m) => m.t === "PORTRAIT" && m.heroId === "a1")).uri, gif);
+
+  // Others cannot set a gif for Alice's hero; bad data is ignored.
+  bob.send({ t: "PORTRAIT_SET", heroId: "a1", uri: "data:image/gif;base64,R0lGODlhEVIL" });
+  alice.send({ t: "PORTRAIT_SET", heroId: "a1", uri: "javascript:alert(1)" });
+  alice.send({ t: "PORTRAIT_SET", heroId: "a1", uri: "data:image/gif;base64,R0lGOD" + "A".repeat(750_000) });
+  await new Promise((r) => setTimeout(r, 300));
+  assert.equal(gm.inbox.filter((m) => m.t === "PORTRAIT").length, 1);
+
+  // Removing it clears it for everyone.
+  alice.send({ t: "PORTRAIT_SET", heroId: "a1", uri: null });
+  const cleared = await gm.waitFor((m) => m.t === "PORTRAIT" && m.uri === null);
+  assert.equal(cleared.heroId, "a1");
+  [gm, alice, bob].forEach((c) => c.close());
+});
+
 test("nobody can overwrite or hijack another player's hero", async () => {
   const room = await createRoom();
   const gm = await joinGm(room);

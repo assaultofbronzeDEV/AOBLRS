@@ -236,8 +236,9 @@ export default function CharacterSheetScreen() {
     if (!result.canceled && result.assets?.[0]) {
       const asset = result.assets[0];
       // Persist as a data URI so it survives beyond the picker's temp file lifetime.
+      const mime = asset.mimeType === "image/gif" || asset.base64?.startsWith("R0lGOD") ? "image/gif" : "image/jpeg";
       const uri = asset.base64
-        ? `data:image/jpeg;base64,${asset.base64}`
+        ? `data:${mime};base64,${asset.base64}`
         : asset.uri;
       update({ portraitUri: uri });
     }

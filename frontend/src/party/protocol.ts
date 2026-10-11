@@ -14,6 +14,10 @@ export const PARTY_MAX_HEROES_PER_PEER = 12;
 export const PARTY_MAX_HERO_CHARS = 200_000;
 export const PARTY_MAX_PORTRAIT_CHARS = 60_000;
 export const PARTY_PORTRAIT_PATTERN = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+// Animated portraits (GIFs) travel on their own message so the small, frequent
+// hero updates never carry them. Anything bigger than this is not shared.
+export const PARTY_MAX_GIF_CHARS = 700_000;
+export const PARTY_GIF_PATTERN = /^data:image\/(gif|jpeg|png|webp);base64,R0lGOD[A-Za-z0-9+/=]+$/;
 export const PARTY_ROOM_CODE_LENGTH = 6;
 
 // A-Z 2-9 without lookalikes (no I, L, O, 0, 1).
@@ -54,6 +58,10 @@ export type PartyMessage =
   // Owner -> room: the heroes this connection shares. Only the owner can ever
   // publish or change a hero; the room just relays the latest snapshot.
   | { t: "CHARACTER_UPDATE"; characters: Character[] }
+  // Owner -> room: the animated portrait for one of the owner's shared heroes
+  // (null removes it). The room relays it to everyone else as PORTRAIT.
+  | { t: "PORTRAIT_SET"; heroId: string; uri: string | null }
+  | { t: "PORTRAIT"; heroId: string; uri: string | null }
   // GM -> room only.
   | { t: "ROLL_NOTES_UPDATE"; notes: Record<string, string> }
   | { t: "LEAVE" }
