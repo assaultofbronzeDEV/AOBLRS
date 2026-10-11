@@ -942,7 +942,7 @@ export default function CharacterListScreen() {
               onPress={() => { setHelpMode("help"); setHelpTab("party"); setHelpTabMenuOpen(false); setHelpOpen(true); }}
               style={({ pressed }) => [styles.partyHostJoinBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary }]}
             >
-              <Text style={[styles.partyHostJoinText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>{joinedRoom ? "Party Settings" : "Host/Join"}</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.partyHostJoinText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>{joinedRoom ? "Party Settings" : "Host/Join"}</Text>
             </Pressable>
           </View>
           {sharedHeroes.length === 0 && (
@@ -2021,11 +2021,11 @@ const styles = StyleSheet.create({
   serverJoined: { fontSize: 13 },
   sharedHeroesPanel: { borderWidth: 2, marginHorizontal: 16, flexGrow: 1, marginBottom: 8, padding: 10, gap: 8 },
   sharedHeroesHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
-  sharedHeroesTitle: { fontSize: 15, flex: 1 },
-  sharedHeroesRoom: { fontSize: 11 },
+  sharedHeroesTitle: { fontSize: 15, flex: 1, minWidth: 0 },
+  sharedHeroesRoom: { fontSize: 11, flexShrink: 1 },
   sharedHeroesList: { gap: 7 },
   sharedHeroesEmpty: { fontSize: 12 },
-  partyHostJoinBtn: { borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 5 },
+  partyHostJoinBtn: { borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 5, flexShrink: 1, minWidth: 0 },
   partyHostJoinText: { fontSize: 11, letterSpacing: 0.4 },
   sharedHeroChip: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1.5, paddingHorizontal: 9, paddingVertical: 8, maxWidth: 180 },
   sharedHeroName: { flexShrink: 1, minWidth: 0, fontSize: 13 },
