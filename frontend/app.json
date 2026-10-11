@@ -7,32 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "aoblrs",
     "userInterfaceStyle": "automatic",
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.assaultofbronze.aoblrs",
-      "infoPlist": {
-        "NSLocalNetworkUsageDescription": "Connect to Party hosts on the same Wi-Fi network.",
-        "NSBonjourServices": [
-          "_aob-party._udp",
-          "_aob-party._tcp"
-        ]
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000000"
-      },
-      "package": "com.assaultofbronze.aoblrs",
-      "permissions": [
-        "android.permission.INTERNET",
-        "android.permission.ACCESS_WIFI_STATE",
-        "android.permission.ACCESS_NETWORK_STATE",
-        "android.permission.CHANGE_WIFI_MULTICAST_STATE",
-        "android.permission.NEARBY_WIFI_DEVICES",
-        "android.permission.RECORD_AUDIO"
-      ]
-    },
     "web": {
       "bundler": "metro",
       "output": "single",
@@ -51,33 +25,13 @@
       ],
       "expo-font",
       "expo-image",
-      "expo-secure-store",
-      "expo-status-bar",
-      "@react-native-vector-icons/material-design-icons",
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Add a portrait for your hero"
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "usesCleartextTraffic": true
-          }
-        }
-      ]
+      "@react-native-vector-icons/material-design-icons"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "78fdcb0e-6eb4-4713-a02c-16384242cfc7"
-      }
-    },
-    "owner": "aobdevs-team"
+      "router": {}
+    }
   }
 }

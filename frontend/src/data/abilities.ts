@@ -34,7 +34,6 @@ export type AbilityPreset = {
 
 // Handy shortcuts.
 const INT_MAIN: StatRef = { kind: "main", statKey: "INT" };
-const INT_FIRST_AID: StatRef = { kind: "sub", statKey: "INT", subIndex: 3 };
 const DEX_MELEE: StatRef = { kind: "sub", statKey: "DEX", subIndex: 0 };
 const DEX_RANGED: StatRef = { kind: "sub", statKey: "DEX", subIndex: 1 };
 const DEX_STEALTH: StatRef = { kind: "sub", statKey: "DEX", subIndex: 3 };

@@ -14,10 +14,8 @@ import {
   Image,
   ScrollView,
   TextInput,
-  Animated,
   useWindowDimensions,
 } from "react-native";
-import { PanGestureHandler, PinchGestureHandler, State } from "react-native-gesture-handler";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 

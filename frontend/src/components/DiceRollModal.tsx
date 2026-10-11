@@ -33,12 +33,6 @@ type Props = {
 
 type Verdict = RollVerdict;
 
-function verdictFor(rolled: number, target: number): Verdict {
-  if (rolled === 20) return "crit-success";
-  if (rolled === 1) return "crit-fail";
-  return rolled >= target ? "success" : "fail";
-}
-
 export default function DiceRollModal({ request, onClose, onLog, onResolve }: Props) {
   const { colors } = useTheme();
   const [rolled, setRolled] = useState<number | null>(null);

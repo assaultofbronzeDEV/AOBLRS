@@ -117,7 +117,6 @@ function acceptablePortrait(uri: string): boolean {
 class PartyManager {
   private state: PartyState = { ...initialState };
   private listeners = new Set<Listener>();
-  private myName = "Player";
   private myCharacters: Character[] = [];
 
   private socket: WebSocket | null = null;
@@ -159,10 +158,6 @@ class PartyManager {
   }
 
   // ---------- Public API ----------
-
-  setDisplayName(name: string): void {
-    this.myName = name.trim() || (this.state.role === "host" ? "Game Master" : "Player");
-  }
 
   async createParty(myCharacters: Character[], gmName = "Game Master"): Promise<void> {
     if (!this.beginSession("host", myCharacters, gmName)) return;
@@ -251,7 +246,6 @@ class PartyManager {
     }
     this.intentionalClose = false;
     this.clearTimers();
-    this.myName = name;
     this.myCharacters = myCharacters ?? [];
     this.reconnectAttempt = 0;
     this.welcomed = false;
@@ -280,7 +274,6 @@ class PartyManager {
       if (this.state.role !== "idle") return;
       this.session = stored;
       this.intentionalClose = false;
-      this.myName = stored.name;
       this.setState({
         ...initialState,
         role: stored.role,

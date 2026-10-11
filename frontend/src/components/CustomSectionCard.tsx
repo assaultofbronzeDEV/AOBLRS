@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, Pressable } from "react-native";
+import { View, StyleSheet, TextInput, Pressable } from "react-native";
 import Icon from "@react-native-vector-icons/material-design-icons";
 import { fonts, useTheme } from "@/src/theme";
 import { CustomSection } from "@/src/types";

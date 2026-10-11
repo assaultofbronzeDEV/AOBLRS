@@ -7,7 +7,6 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
-  TextInput,
   ActivityIndicator,
   Image,
   Modal,
@@ -1065,14 +1064,6 @@ export default function CharacterSheetScreen() {
     });
     return out;
   }, [char]);
-  const flatStatPairs = useMemo(() => {
-    const pairs: [FlatStat, FlatStat | undefined][] = [];
-    for (let i = 0; i < flatStats.length; i += 2) {
-      pairs.push([flatStats[i], flatStats[i + 1]]);
-    }
-    return pairs;
-  }, [flatStats]);
-
   if (!char) {
     return (
       <View style={[styles.loading, { backgroundColor: colors.surface }]}>

@@ -2,7 +2,7 @@
 // Keys mirror the "color" block of /app/design_guidelines.json.
 
 import { useEffect, useReducer, useMemo } from "react";
-import { Appearance, Platform, StyleSheet, useColorScheme as useSystemColorScheme } from "react-native";
+import { Appearance, Platform, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AgeId, DEFAULT_AGE_ID } from "@/src/ages";
 
