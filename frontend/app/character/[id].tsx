@@ -1203,22 +1203,6 @@ export default function CharacterSheetScreen() {
                   </View>
                 )}
               </Pressable>
-              <Pressable
-                testID="level-up-btn"
-                onPress={() => setLevelUpOpen(true)}
-                style={({ pressed }) => [
-                  styles.levelUpBtn,
-                  {
-                    borderColor: colors.borderStrong,
-                    backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
-                  },
-                ]}
-              >
-                <Icon name="arrow-up-bold-circle" size={15} color={colors.onBrandPrimary} />
-                <Text style={[styles.levelUpBtnText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
-                  Level Up
-                </Text>
-              </Pressable>
             </View>
 
             <View style={styles.identityCol}>
@@ -1236,14 +1220,34 @@ export default function CharacterSheetScreen() {
                 onChangeText={(t) => update({ className: t })}
                 placeholder="Class"
               />
-              <LabeledField
-                label="Level"
-                testID="input-level"
-                value={char.level}
-                onChangeText={(t) => update({ level: t.replace(/\D/g, "").slice(0, 2) })}
-                keyboardType="number-pad"
-                placeholder="1"
-              />
+              <View style={styles.levelRow}>
+                <View style={styles.levelField}>
+                  <LabeledField
+                    label="Level"
+                    testID="input-level"
+                    value={char.level}
+                    onChangeText={(t) => update({ level: t.replace(/\D/g, "").slice(0, 2) })}
+                    keyboardType="number-pad"
+                    placeholder="1"
+                  />
+                </View>
+                <Pressable
+                  testID="level-up-btn"
+                  onPress={() => setLevelUpOpen(true)}
+                  style={({ pressed }) => [
+                    styles.levelUpBtn,
+                    {
+                      borderColor: colors.borderStrong,
+                      backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary,
+                    },
+                  ]}
+                >
+                  <Icon name="arrow-up-bold-circle" size={18} color={colors.onBrandPrimary} />
+                  <Text style={[styles.levelUpBtnText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>
+                    Level Up
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
 
@@ -2545,11 +2549,11 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
 
-  topRow: { flexDirection: "row", gap: 10 },
-  portraitCol: { width: 130, gap: 6 },
+  topRow: { flexDirection: "row", gap: 10, alignItems: "stretch" },
+  portraitCol: { width: 150 },
   portrait: {
-    width: 130,
-    height: 184,
+    flex: 1,
+    minHeight: 184,
     borderWidth: 2.5,
     overflow: "hidden",
   },
@@ -2562,13 +2566,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   portraitLabel: { fontSize: 11, textAlign: "center" },
+  levelRow: { flexDirection: "row", alignItems: "stretch", gap: 6 },
+  levelField: { flex: 1 },
   levelUpBtn: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    gap: 2,
     borderWidth: 2,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
   levelUpBtnText: { fontSize: 11, letterSpacing: 0.4 },
   identityCol: { flex: 1, gap: 6 },
