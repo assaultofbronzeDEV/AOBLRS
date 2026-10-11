@@ -963,7 +963,7 @@ export default function CharacterListScreen() {
         sections={sections}
         keyExtractor={(c) => c.id}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.brandPrimary} />}
-        contentContainerStyle={{ padding: 16, paddingBottom: 155 + insets.bottom, gap: 8, width: "100%", maxWidth: 640, alignSelf: "center" }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 155 + insets.bottom, gap: 8 }}
         stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) => (
           <Pressable
@@ -1776,6 +1776,9 @@ const styles = StyleSheet.create({
   row: {
     borderWidth: 2.5,
     overflow: "hidden",
+    width: "100%",
+    maxWidth: 640,
+    alignSelf: "center",
   },
   rowMain: {
     flexDirection: "row",
@@ -2052,14 +2055,14 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     padding: 16,
   },
-  gmBody: { paddingBottom: 24, gap: 14, width: "100%", maxWidth: 640, alignSelf: "center" },
+  gmBody: { paddingBottom: 24, gap: 14 },
   sharedHeroesWrap: { width: "100%" },
   gmBox: {},
   initiativeTracker: { borderWidth: 2, borderRadius: 6, padding: 8, gap: 8 },
   gmBoxHeader: { flexDirection: "row", alignItems: "center", borderWidth: 2, borderBottomWidth: 0, paddingRight: 10 },
   gmBoxToggle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 9 },
   gmBoxTitle: { flex: 1, fontSize: 18, letterSpacing: 1 },
-  gmBoxBody: { borderWidth: 2, padding: 12, gap: 10 },
+  gmBoxBody: { borderWidth: 2, padding: 12, gap: 10, width: "100%", maxWidth: 640, alignSelf: "center" },
   gmSectionTitle: { fontSize: 18, letterSpacing: 1 },
   gmSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
   gmFieldRow: { flexDirection: "row", alignItems: "center", gap: 8 },
