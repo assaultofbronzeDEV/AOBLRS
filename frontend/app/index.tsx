@@ -364,6 +364,36 @@ function rollHistoryTimestamp(iso: string): string {
   return `${rollHistoryGroup(iso)} ${rollHistoryTime(iso)}`;
 }
 
+function GmSection({
+  title,
+  icon,
+  right,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  icon: string;
+  right?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const { colors } = useTheme();
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <View style={styles.gmBox}>
+      <View style={[styles.gmBoxHeader, { backgroundColor: colors.surfaceTertiary, borderColor: colors.borderStrong, borderBottomWidth: open ? 0 : 2 }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${open ? "Collapse" : "Expand"} ${title}`} onPress={() => setOpen((v) => !v)} style={styles.gmBoxToggle}>
+          <Icon name={icon as any} size={19} color={colors.brandPrimary} />
+          <Text style={[styles.gmBoxTitle, { color: colors.onSurfaceTertiary, fontFamily: fonts.displayBold }]}>{title}</Text>
+          <Icon name={open ? "chevron-up" : "chevron-down"} size={22} color={colors.onSurfaceTertiary} />
+        </Pressable>
+        {right}
+      </View>
+      {open && <View style={[styles.gmBoxBody, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>{children}</View>}
+    </View>
+  );
+}
+
 export default function CharacterListScreen() {
   const { colors, mode } = useTheme();
   const insets = useSafeAreaInsets();
@@ -1382,7 +1412,7 @@ export default function CharacterListScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.gmBody} keyboardShouldPersistTaps="handled">
-              <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Quick Dice Roller</Text>
+              <GmSection title="Quick Dice Roller" icon="dice-d20">
               <View style={styles.gmFieldRow}>
                 <Text style={[styles.gmLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>Roll</Text>
                 <TextInput
@@ -1436,10 +1466,9 @@ export default function CharacterListScreen() {
                   </Pressable>
                 ))}
               </View>
+              </GmSection>
 
-              <View style={styles.gmSectionHeader}>
-                <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Loot</Text>
-              </View>
+              <GmSection title="Loot" icon="treasure-chest">
               <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>
                 Roll a random haul from every storefront category, then export it for your players to import.
               </Text>
@@ -1490,14 +1519,18 @@ export default function CharacterListScreen() {
                   </Pressable>
                 </>
               )}
+              </GmSection>
 
-              <View style={styles.gmSectionHeader}>
-                <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Initiative</Text>
+              <GmSection
+                title="Initiative"
+                icon="sword-cross"
+                right={
                 <Pressable testID="gm-next-turn" onPress={nextTurn} style={[styles.nextTurnBtn, { backgroundColor: colors.success, borderColor: colors.borderStrong }]}>
                   <Icon name="skip-next" size={16} color={colors.onSuccess} />
                   <Text style={[styles.gmButtonText, { color: colors.onSuccess, fontFamily: fonts.displayBold }]}>Next Turn</Text>
                 </Pressable>
-              </View>
+                }
+              >
               <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Higher numbers act first. Tap an enemy to open its sheet.</Text>
               {initiativeRows.map((entry, index) => (
                 <View key={entry.id} style={[styles.initiativeRow, { borderColor: index === turnIndex ? colors.success : colors.borderStrong, backgroundColor: index === turnIndex ? "rgba(46,111,64,0.14)" : colors.surfaceSecondary }]}>
@@ -1563,11 +1596,9 @@ export default function CharacterListScreen() {
                   <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{combatant.kind === "monster" ? "Enemy" : "Hero"}</Text>
                 </Pressable>
               ))}
+              </GmSection>
 
-              <View style={[styles.gmHistoryHeader, { borderTopColor: colors.divider }]}>
-                <Icon name="history" size={19} color={colors.brandPrimary} />
-                <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Party Roll History</Text>
-              </View>
+              <GmSection title="Party Roll History" icon="history">
               {partyRollHistory.length === 0 ? (
                 <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>No party rolls recorded yet.</Text>
               ) : (
@@ -1629,6 +1660,7 @@ export default function CharacterListScreen() {
                   </View>
                 ))
               )}
+              </GmSection>
             </ScrollView>
           </View>
           </KeyboardAvoidingView>
@@ -2014,7 +2046,12 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     padding: 16,
   },
-  gmBody: { paddingBottom: 24, gap: 10 },
+  gmBody: { paddingBottom: 24, gap: 14 },
+  gmBox: {},
+  gmBoxHeader: { flexDirection: "row", alignItems: "center", borderWidth: 2, borderBottomWidth: 0, paddingRight: 10 },
+  gmBoxToggle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 9 },
+  gmBoxTitle: { flex: 1, fontSize: 18, letterSpacing: 1 },
+  gmBoxBody: { borderWidth: 2, padding: 12, gap: 10 },
   gmSectionTitle: { fontSize: 18, letterSpacing: 1 },
   gmSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
   gmFieldRow: { flexDirection: "row", alignItems: "center", gap: 8 },
