@@ -553,7 +553,8 @@ class PartyManager {
       if (!ids.has(id)) this.incomingGifs.delete(id);
     });
     return heroes.map((h) => {
-      const gif = this.incomingGifs.get(h.id);
+      const own = this.myCharacters.find((c) => c.id === h.id);
+      const gif = own ? gifPortrait(own.portraitUri) : this.incomingGifs.get(h.id);
       return gif ? { ...h, portraitUri: gif } : h;
     });
   }
