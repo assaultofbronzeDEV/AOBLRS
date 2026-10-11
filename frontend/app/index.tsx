@@ -978,19 +978,14 @@ export default function CharacterListScreen() {
               )}
 
               {show.includes("initiative") && (
-              <GmSection
-                title="Initiative"
-                icon="sword-cross"
-                right={
-                <Pressable testID="gm-next-turn" onPress={nextTurn} style={[styles.nextTurnBtn, { backgroundColor: colors.success, borderColor: colors.borderStrong }]}>
-                  <Icon name="skip-next" size={16} color={colors.onSuccess} />
-                  <Text style={[styles.gmButtonText, { color: colors.onSuccess, fontFamily: fonts.displayBold }]}>Next Turn</Text>
-                </Pressable>
-                }
-              >
+              <GmSection title="Initiative" icon="sword-cross">
               <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Higher numbers act first. Tap an enemy to open its sheet.</Text>
               {initiativeRows.length > 0 && (
               <View testID="gm-initiative-tracker" style={[styles.initiativeTracker, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+              <Pressable testID="gm-next-turn" onPress={nextTurn} style={[styles.nextTurnBtn, { backgroundColor: colors.success, borderColor: colors.borderStrong }]}>
+                <Icon name="skip-next" size={16} color={colors.onSuccess} />
+                <Text style={[styles.gmButtonText, { color: colors.onSuccess, fontFamily: fonts.displayBold }]}>Next Turn</Text>
+              </Pressable>
               {initiativeRows.map((entry, index) => (
                 <View key={entry.id} style={[styles.initiativeRow, { borderColor: index === turnIndex ? colors.success : colors.borderStrong, backgroundColor: index === turnIndex ? "rgba(46,111,64,0.14)" : colors.surfaceSecondary }]}>
                   <Pressable testID={`gm-initiative-open-${entry.id}`} onPress={() => openCombatantSheet(entry.combatant)} style={styles.initiativeName}>
@@ -2135,7 +2130,7 @@ const styles = StyleSheet.create({
   gmHistoryResult: { fontSize: 12 },
   gmHistoryTime: { fontSize: 11, width: 46, textAlign: "right" },
   gmHistoryNote: { minHeight: 34, maxHeight: 82, borderTopWidth: 1, paddingTop: 6, paddingHorizontal: 0, fontSize: 12, lineHeight: 17, textAlignVertical: "top" },
-  nextTurnBtn: { flexDirection: "row", alignItems: "center", gap: 4, borderWidth: 1.5, paddingHorizontal: 9, paddingVertical: 7 },
+  nextTurnBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, borderWidth: 1.5, paddingHorizontal: 9, paddingVertical: 7 },
   addInitiativeBtn: { flexDirection: "row", alignItems: "center", gap: 7, padding: 9, borderWidth: 1.5 },
   availableCombatantsHeader: { flexDirection: "row", alignItems: "center", gap: 7, padding: 6, borderWidth: 2, marginTop: 10 },
   availableCombatantsToggle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 7, padding: 4 },
