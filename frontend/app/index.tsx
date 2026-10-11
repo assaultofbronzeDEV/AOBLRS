@@ -976,15 +976,19 @@ export default function CharacterListScreen() {
                   hitSlop={6}
                   style={({ pressed }) => [
                     styles.rowActionSmall,
+                    styles.rowPartyBtn,
                     { backgroundColor: pressed ? colors.brandTertiary : "transparent" },
                   ]}
                   accessibilityLabel={`${party.selectedCharacterIds.includes(item.id) ? "Remove" : "Add"} ${item.name || "hero"} ${party.selectedCharacterIds.includes(item.id) ? "from" : "to"} party`}
                 >
                   <Icon
                     name={party.selectedCharacterIds.includes(item.id) ? "account-check" : "account-plus-outline"}
-                    size={16}
+                    size={18}
                     color={party.selectedCharacterIds.includes(item.id) ? colors.success : colors.brandPrimary}
                   />
+                  <Text style={[styles.rowPartyText, { color: party.selectedCharacterIds.includes(item.id) ? colors.success : colors.brandPrimary, fontFamily: fonts.displayBold }]}>
+                    {party.selectedCharacterIds.includes(item.id) ? "In party" : "Add to party"}
+                  </Text>
                 </Pressable>
               )}
               <Pressable
@@ -1742,6 +1746,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
+  rowPartyBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginRight: "auto" },
+  rowPartyText: { fontSize: 12, letterSpacing: 0.4 },
   avatar: {
     width: 54,
     height: 54,
