@@ -397,6 +397,10 @@ function GmSection({
   );
 }
 
+// Opening a sheet and coming back replaces this screen, so combat state lives
+// outside the component to survive that remount.
+const combatStore: { initiative: { id: string; order: string }[]; turnIndex: number } = { initiative: [], turnIndex: 0 };
+
 export default function CharacterListScreen() {
   const { colors, mode } = useTheme();
   const insets = useSafeAreaInsets();
@@ -431,8 +435,12 @@ export default function CharacterListScreen() {
   const [gmRoll, setGmRoll] = useState<RollRequest | null>(null);
   const [gmNotation, setGmNotation] = useState("");
   const [gmDamage, setGmDamage] = useState("");
-  const [initiative, setInitiative] = useState<{ id: string; order: string }[]>([]);
-  const [turnIndex, setTurnIndex] = useState(0);
+  const [initiative, setInitiative] = useState<{ id: string; order: string }[]>(combatStore.initiative);
+  const [turnIndex, setTurnIndex] = useState(combatStore.turnIndex);
+  useEffect(() => {
+    combatStore.initiative = initiative;
+    combatStore.turnIndex = turnIndex;
+  }, [initiative, turnIndex]);
   const [availableCombatantsCollapsed, setAvailableCombatantsCollapsed] = useState(false);
   const [partyCombatantsCollapsed, setPartyCombatantsCollapsed] = useState(false);
   const [rollNotes, setRollNotes] = useState<Record<string, string>>({});
