@@ -15,6 +15,7 @@ import {
   ScrollView,
   TextInput,
   Animated,
+  useWindowDimensions,
 } from "react-native";
 import { PanGestureHandler, PinchGestureHandler, State } from "react-native-gesture-handler";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -378,13 +379,15 @@ function GmSection({
   children: React.ReactNode;
 }) {
   const { colors } = useTheme();
+  const { width, height } = useWindowDimensions();
+  const landscape = width > height;
   const [open, setOpen] = useState(defaultOpen);
   return (
     <View style={styles.gmBox}>
       <View style={[styles.gmBoxHeader, { backgroundColor: colors.surfaceTertiary, borderColor: colors.borderStrong, borderBottomWidth: open ? 0 : 2 }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={`${open ? "Collapse" : "Expand"} ${title}`} onPress={() => setOpen((v) => !v)} style={styles.gmBoxToggle}>
           <Icon name={icon as any} size={19} color={colors.brandPrimary} />
-          <Text style={[styles.gmBoxTitle, { color: colors.onSurfaceTertiary, fontFamily: fonts.displayBold }]}>{title}</Text>
+          <Text style={[styles.gmBoxTitle, { color: colors.onSurfaceTertiary, fontFamily: fonts.displayBold, textAlign: landscape ? "center" : "left" }]}>{title}</Text>
           <Icon name={open ? "chevron-up" : "chevron-down"} size={22} color={colors.onSurfaceTertiary} />
         </Pressable>
         {right}
