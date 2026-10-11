@@ -928,6 +928,7 @@ export default function CharacterListScreen() {
         </Pressable>
       </View>
 
+      <View style={styles.sharedHeroesWrap}>
       <View style={[styles.sharedHeroesPanel, { borderColor: joinedRoom ? colors.success : colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
           <View style={styles.sharedHeroesHeader}>
             <Icon name="wifi" size={17} color={joinedRoom ? colors.success : colors.muted} />
@@ -955,13 +956,14 @@ export default function CharacterListScreen() {
             <Text style={[styles.partyHostJoinText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>{joinedRoom ? "Party Settings" : "Host/Join"}</Text>
           </Pressable>
         </View>
+      </View>
 
       <SectionList
         testID="character-list"
         sections={sections}
         keyExtractor={(c) => c.id}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.brandPrimary} />}
-        contentContainerStyle={{ padding: 16, paddingBottom: 155 + insets.bottom, gap: 8 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 155 + insets.bottom, gap: 8, width: "100%", maxWidth: 640, alignSelf: "center" }}
         stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) => (
           <Pressable
@@ -2011,7 +2013,7 @@ const styles = StyleSheet.create({
   serverCodeInput: { flex: 1, minWidth: 0, height: 40, borderWidth: 1.5, paddingHorizontal: 10, fontSize: 16, letterSpacing: 2 },
   serverJoinButton: { flexShrink: 0, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, borderWidth: 2, paddingHorizontal: 10, minWidth: 72 },
   serverJoined: { fontSize: 13 },
-  sharedHeroesPanel: { borderWidth: 2, marginHorizontal: 16, marginBottom: 8, padding: 10, gap: 8 },
+  sharedHeroesPanel: { borderWidth: 2, marginHorizontal: 16, flexGrow: 1, marginBottom: 8, padding: 10, gap: 8 },
   sharedHeroesHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   sharedHeroesTitle: { fontSize: 15, flex: 1 },
   sharedHeroesRoom: { fontSize: 11 },
@@ -2050,7 +2052,8 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     padding: 16,
   },
-  gmBody: { paddingBottom: 24, gap: 14 },
+  gmBody: { paddingBottom: 24, gap: 14, width: "100%", maxWidth: 640, alignSelf: "center" },
+  sharedHeroesWrap: { width: "100%", maxWidth: 640, alignSelf: "center" },
   gmBox: {},
   initiativeTracker: { borderWidth: 2, borderRadius: 6, padding: 8, gap: 8 },
   gmBoxHeader: { flexDirection: "row", alignItems: "center", borderWidth: 2, borderBottomWidth: 0, paddingRight: 10 },
