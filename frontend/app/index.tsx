@@ -1597,18 +1597,18 @@ export default function CharacterListScreen() {
               ) : null}
               <Text style={[styles.sharedHeroClass, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedSharedHero?.className || "Hero"} · Level {selectedSharedHero?.level || "1"}</Text>
               <Text style={[styles.sharedHeroHp, { color: colors.brandSecondary, fontFamily: fonts.displayBold }]}>HP {selectedSharedHero?.hp} / {selectedSharedHero?.maxHp}</Text>
-              {selectedSharedHero?.stats.map((stat) => (
-                <View key={stat.key} style={[styles.sharedStatRow, { borderColor: colors.borderStrong }]}>
-                  <Text style={[styles.sharedStatName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{stat.name}</Text>
-                  <Text style={[styles.sharedStatValue, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>{stat.value}</Text>
-                </View>
-              ))}
               {selectedSharedHero?.backstory?.trim() ? (
                 <View style={styles.sharedBackstory}>
                   <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>BACKSTORY</Text>
                   <Text selectable style={[styles.sharedBackstoryText, { color: colors.onSurface, fontFamily: fonts.body }]}>{selectedSharedHero.backstory}</Text>
                 </View>
               ) : null}
+              {selectedSharedHero?.stats.map((stat) => (
+                <View key={stat.key} style={[styles.sharedStatRow, { borderColor: colors.borderStrong }]}>
+                  <Text style={[styles.sharedStatName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{stat.name}</Text>
+                  <Text style={[styles.sharedStatValue, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>{stat.value}</Text>
+                </View>
+              ))}
               <Text style={[styles.sharedHeroNote, { color: colors.muted, fontFamily: fonts.body }]}>This view updates live from the owner's hero sheet. Editing is disabled for shared heroes.</Text>
             </ScrollView>
           </View>
