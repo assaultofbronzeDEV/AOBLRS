@@ -387,7 +387,7 @@ function GmSection({
       <View style={[styles.gmBoxHeader, { backgroundColor: colors.surfaceTertiary, borderColor: colors.borderStrong, borderBottomWidth: open ? 0 : 2 }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={`${open ? "Collapse" : "Expand"} ${title}`} onPress={() => setOpen((v) => !v)} style={[styles.gmBoxToggle, landscape && { justifyContent: "center" }]}>
           <Icon name={icon as any} size={19} color={colors.brandPrimary} />
-          <Text style={[styles.gmBoxTitle, { color: colors.onSurfaceTertiary, fontFamily: fonts.displayBold, flex: landscape ? 0 : 1 }]}>{title}</Text>
+          <Text numberOfLines={1} style={[styles.gmBoxTitle, { color: colors.onSurfaceTertiary, fontFamily: fonts.displayBold, flex: landscape ? 0 : 1, flexShrink: landscape ? 0 : 1 }]}>{title}</Text>
           <Icon name={open ? "chevron-up" : "chevron-down"} size={22} color={colors.onSurfaceTertiary} />
         </Pressable>
         {right ? <View style={landscape ? styles.gmBoxRightFloat : undefined}>{right}</View> : null}
