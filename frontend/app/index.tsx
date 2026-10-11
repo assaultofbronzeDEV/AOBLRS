@@ -1411,7 +1411,7 @@ export default function CharacterListScreen() {
               </Pressable>
             </View>
 
-            <ScrollView contentContainerStyle={styles.gmBody} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerStyle={[styles.gmBody, { paddingBottom: insets.bottom + 24 + keyboardSpace }]} keyboardShouldPersistTaps="handled">
               <GmSection title="Quick Dice Roller" icon="dice-d20">
               <View style={styles.gmFieldRow}>
                 <Text style={[styles.gmLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>Roll</Text>
