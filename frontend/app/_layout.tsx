@@ -72,7 +72,7 @@ export default function RootLayout() {
       {showIntro && (
         <Animated.View style={[styles.intro, { opacity: introOpacity }]} pointerEvents="none">
           <Animated.Image
-            source={require("../assets/images/Aryndos map.png")}
+            source={require("../assets/images/Aryndos map.webp")}
             resizeMode="cover"
             blurRadius={3}
             style={[

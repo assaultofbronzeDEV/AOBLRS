@@ -178,7 +178,7 @@ const LORE_TABS = [
 
 These stories are foundations for your own games, not limits. Use the gaps in the records to invent lost kingdoms, forgotten rituals, rival interpretations, and characters who stand at the turning points of history. A campaign might follow explorers seeking the truth of the Power-Stones, villagers living in the Borderlands, dealing with increasingly dangerous threats from the Federation, or heroes who discover that the old stories are incomplete.`,
     imageBlocks: [
-      { after: "Aryndos is a continent shaped by nature, ambition, and the sudden arrival of Magic", source: require("@/assets/images/Aryndos map.png") },
+      { after: "Aryndos is a continent shaped by nature, ambition, and the sudden arrival of Magic", source: require("@/assets/images/Aryndos map.webp") },
     ],
   },
   {
@@ -208,7 +208,7 @@ Niirmata placed a line of pure Power Stones beneath its entire length. After the
 
 Unable to understand the magic preventing them from crossing the seemingly insignificant structure, humans expanded farther east. They eventually covered the entire eastern side of the continent, and the threat of expansion into Magi territory was halted for another two centuries.`,
     imageBlocks: [
-      { after: "Niirmata placed a line of pure Power Stones beneath its entire length.", source: require("@/assets/images/Aryndos map Political divide.png") },
+      { after: "Niirmata placed a line of pure Power Stones beneath its entire length.", source: require("@/assets/images/Aryndos map Political divide.webp") },
     ],
   },
   {
@@ -300,7 +300,7 @@ function LoreMapExplorer({ colors }: { colors: ReturnType<typeof useTheme>["colo
       <View style={styles.mapZoomContainer}>
         <View style={styles.mapZoomContent}>
           <Image
-            source={require("@/assets/images/Aryndos map.png")}
+            source={require("@/assets/images/Aryndos map.webp")}
             style={[
               styles.mapDetailImage,
               {
