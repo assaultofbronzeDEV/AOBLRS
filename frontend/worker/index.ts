@@ -12,6 +12,8 @@ import { DurableObject } from "cloudflare:workers";
 import {
   PARTY_HEARTBEAT_TIMEOUT_MS,
   PARTY_MAX_HERO_CHARS,
+  PARTY_MAX_PORTRAIT_CHARS,
+  PARTY_PORTRAIT_PATTERN,
   PARTY_MAX_HEROES_PER_PEER,
   PARTY_MAX_MESSAGE_CHARS,
   PARTY_MAX_PLAYERS,
@@ -310,10 +312,16 @@ export class PartyRoom extends DurableObject<Env> {
       const hero = item as Record<string, unknown>;
       if (typeof hero.id !== "string" || hero.id.length === 0 || hero.id.length > 64) continue;
       if (hero.kind === "monster" || claimedElsewhere.has(hero.id) || seen.has(hero.id)) continue;
-      const { portraitUri: _portrait, ...rest } = hero;
+      const { portraitUri, ...rest } = hero;
       if (JSON.stringify(rest).length > PARTY_MAX_HERO_CHARS) continue;
+      const safePortrait =
+        typeof portraitUri === "string" &&
+        portraitUri.length <= PARTY_MAX_PORTRAIT_CHARS &&
+        PARTY_PORTRAIT_PATTERN.test(portraitUri)
+          ? portraitUri
+          : undefined;
       seen.add(hero.id);
-      out.push(rest as unknown as Character);
+      out.push({ ...rest, portraitUri: safePortrait } as unknown as Character);
     }
     return out;
   }

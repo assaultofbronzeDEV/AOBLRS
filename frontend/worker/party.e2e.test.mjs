@@ -20,7 +20,7 @@ async function createRoom() {
 }
 
 function hero(id, name, hp = 10) {
-  return { id, kind: "hero", name, hp, maxHp: 10, stats: [], rollHistory: [], portraitUri: "data:image/png;base64,AAAA" };
+  return { id, kind: "hero", name, hp, maxHp: 10, stats: [], rollHistory: [], portraitUri: "data:image/png;base64,AAAA", backstory: "Born in a bronze mine." };
 }
 
 function connect(code) {
@@ -134,7 +134,7 @@ test("a wrong GM token cannot take over the room", async () => {
   c.close();
 });
 
-test("heroes published by players are shared live, read-only, without portraits", async () => {
+test("heroes published by players are shared live, read-only, with portrait and backstory", async () => {
   const room = await createRoom();
   const gm = await joinGm(room);
   const alice = await joinPlayer(room.code, "Alice");
@@ -145,7 +145,17 @@ test("heroes published by players are shared live, read-only, without portraits"
 
   const seen = await gm.waitForState((s) => s.sharedHeroes.length === 2);
   assert.deepEqual(seen.sharedHeroes.map((h) => h.id).sort(), ["a1", "b1"]);
-  assert.ok(seen.sharedHeroes.every((h) => h.portraitUri === undefined));
+  assert.ok(seen.sharedHeroes.every((h) => h.portraitUri === "data:image/png;base64,AAAA"));
+  assert.ok(seen.sharedHeroes.every((h) => h.backstory === "Born in a bronze mine."));
+
+  // Oversized or non-image-data portraits are dropped, the rest of the hero is kept.
+  alice.send({ t: "CHARACTER_UPDATE", characters: [{ ...hero("a1", "Alice Hero", 10), portraitUri: "data:image/png;base64," + "A".repeat(70_000) }] });
+  const dropped = await bob.waitForState((s) => s.sharedHeroes.find((h) => h.id === "a1")?.portraitUri === undefined);
+  assert.equal(dropped.sharedHeroes.find((h) => h.id === "a1").name, "Alice Hero");
+  alice.send({ t: "CHARACTER_UPDATE", characters: [{ ...hero("a1", "Alice Hero", 10), portraitUri: "javascript:alert(1)" }] });
+  await new Promise((r) => setTimeout(r, 200));
+  const bad = await bob.waitForState((s) => s.sharedHeroes.some((h) => h.id === "a1"));
+  assert.equal(bad.sharedHeroes.find((h) => h.id === "a1").portraitUri, undefined);
 
   // Live HP edit by the owner reaches everyone.
   alice.send({ t: "CHARACTER_UPDATE", characters: [hero("a1", "Alice Hero", 4)] });

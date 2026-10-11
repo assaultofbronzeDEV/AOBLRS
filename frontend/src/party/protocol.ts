@@ -12,6 +12,8 @@ export const PARTY_MAX_MESSAGE_CHARS = 900_000;
 export const PARTY_MAX_PLAYERS = 16;
 export const PARTY_MAX_HEROES_PER_PEER = 12;
 export const PARTY_MAX_HERO_CHARS = 200_000;
+export const PARTY_MAX_PORTRAIT_CHARS = 60_000;
+export const PARTY_PORTRAIT_PATTERN = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 export const PARTY_ROOM_CODE_LENGTH = 6;
 
 // A-Z 2-9 without lookalikes (no I, L, O, 0, 1).

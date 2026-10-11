@@ -1587,6 +1587,14 @@ export default function CharacterListScreen() {
             </View>
             <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>READ ONLY · LIVE PARTY VIEW</Text>
             <ScrollView contentContainerStyle={styles.sharedHeroBody}>
+              {selectedSharedHero?.portraitUri ? (
+                <Image
+                  testID="shared-hero-portrait"
+                  source={{ uri: selectedSharedHero.portraitUri }}
+                  style={[styles.sharedHeroPortrait, { borderColor: colors.borderStrong }]}
+                  resizeMode="cover"
+                />
+              ) : null}
               <Text style={[styles.sharedHeroClass, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedSharedHero?.className || "Hero"} · Level {selectedSharedHero?.level || "1"}</Text>
               <Text style={[styles.sharedHeroHp, { color: colors.brandSecondary, fontFamily: fonts.displayBold }]}>HP {selectedSharedHero?.hp} / {selectedSharedHero?.maxHp}</Text>
               {selectedSharedHero?.stats.map((stat) => (
@@ -1595,6 +1603,12 @@ export default function CharacterListScreen() {
                   <Text style={[styles.sharedStatValue, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>{stat.value}</Text>
                 </View>
               ))}
+              {selectedSharedHero?.backstory?.trim() ? (
+                <View style={styles.sharedBackstory}>
+                  <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>BACKSTORY</Text>
+                  <Text selectable style={[styles.sharedBackstoryText, { color: colors.onSurface, fontFamily: fonts.body }]}>{selectedSharedHero.backstory}</Text>
+                </View>
+              ) : null}
               <Text style={[styles.sharedHeroNote, { color: colors.muted, fontFamily: fonts.body }]}>This view updates live from the owner's hero sheet. Editing is disabled for shared heroes.</Text>
             </ScrollView>
           </View>
@@ -1945,6 +1959,9 @@ const styles = StyleSheet.create({
   sharedHeroCard: { width: "100%", maxHeight: "86%", borderTopWidth: 3, padding: 16 },
   sharedHeroReadOnly: { fontSize: 11, letterSpacing: 1.2 },
   sharedHeroBody: { paddingVertical: 18, gap: 10 },
+  sharedHeroPortrait: { width: 160, height: 160, borderWidth: 2, alignSelf: "center" },
+  sharedBackstory: { gap: 6, marginTop: 8 },
+  sharedBackstoryText: { fontSize: 14, lineHeight: 20 },
   sharedHeroClass: { fontSize: 17 },
   sharedHeroHp: { fontSize: 22 },
   sharedStatRow: { flexDirection: "row", justifyContent: "space-between", borderWidth: 1.5, padding: 9 },

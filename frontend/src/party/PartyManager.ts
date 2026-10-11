@@ -12,6 +12,8 @@ import { migrateCharacter, type Character } from "@/src/types";
 import {
   PARTY_HEARTBEAT_INTERVAL_MS,
   PARTY_HEARTBEAT_TIMEOUT_MS,
+  PARTY_MAX_PORTRAIT_CHARS,
+  PARTY_PORTRAIT_PATTERN,
   PARTY_PROTOCOL_VERSION,
   isValidRoomCode,
   type PartyMessage,
@@ -74,9 +76,34 @@ function toWebSocketUrl(httpUrl: string): string {
   return httpUrl.replace(/^http/i, "ws");
 }
 
-function stripPortrait(character: Character): Character {
-  if (!character.portraitUri) return character;
-  return { ...character, portraitUri: undefined };
+const PORTRAIT_THUMB_PX = 256;
+const thumbCache = new Map<string, string | null>();
+const thumbPending = new Set<string>();
+
+// Party portraits are small thumbnails so every HP update stays cheap.
+function shrinkOnWeb(uri: string): Promise<string | null> {
+  if (Platform.OS !== "web" || typeof document === "undefined") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const img = new (globalThis as any).Image() as HTMLImageElement;
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, PORTRAIT_THUMB_PX / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = uri;
+  });
+}
+
+function acceptablePortrait(uri: string): boolean {
+  return uri.length <= PARTY_MAX_PORTRAIT_CHARS && PARTY_PORTRAIT_PATTERN.test(uri);
 }
 
 class PartyManager {
@@ -443,11 +470,30 @@ class PartyManager {
     return (chars ?? []).filter((c) => c && c.kind !== "monster");
   }
 
+  private withPartyPortrait(character: Character): Character {
+    const uri = character.portraitUri;
+    if (!uri) return character;
+    if (acceptablePortrait(uri)) return character;
+    const key = `${character.id}:${uri.length}:${uri.slice(-32)}`;
+    if (thumbCache.has(key)) {
+      return { ...character, portraitUri: thumbCache.get(key) ?? undefined };
+    }
+    if (!thumbPending.has(key)) {
+      thumbPending.add(key);
+      shrinkOnWeb(uri).then((small) => {
+        thumbPending.delete(key);
+        thumbCache.set(key, small && acceptablePortrait(small) ? small : null);
+        this.schedulePublish();
+      });
+    }
+    return { ...character, portraitUri: undefined };
+  }
+
   private shareableHeroes(): Character[] {
     const heroes = this.heroesOnly(this.myCharacters);
-    if (this.state.role === "host") return heroes.map(stripPortrait);
+    if (this.state.role === "host") return heroes.map((c) => this.withPartyPortrait(c));
     const selected = new Set(this.state.selectedCharacterIds);
-    return heroes.filter((c) => selected.has(c.id)).map(stripPortrait);
+    return heroes.filter((c) => selected.has(c.id)).map((c) => this.withPartyPortrait(c));
   }
 
   private schedulePublish(): void {
