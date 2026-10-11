@@ -389,7 +389,7 @@ function GmSection({
         </Pressable>
         {right}
       </View>
-      {open && <View style={[styles.gmBoxBody, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>{children}</View>}
+      {open && <View style={[styles.gmBoxBody, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}><View style={styles.gmBoxInner}>{children}</View></View>}
     </View>
   );
 }
@@ -2062,7 +2062,8 @@ const styles = StyleSheet.create({
   gmBoxHeader: { flexDirection: "row", alignItems: "center", borderWidth: 2, borderBottomWidth: 0, paddingRight: 10 },
   gmBoxToggle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 9 },
   gmBoxTitle: { flex: 1, fontSize: 18, letterSpacing: 1 },
-  gmBoxBody: { borderWidth: 2, padding: 12, gap: 10, width: "100%", maxWidth: 640, alignSelf: "center" },
+  gmBoxBody: { borderWidth: 2, padding: 12 },
+  gmBoxInner: { gap: 10, width: "100%", maxWidth: 640, alignSelf: "center" },
   gmSectionTitle: { fontSize: 18, letterSpacing: 1 },
   gmSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12 },
   gmFieldRow: { flexDirection: "row", alignItems: "center", gap: 8 },
