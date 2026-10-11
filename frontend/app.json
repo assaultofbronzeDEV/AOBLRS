@@ -70,8 +70,7 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "baseUrl": "/AOBLRS"
+      "typedRoutes": true
     },
     "extra": {
       "router": {},
