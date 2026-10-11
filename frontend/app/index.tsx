@@ -2053,7 +2053,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   gmBody: { paddingBottom: 24, gap: 14, width: "100%", maxWidth: 640, alignSelf: "center" },
-  sharedHeroesWrap: { width: "100%", maxWidth: 640, alignSelf: "center" },
+  sharedHeroesWrap: { width: "100%" },
   gmBox: {},
   initiativeTracker: { borderWidth: 2, borderRadius: 6, padding: 8, gap: 8 },
   gmBoxHeader: { flexDirection: "row", alignItems: "center", borderWidth: 2, borderBottomWidth: 0, paddingRight: 10 },
