@@ -1686,7 +1686,7 @@ export default function CharacterListScreen() {
           >
           <View style={[styles.gmCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong, paddingTop: insets.top + 14, paddingBottom: insets.bottom + 12 }]}> 
             <View style={styles.helpHeader}>
-              <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>GM Tools</Text>
+              <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }, gmLandscape && styles.gmTitleCentered]}>GM Tools</Text>
               <Pressable testID="gm-tools-close" onPress={closeHeaderPanel} hitSlop={8}>
                 <Icon name="close" size={22} color={colors.onSurface} />
               </Pressable>
@@ -2094,6 +2094,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   gmBody: { paddingBottom: 24, gap: 14 },
+  gmTitleCentered: { position: "absolute", left: 0, right: 0, textAlign: "center" },
   gmColumns: { flex: 1, flexDirection: "row", gap: 14 },
   gmColumn: { flex: 1, minWidth: 0 },
   sharedHeroesWrap: { width: "100%" },
