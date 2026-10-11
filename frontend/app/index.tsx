@@ -1582,7 +1582,7 @@ export default function CharacterListScreen() {
         <View style={styles.helpBackdrop}>
           <View style={[styles.sharedHeroCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
             <View style={styles.helpHeader}>
-              <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedSharedHero?.name || "Shared Hero"}</Text>
+              <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold, flex: 1, textAlign: "center", paddingLeft: 22 }]}>{selectedSharedHero?.name || "Shared Hero"}</Text>
               <Pressable testID="shared-hero-close" onPress={() => setSelectedSharedHeroId(null)} hitSlop={8}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
             </View>
             <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>READ ONLY · LIVE PARTY VIEW</Text>
@@ -1957,17 +1957,17 @@ const styles = StyleSheet.create({
   sharedHeroChip: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1.5, paddingHorizontal: 9, paddingVertical: 8, maxWidth: 180 },
   sharedHeroName: { flexShrink: 1, minWidth: 0, fontSize: 13 },
   sharedHeroCard: { width: "100%", maxHeight: "86%", borderTopWidth: 3, padding: 16 },
-  sharedHeroReadOnly: { fontSize: 11, letterSpacing: 1.2 },
-  sharedHeroBody: { paddingVertical: 18, gap: 10 },
+  sharedHeroReadOnly: { fontSize: 11, letterSpacing: 1.2, textAlign: "center" },
+  sharedHeroBody: { paddingVertical: 18, gap: 10, alignItems: "center", width: "100%", maxWidth: 560, alignSelf: "center" },
   sharedHeroPortrait: { width: 160, height: 160, borderWidth: 2, alignSelf: "center" },
-  sharedBackstory: { gap: 6, marginTop: 8 },
-  sharedBackstoryText: { fontSize: 14, lineHeight: 20 },
-  sharedHeroClass: { fontSize: 17 },
-  sharedHeroHp: { fontSize: 22 },
-  sharedStatRow: { flexDirection: "row", justifyContent: "space-between", borderWidth: 1.5, padding: 9 },
+  sharedBackstory: { gap: 6, marginTop: 8, alignItems: "center" },
+  sharedBackstoryText: { fontSize: 14, lineHeight: 20, textAlign: "center" },
+  sharedHeroClass: { fontSize: 17, textAlign: "center" },
+  sharedHeroHp: { fontSize: 22, textAlign: "center" },
+  sharedStatRow: { alignSelf: "stretch", alignItems: "center", gap: 2, borderWidth: 1.5, padding: 9 },
   sharedStatName: { fontSize: 13 },
   sharedStatValue: { fontSize: 17 },
-  sharedHeroNote: { fontSize: 13, lineHeight: 19, marginTop: 8 },
+  sharedHeroNote: { fontSize: 13, lineHeight: 19, marginTop: 8, textAlign: "center" },
   gmToolsBtn: {
     position: "absolute",
     right: 12,
