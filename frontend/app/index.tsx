@@ -856,23 +856,33 @@ export default function CharacterListScreen() {
         </Pressable>
       </View>
 
-      {joinedRoom && sharedHeroes.length > 0 && (
-        <View style={[styles.sharedHeroesPanel, { borderColor: colors.success, backgroundColor: colors.surfaceSecondary }]}> 
+      <View style={[styles.sharedHeroesPanel, { borderColor: joinedRoom ? colors.success : colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
           <View style={styles.sharedHeroesHeader}>
-            <Icon name="wifi" size={17} color={colors.success} />
+            <Icon name="wifi" size={17} color={joinedRoom ? colors.success : colors.muted} />
             <Text style={[styles.sharedHeroesTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Party</Text>
-            <Text style={[styles.sharedHeroesRoom, { color: colors.muted, fontFamily: fonts.body }]}>Room {joinedRoom}</Text>
+            {joinedRoom ? <Text style={[styles.sharedHeroesRoom, { color: colors.muted, fontFamily: fonts.body }]}>Room {joinedRoom}</Text> : null}
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sharedHeroesList}>
+          {sharedHeroes.length === 0 && (
+            <Text style={[styles.sharedHeroesEmpty, { color: colors.muted, fontFamily: fonts.body }]}>
+              {joinedRoom ? "No heroes shared yet. Tap the party icon on a hero to share it." : "Not in a party."}
+            </Text>
+          )}
+          {sharedHeroes.length > 0 && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sharedHeroesList}>
             {sharedHeroes.map((hero) => (
               <Pressable key={hero.id} testID={`shared-hero-${hero.id}`} onPress={() => setSelectedSharedHeroId(hero.id)} style={[styles.sharedHeroChip, { borderColor: colors.borderStrong, backgroundColor: colors.surface }]}>
                 <Icon name="shield-sword" size={16} color={colors.brandPrimary} />
                 <Text numberOfLines={1} style={[styles.sharedHeroName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{hero.name || "Unnamed hero"}</Text>
               </Pressable>
             ))}
-          </ScrollView>
+          </ScrollView>}
+          <Pressable
+            testID="party-host-join"
+            onPress={() => { setHelpMode("help"); setHelpTab("party"); setHelpTabMenuOpen(false); setHelpOpen(true); }}
+            style={({ pressed }) => [styles.partyHostJoinBtn, { borderColor: colors.borderStrong, backgroundColor: pressed ? colors.brandSecondary : colors.brandPrimary }]}
+          >
+            <Text style={[styles.partyHostJoinText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>{joinedRoom ? "Party Settings" : "Host/Join"}</Text>
+          </Pressable>
         </View>
-      )}
 
       <SectionList
         testID="character-list"
@@ -1954,6 +1964,9 @@ const styles = StyleSheet.create({
   sharedHeroesTitle: { fontSize: 15, flex: 1 },
   sharedHeroesRoom: { fontSize: 11 },
   sharedHeroesList: { gap: 7 },
+  sharedHeroesEmpty: { fontSize: 12 },
+  partyHostJoinBtn: { alignSelf: "flex-end", borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 5 },
+  partyHostJoinText: { fontSize: 11, letterSpacing: 0.4 },
   sharedHeroChip: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1.5, paddingHorizontal: 9, paddingVertical: 8, maxWidth: 180 },
   sharedHeroName: { flexShrink: 1, minWidth: 0, fontSize: 13 },
   sharedHeroCard: { width: "100%", maxHeight: "86%", borderTopWidth: 3, padding: 16 },
