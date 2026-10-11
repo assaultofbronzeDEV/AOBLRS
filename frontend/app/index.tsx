@@ -1403,7 +1403,7 @@ export default function CharacterListScreen() {
             keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
             style={styles.modalKeyboardAvoiding}
           >
-          <View style={[styles.gmCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong, paddingTop: insets.top, paddingBottom: insets.bottom + 12 }]}> 
+          <View style={[styles.gmCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong, paddingTop: insets.top + 14, paddingBottom: insets.bottom + 12 }]}> 
             <View style={styles.helpHeader}>
               <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>GM Tools</Text>
               <Pressable testID="gm-tools-close" onPress={closeHeaderPanel} hitSlop={8}>
@@ -1532,6 +1532,8 @@ export default function CharacterListScreen() {
                 }
               >
               <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Higher numbers act first. Tap an enemy to open its sheet.</Text>
+              {initiativeRows.length > 0 && (
+              <View testID="gm-initiative-tracker" style={[styles.initiativeTracker, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
               {initiativeRows.map((entry, index) => (
                 <View key={entry.id} style={[styles.initiativeRow, { borderColor: index === turnIndex ? colors.success : colors.borderStrong, backgroundColor: index === turnIndex ? "rgba(46,111,64,0.14)" : colors.surfaceSecondary }]}>
                   <Pressable testID={`gm-initiative-open-${entry.id}`} onPress={() => openCombatantSheet(entry.combatant)} style={styles.initiativeName}>
@@ -1542,6 +1544,8 @@ export default function CharacterListScreen() {
                   <Pressable testID={`gm-remove-initiative-${entry.id}`} onPress={() => removeFromInitiative(entry.id)} hitSlop={6}><Icon name="close" size={18} color={colors.brandSecondary} /></Pressable>
                 </View>
               ))}
+              </View>
+              )}
               <View style={[styles.availableCombatantsHeader, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
                 <Pressable
                   testID="gm-party-toggle"
@@ -2048,6 +2052,7 @@ const styles = StyleSheet.create({
   },
   gmBody: { paddingBottom: 24, gap: 14 },
   gmBox: {},
+  initiativeTracker: { borderWidth: 2, borderRadius: 6, padding: 8, gap: 8 },
   gmBoxHeader: { flexDirection: "row", alignItems: "center", borderWidth: 2, borderBottomWidth: 0, paddingRight: 10 },
   gmBoxToggle: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 9 },
   gmBoxTitle: { flex: 1, fontSize: 18, letterSpacing: 1 },
