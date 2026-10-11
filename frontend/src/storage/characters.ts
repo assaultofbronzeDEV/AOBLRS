@@ -36,6 +36,17 @@ export async function saveAllCharacters(list: Character[], age: AgeId = DEFAULT_
   await AsyncStorage.setItem(keyForAge(age), JSON.stringify(list));
 }
 
+type CharacterSavedListener = (character: Character) => void;
+const savedListeners = new Set<CharacterSavedListener>();
+
+// Lets other modules (e.g. the Party room) react to every hero-sheet save.
+export function onCharacterSaved(listener: CharacterSavedListener): () => void {
+  savedListeners.add(listener);
+  return () => {
+    savedListeners.delete(listener);
+  };
+}
+
 export async function upsertCharacter(char: Character, age: AgeId = char.age ?? DEFAULT_AGE_ID): Promise<Character[]> {
   const list = await loadAllCharacters(age);
   const idx = list.findIndex((c) => c.id === char.id);
@@ -43,6 +54,11 @@ export async function upsertCharacter(char: Character, age: AgeId = char.age ?? 
   if (idx >= 0) list[idx] = updated;
   else list.unshift(updated);
   await saveAllCharacters(list, age);
+  savedListeners.forEach((listener) => {
+    try {
+      listener(updated);
+    } catch {}
+  });
   return list;
 }
 

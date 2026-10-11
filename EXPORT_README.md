@@ -1,6 +1,6 @@
 # Assault of Bronze Export
 
-This export contains the current Expo/React Native app, native Party networking implementation, assets, lockfiles, Expo/EAS configuration, and optional Python development helper. It does not contain generated dependencies, caches, git metadata, credentials, environment files, or signing keys.
+This export contains the current Expo/React Native app, the Cloudflare Worker that hosts Party rooms, assets, lockfiles, Expo/EAS configuration, and optional Python development helper. It does not contain generated dependencies, caches, git metadata, credentials, environment files, or signing keys.
 
 ## Frontend
 
@@ -10,7 +10,16 @@ npm install
 npx expo start
 ```
 
-Use a native Android or iOS development build for the local Wi-Fi Party feature. The Party host runs on the GM device using local TCP/UDP sockets; no cloud server or MongoDB connection is required.
+Party rooms are hosted by the Cloudflare Worker in `frontend/worker/` (a Durable Object per room, WebSockets). The GM creates a temporary room and players join with its code. The Worker also serves the static web export, so the web app talks to its own origin with no configuration. Native builds need `EXPO_PUBLIC_PARTY_URL` set to the deployed site URL.
+
+To run it locally, build the web app and start the Worker:
+
+```bash
+cd frontend
+npx expo export --platform web
+npx wrangler dev --port 8787
+PARTY_URL=http://localhost:8787 node --test worker/party.e2e.test.mjs
+```
 
 To make an installable Android APK through EAS:
 

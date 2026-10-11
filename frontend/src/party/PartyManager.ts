@@ -1,56 +1,32 @@
-// PartyManager — a single facade over the host and client roles so the UI
-// never touches sockets directly.
+// Client for Party rooms hosted by the Cloudflare Worker (see /worker/index.ts).
 //
-// Host role (GM device):
-//   • TCP server accepting player connections
-//   • UDP broadcaster announcing room code + TCP port on the LAN
-//   • Merges every connected peer's characters (+ its own) into sharedHeroes
-//   • Broadcasts PARTY_STATE whenever anything changes
-//
-// Client role (Player device):
-//   • UDP scan for the matching room code (5s window)
-//   • TCP connect to the discovered host
-//   • Sends CHARACTER_UPDATE on join and whenever local heroes change
-//   • Auto-reconnects up to N times if the socket drops
-//
-// The manager also exposes sharedHeroes and rollNotes as always-current state
-// so the UI is a pure subscriber.
+// The GM creates a temporary room and gets a 6-character code. Players join
+// with that code. Everyone connects over a WebSocket; the room relays each
+// owner's hero snapshot to the rest of the party. The mini sheets other people
+// see are always the owner's real hero sheet - nobody else can change them.
 
-import type { Character } from "@/src/types";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
+import { onCharacterSaved } from "@/src/storage/characters";
+import { migrateCharacter, type Character } from "@/src/types";
 import {
-  DiscoveryPacket,
-  PARTY_DEFAULT_TCP_PORT_MAX,
-  PARTY_DEFAULT_TCP_PORT_MIN,
-  PARTY_DISCOVERY_BROADCAST_INTERVAL_MS,
-  PARTY_DISCOVERY_UDP_PORT,
   PARTY_HEARTBEAT_INTERVAL_MS,
   PARTY_HEARTBEAT_TIMEOUT_MS,
-  PartyMessage,
-  PeerInfo,
-  decodeMessages,
-  encodeMessage,
-  generatePeerId,
-  generateRoomCode,
+  PARTY_PROTOCOL_VERSION,
+  isValidRoomCode,
+  type PartyMessage,
+  type PeerInfo,
 } from "./protocol";
-import {
-  TcpServerInstance,
-  TcpSocket,
-  UdpSocketInstance,
-  isPartySupported,
-  loadNative,
-} from "./nativeSupport";
 
-// ---------- Public state ----------
 export type PartyRole = "idle" | "host" | "client";
 
 export type PartyState = {
   role: PartyRole;
   connecting: boolean;
   connected: boolean;
+  reconnecting: boolean;
   error: string | null;
   roomCode: string | null;
-  hostIp: string | null;
-  hostPort: number | null;
   peers: PeerInfo[]; // includes self
   sharedHeroes: Character[];
   selectedCharacterIds: string[];
@@ -61,10 +37,9 @@ const initialState: PartyState = {
   role: "idle",
   connecting: false,
   connected: false,
+  reconnecting: false,
   error: null,
   roomCode: null,
-  hostIp: null,
-  hostPort: null,
   peers: [],
   sharedHeroes: [],
   selectedCharacterIds: [],
@@ -73,39 +48,60 @@ const initialState: PartyState = {
 
 type Listener = (state: PartyState) => void;
 
-// ---------- Manager singleton ----------
+type StoredSession = {
+  role: "host" | "client";
+  code: string;
+  name: string;
+  gmToken?: string;
+  peerId?: string;
+  secret?: string;
+  selectedCharacterIds?: string[];
+};
+
+const SESSION_KEY = "aob:party:session:v1";
+const PUBLISH_DEBOUNCE_MS = 150;
+const RECONNECT_DELAYS_MS = [500, 1000, 2000, 4000, 8000, 15000];
+const MAX_RECONNECT_ATTEMPTS = 12;
+
+function partyBaseUrl(): string | null {
+  const configured = process.env.EXPO_PUBLIC_PARTY_URL;
+  if (configured) return configured.replace(/\/+$/, "");
+  if (Platform.OS === "web" && typeof window !== "undefined") return window.location.origin;
+  return null;
+}
+
+function toWebSocketUrl(httpUrl: string): string {
+  return httpUrl.replace(/^http/i, "ws");
+}
+
+function stripPortrait(character: Character): Character {
+  if (!character.portraitUri) return character;
+  return { ...character, portraitUri: undefined };
+}
+
 class PartyManager {
   private state: PartyState = { ...initialState };
   private listeners = new Set<Listener>();
-  private myPeerId = generatePeerId();
   private myName = "Player";
   private myCharacters: Character[] = [];
 
-  // Host-side
-  private tcpServer: TcpServerInstance | null = null;
-  private udpBroadcaster: UdpSocketInstance | null = null;
-  private udpBroadcastTimer: ReturnType<typeof setInterval> | null = null;
-  private hostClients = new Map<
-    string,
-    {
-      socket: TcpSocket;
-      peer: PeerInfo;
-      lastSeen: number;
-      buffer: string;
-      characters: Character[];
-    }
-  >();
-
-  // Client-side
-  private clientSocket: TcpSocket | null = null;
-  private clientBuffer = "";
-  private udpScanner: UdpSocketInstance | null = null;
-  private clientHeartbeat: ReturnType<typeof setInterval> | null = null;
+  private socket: WebSocket | null = null;
+  private session: StoredSession | null = null;
+  private welcomed = false;
+  private intentionalClose = false;
   private reconnectAttempt = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeat: ReturnType<typeof setInterval> | null = null;
+  private publishTimer: ReturnType<typeof setTimeout> | null = null;
   private lastServerBeatAt = 0;
+  private restoreStarted = false;
+
+  constructor() {
+    onCharacterSaved((character) => this.handleCharacterSaved(character));
+  }
 
   isSupported(): boolean {
-    return isPartySupported();
+    return typeof WebSocket !== "undefined" && partyBaseUrl() != null;
   }
 
   getState(): PartyState {
@@ -114,7 +110,6 @@ class PartyManager {
 
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener);
-    // deliver initial state on subscribe
     listener(this.state);
     return () => {
       this.listeners.delete(listener);
@@ -133,171 +128,58 @@ class PartyManager {
   }
 
   async createParty(myCharacters: Character[], gmName = "Game Master"): Promise<void> {
-    if (!this.isSupported()) {
-      this.setState({ error: "Party is not supported in this build." });
-      return;
-    }
-    this.myName = gmName;
-    this.myCharacters = myCharacters ?? [];
-    const { tcp, udp } = loadNative();
-    if (!tcp || !udp) return;
-
-    this.setState({
-      role: "host",
-      connecting: true,
-      error: null,
-      peers: [],
-      selectedCharacterIds: this.heroesOnly(this.myCharacters).map((character) => character.id),
-      sharedHeroes: [],
-      rollNotes: {},
-    });
-
-    // Pick a random port in the party range.
-    const port =
-      PARTY_DEFAULT_TCP_PORT_MIN +
-      Math.floor(Math.random() * (PARTY_DEFAULT_TCP_PORT_MAX - PARTY_DEFAULT_TCP_PORT_MIN));
-
+    if (!this.beginSession("host", myCharacters, gmName)) return;
+    const base = partyBaseUrl()!;
     try {
-      const server = tcp.createServer({}, (socket) => this.hostOnConnection(socket));
-      server.on("error", (err: unknown) => {
-        console.warn("[Party.host] server error", err);
-        const errMsg = err && typeof err === "object" && "message" in err ? String((err as any).message) : String(err);
-        this.setState({ error: `Server error: ${errMsg}` });
-      });
-      server.listen({ port, host: "0.0.0.0" }, () => {
-        console.log(`[Party.host] listening on 0.0.0.0:${port}`);
-      });
-      this.tcpServer = server;
-
-      const roomCode = generateRoomCode();
-      const selfPeer: PeerInfo = {
-        id: this.myPeerId,
-        name: this.myName,
-        role: "gm",
-        joinedAt: new Date().toISOString(),
-      };
-
-      this.setState({
-        connecting: false,
-        connected: true,
-        roomCode,
-        hostIp: "auto",
-        hostPort: port,
-        peers: [selfPeer],
-      });
-      this.recomputeSharedHeroes();
-
-      // Start UDP broadcaster.
-      this.startBroadcaster(udp, roomCode, port);
-
-      // Start heartbeat monitor.
-      this.startHostHeartbeat();
-    } catch (err: unknown) {
-      console.warn("[Party.host] create failed", err);
-      const errMsg = err instanceof Error ? err.message : String(err);
-      this.setState({ role: "idle", connecting: false, connected: false, error: `Could not start party server: ${errMsg}` });
+      const res = await fetch(`${base}/api/party`, { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = (await res.json()) as { code?: string; gmToken?: string };
+      if (!isValidRoomCode(body.code) || typeof body.gmToken !== "string") throw new Error("Bad response");
+      this.session = { role: "host", code: body.code, name: gmName, gmToken: body.gmToken };
+      this.setState({ roomCode: body.code });
+      await this.saveSession();
+      this.connect();
+    } catch {
+      this.failToIdle("Could not create a party room. Check your connection and try again.");
     }
   }
 
   async joinParty(code: string, myCharacters: Character[], playerName = "Player"): Promise<void> {
-    if (!this.isSupported()) {
-      this.setState({ error: "Party is not supported in this build." });
-      return;
-    }
     const cleanCode = code.trim().toUpperCase();
     if (!cleanCode) return;
-    this.myName = playerName;
-    this.myCharacters = myCharacters ?? [];
-
-    this.setState({
-      role: "client",
-      connecting: true,
-      connected: false,
-      error: null,
-      roomCode: cleanCode,
-      hostIp: null,
-      hostPort: null,
-      peers: [],
-      selectedCharacterIds: [],
-      sharedHeroes: [],
-      rollNotes: {},
-    });
-
-    const { tcp, udp } = loadNative();
-    if (!tcp || !udp) return;
-
-    try {
-      const target = await this.scanForHost(udp, cleanCode, 8000);
-      if (!target) {
-        this.setState({
-          connecting: false,
-          error: `No party with code ${cleanCode} found on this Wi-Fi. Make sure the GM has started the party and you're on the same network.`,
-        });
-        return;
-      }
-      this.setState({ hostIp: target.ip, hostPort: target.port });
-      await this.clientConnect(tcp, target.ip, target.port);
-    } catch (err) {
-      console.warn("[Party.client] join failed", err);
-      this.setState({ connecting: false, error: "Could not reach the party." });
+    if (!isValidRoomCode(cleanCode)) {
+      this.setState({ error: "Room codes are 6 letters and numbers." });
+      return;
     }
+    if (!this.beginSession("client", myCharacters, playerName)) return;
+    this.session = { role: "client", code: cleanCode, name: playerName };
+    this.setState({ roomCode: cleanCode });
+    this.connect();
   }
 
   async leaveParty(): Promise<void> {
-    // Both roles reset.
-    if (this.state.role === "host") {
-      // Notify each client, close everything.
-      this.hostClients.forEach(({ socket }) => {
-        try {
-          socket.write(encodeMessage({ t: "ERROR", message: "Party ended by GM.", fatal: true }));
-          socket.end();
-        } catch {}
-      });
-      this.hostClients.clear();
-      this.stopBroadcaster();
-      if (this.tcpServer) {
-        try {
-          this.tcpServer.close();
-        } catch {}
-      }
-      this.tcpServer = null;
+    this.intentionalClose = true;
+    this.clearTimers();
+    const socket = this.socket;
+    this.socket = null;
+    if (socket) {
+      // The GM leaving ends the temporary room; a player leaving just exits it.
+      this.sendOn(socket, this.state.role === "host" ? { t: "END_PARTY" } : { t: "LEAVE" });
+      try {
+        socket.close(1000, "Left the party");
+      } catch {}
     }
-    if (this.state.role === "client") {
-      if (this.clientHeartbeat) clearInterval(this.clientHeartbeat);
-      this.clientHeartbeat = null;
-      if (this.clientSocket) {
-        try {
-          this.clientSocket.end();
-        } catch {}
-      }
-      this.clientSocket = null;
-      if (this.udpScanner) {
-        try {
-          this.udpScanner.close();
-        } catch {}
-        this.udpScanner = null;
-      }
-    }
+    this.session = null;
+    this.welcomed = false;
+    await this.clearSession();
     this.setState({ ...initialState });
   }
 
   // Called by the UI whenever the device's local characters change.
   updateMyCharacters(chars: Character[]): void {
     this.myCharacters = chars ?? [];
-    const validIds = new Set(this.heroesOnly(this.myCharacters).map((character) => character.id));
-    const selectedCharacterIds = this.state.selectedCharacterIds.filter((id) => validIds.has(id));
-    if (selectedCharacterIds.length !== this.state.selectedCharacterIds.length) {
-      this.setState({ selectedCharacterIds });
-    }
-    if (this.state.role === "host") {
-      this.recomputeSharedHeroes();
-    } else if (this.state.role === "client" && this.clientSocket) {
-      this.send(this.clientSocket, {
-        t: "CHARACTER_UPDATE",
-        from: this.myPeerId,
-        characters: this.selectedHeroes(),
-      });
-    }
+    void this.restoreSession();
+    this.schedulePublish();
   }
 
   toggleCharacterForParty(characterId: string): void {
@@ -309,410 +191,197 @@ class PartyManager {
     else selected.add(characterId);
     const selectedCharacterIds = Array.from(selected);
     this.setState({ selectedCharacterIds });
-    if (this.clientSocket) {
-      this.send(this.clientSocket, {
-        t: "CHARACTER_UPDATE",
-        from: this.myPeerId,
-        characters: this.selectedHeroes(selectedCharacterIds),
-      });
+    if (this.session) {
+      this.session = { ...this.session, selectedCharacterIds };
+      void this.saveSession();
     }
+    this.schedulePublish();
   }
 
+  // Roll notes belong to the GM. Players can type locally but nothing is sent.
   updateRollNotes(notes: Record<string, string>): void {
-    if (this.state.role === "host") {
-      this.setState({ rollNotes: { ...notes } });
-      this.broadcastState();
-    } else if (this.state.role === "client" && this.clientSocket) {
-      // Optimistic local update; host will confirm.
-      this.setState({ rollNotes: { ...notes } });
-      this.send(this.clientSocket, { t: "ROLL_NOTES_UPDATE", notes });
+    if (this.state.role !== "host") return;
+    this.setState({ rollNotes: { ...notes } });
+    if (this.socket) this.sendOn(this.socket, { t: "ROLL_NOTES_UPDATE", notes });
+  }
+
+  // ---------- Session lifecycle ----------
+
+  private beginSession(role: "host" | "client", myCharacters: Character[], name: string): boolean {
+    if (!this.isSupported()) {
+      this.setState({ error: "Party is not available in this build." });
+      return false;
     }
-  }
-
-  // ---------- Host internals ----------
-
-  private hostOnConnection(socket: TcpSocket): void {
-    if (socket.setEncoding) socket.setEncoding("utf8");
-    const remote = `${socket.remoteAddress ?? "?"}:${socket.remotePort ?? "?"}`;
-    console.log(`[Party.host] incoming connection from ${remote}`);
-    // Wait for HELLO before adding to the roster.
-    const entry = {
-      socket,
-      peer: null as unknown as PeerInfo,
-      lastSeen: Date.now(),
-      buffer: "",
-      characters: [] as Character[],
-    };
-
-    const onData = (chunk: unknown) => {
-      const s = typeof chunk === "string" ? chunk : String(chunk);
-      entry.buffer += s;
-      const { messages, rest } = decodeMessages(entry.buffer);
-      entry.buffer = rest;
-      messages.forEach((msg) => this.hostHandleMessage(entry, msg));
-    };
-
-    const cleanup = () => {
-      if (entry.peer) {
-        this.hostClients.delete(entry.peer.id);
-        this.broadcast(
-          (peerId) =>
-            peerId !== entry.peer.id
-              ? ({ t: "PLAYER_LEFT", peerId: entry.peer.id } as PartyMessage)
-              : null,
-        );
-        this.recomputePeersList();
-        this.recomputeSharedHeroes();
-        console.log(`[Party.host] client ${entry.peer.name} disconnected`);
-      }
-    };
-
-    socket.on("data", onData);
-    socket.on("close", cleanup);
-    socket.on("error", (err: unknown) => {
-      console.warn("[Party.host] socket error", err);
-      cleanup();
+    this.intentionalClose = false;
+    this.clearTimers();
+    this.myName = name;
+    this.myCharacters = myCharacters ?? [];
+    this.reconnectAttempt = 0;
+    this.welcomed = false;
+    this.setState({
+      ...initialState,
+      role,
+      connecting: true,
+      selectedCharacterIds: role === "host" ? this.heroesOnly(this.myCharacters).map((c) => c.id) : [],
     });
+    return true;
   }
 
-  private hostHandleMessage(
-    entry: {
-      socket: TcpSocket;
-      peer: PeerInfo;
-      lastSeen: number;
-      buffer: string;
-      characters: Character[];
-    },
-    msg: PartyMessage,
-  ): void {
-    entry.lastSeen = Date.now();
-    switch (msg.t) {
-      case "HELLO": {
-        if (msg.code !== this.state.roomCode) {
-          try {
-            entry.socket.write(
-              encodeMessage({ t: "ERROR", message: "Wrong room code.", fatal: true }),
-            );
-            entry.socket.end();
-          } catch {}
-          return;
-        }
-        entry.peer = {
-          id: msg.from,
-          name: msg.name || "Player",
-          role: "player",
-          joinedAt: new Date().toISOString(),
-        };
-        this.hostClients.set(msg.from, entry);
-        const peers = this.currentPeers();
-        try {
-          entry.socket.write(encodeMessage({ t: "WELCOME", you: entry.peer, peers }));
-        } catch {}
-        // Notify existing peers.
-        this.broadcast((peerId) =>
-          peerId === entry.peer.id
-            ? null
-            : ({ t: "PLAYER_JOINED", peer: entry.peer } as PartyMessage),
-        );
-        this.recomputePeersList();
-        // Send current state immediately.
-        this.sendState(entry.socket);
-        console.log(`[Party.host] ${entry.peer.name} joined`);
-        break;
-      }
-      case "CHARACTER_UPDATE": {
-        entry.characters = msg.characters ?? [];
-        this.recomputeSharedHeroes();
-        break;
-      }
-      case "ROLL_NOTES_UPDATE": {
-        this.setState({ rollNotes: { ...msg.notes } });
-        this.broadcastState();
-        break;
-      }
-      case "PING": {
-        try {
-          entry.socket.write(encodeMessage({ t: "PONG", ts: msg.ts }));
-        } catch {}
-        break;
-      }
-      default:
-        break;
-    }
-  }
-
-  private currentPeers(): PeerInfo[] {
-    const self: PeerInfo = {
-      id: this.myPeerId,
-      name: this.myName,
-      role: "gm",
-      joinedAt: new Date().toISOString(),
-    };
-    return [self, ...Array.from(this.hostClients.values()).map((c) => c.peer).filter(Boolean)];
-  }
-
-  private recomputePeersList(): void {
-    this.setState({ peers: this.currentPeers() });
-  }
-
-  private recomputeSharedHeroes(): void {
-    // Merge GM heroes + every connected client's heroes by id.
-    const byId = new Map<string, Character>();
-    this.heroesOnly(this.myCharacters).forEach((c) => byId.set(c.id, c));
-    this.hostClients.forEach((c) => {
-      this.heroesOnly(c.characters).forEach((ch) => byId.set(ch.id, ch));
-    });
-    const shared = Array.from(byId.values());
-    this.setState({ sharedHeroes: shared });
-    this.broadcastState();
-  }
-
-  private heroesOnly(chars: Character[]): Character[] {
-    return (chars ?? []).filter((c) => c && c.kind !== "monster");
-  }
-
-  private selectedHeroes(ids = this.state.selectedCharacterIds): Character[] {
-    const selected = new Set(ids);
-    return this.heroesOnly(this.myCharacters).filter((character) => selected.has(character.id));
-  }
-
-  private broadcastState(): void {
-    const payload: PartyMessage = {
-      t: "PARTY_STATE",
-      sharedHeroes: this.state.sharedHeroes,
-      rollNotes: this.state.rollNotes,
-    };
-    this.hostClients.forEach((entry) => {
-      try {
-        entry.socket.write(encodeMessage(payload));
-      } catch {}
-    });
-  }
-
-  private sendState(socket: TcpSocket): void {
+  // Rejoin after a page refresh or app restart.
+  private async restoreSession(): Promise<void> {
+    if (this.restoreStarted) return;
+    this.restoreStarted = true;
+    if (this.state.role !== "idle" || !this.isSupported()) return;
     try {
-      socket.write(
-        encodeMessage({
-          t: "PARTY_STATE",
-          sharedHeroes: this.state.sharedHeroes,
-          rollNotes: this.state.rollNotes,
-        }),
-      );
+      const raw = await AsyncStorage.getItem(SESSION_KEY);
+      if (!raw) return;
+      const stored = JSON.parse(raw) as StoredSession;
+      if (!stored || !isValidRoomCode(stored.code) || (stored.role !== "host" && stored.role !== "client")) {
+        await this.clearSession();
+        return;
+      }
+      if (this.state.role !== "idle") return;
+      this.session = stored;
+      this.intentionalClose = false;
+      this.myName = stored.name;
+      this.setState({
+        ...initialState,
+        role: stored.role,
+        connecting: true,
+        roomCode: stored.code,
+        selectedCharacterIds:
+          stored.role === "host"
+            ? this.heroesOnly(this.myCharacters).map((c) => c.id)
+            : Array.isArray(stored.selectedCharacterIds)
+              ? stored.selectedCharacterIds.filter((id) => typeof id === "string")
+              : [],
+      });
+      this.connect();
+    } catch {
+      await this.clearSession();
+    }
+  }
+
+  private async saveSession(): Promise<void> {
+    if (!this.session) return;
+    try {
+      await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(this.session));
     } catch {}
   }
 
-  private broadcast(build: (peerId: string) => PartyMessage | null): void {
-    this.hostClients.forEach((entry, peerId) => {
-      const msg = build(peerId);
-      if (!msg) return;
-      try {
-        entry.socket.write(encodeMessage(msg));
-      } catch {}
-    });
-  }
-
-  private startBroadcaster(
-    udp: ReturnType<typeof loadNative>["udp"],
-    code: string,
-    tcpPort: number,
-  ): void {
-    if (!udp) return;
+  private async clearSession(): Promise<void> {
     try {
-      const socket = udp.createSocket({ type: "udp4", reusePort: true });
-      socket.bind(0, () => {
-        try {
-          socket.setBroadcast(true);
-        } catch (err) {
-          console.warn("[Party.host] setBroadcast failed", err);
-        }
-      });
-      socket.on("error", (err: unknown) => {
-        console.warn("[Party.host] udp error", err);
-      });
-      this.udpBroadcaster = socket;
-      const tick = () => {
-        if (!this.udpBroadcaster || !this.state.roomCode) return;
-        const packet: DiscoveryPacket = {
-          aob: 1,
-          code,
-          tcpPort,
-          gm: this.myName,
-          ts: Date.now(),
-        };
-        const body = JSON.stringify(packet);
-        try {
-          this.udpBroadcaster.send(
-            body,
-            0,
-            body.length,
-            PARTY_DISCOVERY_UDP_PORT,
-            "255.255.255.255",
-            (err) => {
-              if (err) console.warn("[Party.host] broadcast err", err);
-            },
-          );
-        } catch (err) {
-          console.warn("[Party.host] broadcast throw", err);
-        }
-      };
-      tick();
-      this.udpBroadcastTimer = setInterval(tick, PARTY_DISCOVERY_BROADCAST_INTERVAL_MS);
-    } catch (err) {
-      console.warn("[Party.host] failed to start udp broadcaster", err);
-    }
+      await AsyncStorage.removeItem(SESSION_KEY);
+    } catch {}
   }
 
-  private stopBroadcaster(): void {
-    if (this.udpBroadcastTimer) clearInterval(this.udpBroadcastTimer);
-    this.udpBroadcastTimer = null;
-    if (this.udpBroadcaster) {
+  private failToIdle(message: string): void {
+    this.intentionalClose = true;
+    this.clearTimers();
+    const socket = this.socket;
+    this.socket = null;
+    if (socket) {
       try {
-        this.udpBroadcaster.close();
+        socket.close();
       } catch {}
     }
-    this.udpBroadcaster = null;
+    this.session = null;
+    this.welcomed = false;
+    void this.clearSession();
+    this.setState({ ...initialState, error: message });
   }
 
-  private startHostHeartbeat(): void {
-    setInterval(() => {
-      const now = Date.now();
-      this.hostClients.forEach((entry, id) => {
-        if (now - entry.lastSeen > PARTY_HEARTBEAT_TIMEOUT_MS) {
-          console.log(`[Party.host] pruning stale peer ${entry.peer?.name ?? id}`);
-          try {
-            entry.socket.destroy();
-          } catch {}
-          this.hostClients.delete(id);
-          this.recomputePeersList();
-          this.recomputeSharedHeroes();
-        } else {
-          try {
-            entry.socket.write(encodeMessage({ t: "PING", ts: now }));
-          } catch {}
-        }
+  // ---------- Connection ----------
+
+  private connect(): void {
+    const session = this.session;
+    const base = partyBaseUrl();
+    if (!session || !base) return;
+    let socket: WebSocket;
+    try {
+      socket = new WebSocket(`${toWebSocketUrl(base)}/api/party/${session.code}/ws`);
+    } catch {
+      this.handleSocketClosed(null);
+      return;
+    }
+    this.socket = socket;
+    this.welcomed = false;
+
+    socket.onopen = () => {
+      if (this.socket !== socket) return;
+      this.lastServerBeatAt = Date.now();
+      this.sendOn(socket, {
+        t: "HELLO",
+        v: PARTY_PROTOCOL_VERSION,
+        name: session.name,
+        role: session.role === "host" ? "gm" : "player",
+        gmToken: session.gmToken,
+        peerId: session.peerId,
+        secret: session.secret,
       });
-    }, PARTY_HEARTBEAT_INTERVAL_MS);
-  }
-
-  // ---------- Client internals ----------
-
-  private scanForHost(
-    udp: ReturnType<typeof loadNative>["udp"],
-    code: string,
-    timeoutMs: number,
-  ): Promise<{ ip: string; port: number } | null> {
-    return new Promise((resolve) => {
-      if (!udp) return resolve(null);
-      let done = false;
-      const finish = (result: { ip: string; port: number } | null) => {
-        if (done) return;
-        done = true;
-        if (socket) {
-          try {
-            socket.close();
-          } catch {}
-        }
-        resolve(result);
-      };
-      let socket: UdpSocketInstance;
+      this.publishNow();
+      this.startHeartbeat(socket);
+    };
+    socket.onmessage = (event: { data: unknown }) => {
+      if (this.socket !== socket || typeof event.data !== "string") return;
+      this.lastServerBeatAt = Date.now();
+      let msg: PartyMessage;
       try {
-        socket = udp.createSocket({ type: "udp4", reusePort: true });
-      } catch (err) {
-        console.warn("[Party.client] udp create failed", err);
-        return finish(null);
+        msg = JSON.parse(event.data) as PartyMessage;
+      } catch {
+        return;
       }
-      this.udpScanner = socket;
-      socket.on("message", (data: unknown, rinfo: unknown) => {
-        try {
-          const info = rinfo as { address: string; port: number };
-          const text = typeof data === "string" ? data : (data as { toString: (encoding: string) => string }).toString("utf8");
-          const packet = JSON.parse(text) as DiscoveryPacket;
-          if (packet?.aob === 1 && packet.code === code && typeof packet.tcpPort === "number") {
-            console.log(`[Party.client] discovered host at ${info.address}:${packet.tcpPort}`);
-            finish({ ip: info.address, port: packet.tcpPort });
-          }
-        } catch {}
-      });
-      socket.on("error", (err: unknown) => {
-        console.warn("[Party.client] scan error", err);
-      });
-      try {
-        socket.bind(PARTY_DISCOVERY_UDP_PORT);
-      } catch (err) {
-        console.warn("[Party.client] bind failed", err);
-      }
-      setTimeout(() => finish(null), timeoutMs);
-    });
+      this.handleMessage(msg);
+    };
+    socket.onclose = () => this.handleSocketClosed(socket);
+    socket.onerror = () => {
+      // onclose follows and drives reconnects.
+    };
   }
 
-  private async clientConnect(
-    tcp: ReturnType<typeof loadNative>["tcp"],
-    ip: string,
-    port: number,
-  ): Promise<void> {
-    if (!tcp) return;
-    return new Promise((resolve) => {
-      const socket = tcp.createConnection({ host: ip, port }, () => {
-        console.log(`[Party.client] connected to ${ip}:${port}`);
-        this.clientSocket = socket;
-        this.reconnectAttempt = 0;
-        this.lastServerBeatAt = Date.now();
-        this.setState({ connecting: false, connected: true, error: null });
-        // Send HELLO immediately.
-        this.send(socket, {
-          t: "HELLO",
-          from: this.myPeerId,
-          name: this.myName,
-          role: "player",
-          code: this.state.roomCode ?? "",
-        });
-        // Push our characters up.
-        this.send(socket, {
-          t: "CHARACTER_UPDATE",
-          from: this.myPeerId,
-          characters: this.selectedHeroes(),
-        });
-        // Start heartbeat.
-        if (this.clientHeartbeat) clearInterval(this.clientHeartbeat);
-        this.clientHeartbeat = setInterval(() => {
-          if (!this.clientSocket) return;
-          if (Date.now() - this.lastServerBeatAt > PARTY_HEARTBEAT_TIMEOUT_MS) {
-            console.log("[Party.client] host silent — attempting reconnect");
-            this.clientRetry();
-            return;
-          }
-          this.send(this.clientSocket, { t: "PING", ts: Date.now() });
-        }, PARTY_HEARTBEAT_INTERVAL_MS);
-        resolve();
-      });
-      if (socket.setEncoding) socket.setEncoding("utf8");
-      socket.on("data", (chunk: unknown) => {
-        const s = typeof chunk === "string" ? chunk : String(chunk);
-        this.clientBuffer += s;
-        const { messages, rest } = decodeMessages(this.clientBuffer);
-        this.clientBuffer = rest;
-        messages.forEach((msg) => this.clientHandleMessage(msg));
-        this.lastServerBeatAt = Date.now();
-      });
-      socket.on("error", (err: unknown) => {
-        console.warn("[Party.client] socket error", err);
-      });
-      socket.on("close", () => {
-        console.log("[Party.client] socket closed");
-        if (this.state.role === "client" && this.state.connected) {
-          this.clientRetry();
-        } else {
-          resolve();
-        }
-      });
-    });
+  private handleSocketClosed(socket: WebSocket | null): void {
+    if (socket && this.socket !== socket) return;
+    this.socket = null;
+    this.stopHeartbeat();
+    if (this.intentionalClose || this.state.role === "idle") return;
+
+    if (!this.welcomed && this.state.role === "client" && !this.state.connected && this.reconnectAttempt === 0 && !this.session?.peerId) {
+      this.failToIdle("Could not reach the party. Check the room code and your connection.");
+      return;
+    }
+    if (this.reconnectAttempt >= MAX_RECONNECT_ATTEMPTS) {
+      this.failToIdle("Lost connection to the party.");
+      return;
+    }
+    const delay = RECONNECT_DELAYS_MS[Math.min(this.reconnectAttempt, RECONNECT_DELAYS_MS.length - 1)];
+    this.reconnectAttempt += 1;
+    this.setState({ reconnecting: this.state.connected || this.state.reconnecting, connecting: !this.state.connected });
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (!this.intentionalClose && this.session) this.connect();
+    }, delay);
   }
 
-  private clientHandleMessage(msg: PartyMessage): void {
+  private handleMessage(msg: PartyMessage): void {
     switch (msg.t) {
-      case "WELCOME":
-        this.setState({ peers: msg.peers });
+      case "WELCOME": {
+        this.welcomed = true;
+        this.reconnectAttempt = 0;
+        if (this.session) {
+          this.session = { ...this.session, peerId: msg.you.id, secret: msg.secret };
+          void this.saveSession();
+        }
+        this.setState({
+          connecting: false,
+          connected: true,
+          reconnecting: false,
+          error: null,
+          peers: msg.peers,
+          sharedHeroes: this.sanitizeIncoming(msg.sharedHeroes),
+          rollNotes: this.sanitizeNotes(msg.rollNotes),
+        });
         break;
+      }
       case "PLAYER_JOINED":
         this.setState({ peers: [...this.state.peers.filter((p) => p.id !== msg.peer.id), msg.peer] });
         break;
@@ -720,60 +389,115 @@ class PartyManager {
         this.setState({ peers: this.state.peers.filter((p) => p.id !== msg.peerId) });
         break;
       case "PARTY_STATE":
-        this.setState({ sharedHeroes: msg.sharedHeroes, rollNotes: msg.rollNotes });
-        break;
-      case "ROLL_NOTES_UPDATE":
-        this.setState({ rollNotes: msg.notes });
+        this.setState({
+          sharedHeroes: this.sanitizeIncoming(msg.sharedHeroes),
+          rollNotes: this.sanitizeNotes(msg.rollNotes),
+        });
         break;
       case "ERROR":
-        this.setState({ error: msg.message });
-        if (msg.fatal) this.leaveParty();
-        break;
-      case "PING":
-        if (this.clientSocket) this.send(this.clientSocket, { t: "PONG", ts: msg.ts });
+        if (msg.fatal) this.failToIdle(msg.message);
         break;
       default:
         break;
     }
   }
 
-  private clientRetry(): void {
-    if (!this.state.roomCode || !this.state.hostIp || !this.state.hostPort) {
-      this.setState({ connected: false, error: "Lost connection to the party." });
-      return;
-    }
-    if (this.reconnectAttempt >= 5) {
-      this.setState({ connected: false, error: "Lost connection to the party." });
-      return;
-    }
-    this.reconnectAttempt++;
-    console.log(`[Party.client] reconnect attempt ${this.reconnectAttempt}`);
-    if (this.clientSocket) {
-      try {
-        this.clientSocket.destroy();
-      } catch {}
-    }
-    this.clientSocket = null;
-    this.clientBuffer = "";
-    if (this.clientHeartbeat) clearInterval(this.clientHeartbeat);
-    this.clientHeartbeat = null;
-
-    const { tcp } = loadNative();
-    if (!tcp) return;
-    setTimeout(
-      () => this.clientConnect(tcp, this.state.hostIp!, this.state.hostPort!),
-      500 * this.reconnectAttempt,
-    );
+  private startHeartbeat(socket: WebSocket): void {
+    this.stopHeartbeat();
+    this.heartbeat = setInterval(() => {
+      if (this.socket !== socket) return;
+      if (Date.now() - this.lastServerBeatAt > PARTY_HEARTBEAT_TIMEOUT_MS) {
+        try {
+          socket.close();
+        } catch {}
+        this.handleSocketClosed(socket);
+        return;
+      }
+      this.sendOn(socket, { t: "PING", ts: Date.now() });
+    }, PARTY_HEARTBEAT_INTERVAL_MS);
   }
 
-  private send(socket: TcpSocket, msg: PartyMessage): void {
+  private stopHeartbeat(): void {
+    if (this.heartbeat) clearInterval(this.heartbeat);
+    this.heartbeat = null;
+  }
+
+  private clearTimers(): void {
+    this.stopHeartbeat();
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+    if (this.publishTimer) clearTimeout(this.publishTimer);
+    this.publishTimer = null;
+  }
+
+  private sendOn(socket: WebSocket, msg: PartyMessage): void {
+    if (socket.readyState !== 1) return;
     try {
-      socket.write(encodeMessage(msg));
-    } catch (err) {
-      console.warn("[Party] send failed", err);
+      socket.send(JSON.stringify(msg));
+    } catch {}
+  }
+
+  // ---------- Publishing my heroes ----------
+
+  private heroesOnly(chars: Character[]): Character[] {
+    return (chars ?? []).filter((c) => c && c.kind !== "monster");
+  }
+
+  private shareableHeroes(): Character[] {
+    const heroes = this.heroesOnly(this.myCharacters);
+    if (this.state.role === "host") return heroes.map(stripPortrait);
+    const selected = new Set(this.state.selectedCharacterIds);
+    return heroes.filter((c) => selected.has(c.id)).map(stripPortrait);
+  }
+
+  private schedulePublish(): void {
+    if (this.state.role === "idle" || !this.socket) return;
+    if (this.publishTimer) clearTimeout(this.publishTimer);
+    this.publishTimer = setTimeout(() => {
+      this.publishTimer = null;
+      this.publishNow();
+    }, PUBLISH_DEBOUNCE_MS);
+  }
+
+  private publishNow(): void {
+    if (!this.socket || this.state.role === "idle") return;
+    this.sendOn(this.socket, { t: "CHARACTER_UPDATE", characters: this.shareableHeroes() });
+  }
+
+  // Any hero-sheet save (e.g. HP edits on the sheet screen) goes live without
+  // waiting for the list screen to reload.
+  private handleCharacterSaved(character: Character): void {
+    if (this.state.role === "idle") return;
+    const index = this.myCharacters.findIndex((c) => c.id === character.id);
+    if (index < 0) return;
+    const next = [...this.myCharacters];
+    next[index] = character;
+    this.myCharacters = next;
+    this.schedulePublish();
+  }
+
+  // ---------- Incoming data hygiene ----------
+
+  private sanitizeIncoming(list: unknown): Character[] {
+    if (!Array.isArray(list)) return [];
+    const out: Character[] = [];
+    for (const raw of list) {
+      try {
+        const hero = migrateCharacter(raw);
+        if (hero.id && hero.kind !== "monster") out.push(hero);
+      } catch {}
     }
+    return out;
+  }
+
+  private sanitizeNotes(notes: unknown): Record<string, string> {
+    if (!notes || typeof notes !== "object" || Array.isArray(notes)) return {};
+    const out: Record<string, string> = {};
+    Object.entries(notes as Record<string, unknown>).forEach(([key, value]) => {
+      if (typeof value === "string") out[key] = value;
+    });
+    return out;
   }
 }
 
-// Singleton export.
 export const partyManager = new PartyManager();

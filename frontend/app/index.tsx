@@ -164,8 +164,8 @@ Once you've built custom weapons, items, or abilities on a sheet, use the export
   {
     key: "party",
     label: "Party",
-    title: "Offline mode",
-    body: "This build keeps all game data on this device. Party rooms and backend synchronization are disabled.",
+    title: "Party rooms",
+    body: "Your characters are always saved on this device. Hosting or joining a party room only shares a live, read-only copy of the heroes you choose.",
   },
 ] as const;
 
@@ -620,7 +620,7 @@ export default function CharacterListScreen() {
 
   const openCombatantSheet = (combatant: Character) => {
     setGmToolsOpen(false);
-    if (sharedHeroes.some((hero) => hero.id === combatant.id)) {
+    if (!characters.some((hero) => hero.id === combatant.id) && sharedHeroes.some((hero) => hero.id === combatant.id)) {
       setSelectedSharedHeroId(combatant.id);
       return;
     }
@@ -1218,13 +1218,13 @@ export default function CharacterListScreen() {
               <View style={[styles.serverPanel, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}> 
                 <View style={styles.serverPanelHeader}>
                   <Icon name="lan-connect" size={20} color={colors.brandPrimary} />
-                  <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Local Wi-Fi Server</Text>
+                  <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>                  Party Room</Text>
                 </View>
-                <Text style={[styles.helpText, { color: colors.onSurface, fontFamily: fonts.body }]}>Create or join a room directly over local Wi-Fi. No cloud server or remote database is used.</Text>
+                                  <Text style={[styles.helpText, { color: colors.onSurface, fontFamily: fonts.body }]}>Create a temporary room or join one with a room code. Shared heroes update live and can't be edited by anyone but their owner.</Text>
                 {!party.connected && (
                   <Pressable testID="create-lan-server" onPress={createLanServer} disabled={serverCreating} style={[styles.serverButton, { borderColor: colors.borderStrong, backgroundColor: colors.brandPrimary, opacity: serverCreating ? 0.6 : 1 }]}>
                     <Icon name="server-network" size={18} color={colors.onBrandPrimary} />
-                    <Text style={[styles.gmButtonText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>{serverCreating ? "Starting…" : "Host Local Party"}</Text>
+                    <Text style={[styles.gmButtonText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>{serverCreating ? "Starting…" : "Host Party"}</Text>
                   </Pressable>
                 )}
                 {serverInfo && (
@@ -1232,7 +1232,7 @@ export default function CharacterListScreen() {
                     style={[styles.serverResult, { borderColor: colors.success, backgroundColor: "rgba(46,111,64,0.12)" }]}
                   >
                     <Text style={[styles.serverResultText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Room code: {serverInfo.room_code}</Text>
-                    <Text style={[styles.serverUrl, { color: colors.muted, fontFamily: fonts.body }]}>Local Wi-Fi only</Text>
+                    <Text style={[styles.serverUrl, { color: colors.muted, fontFamily: fonts.body }]}>Share this code with your players</Text>
                     <Pressable testID="leave-lan-server" onPress={leaveLanServer} style={[styles.serverJoinButton, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
                       <Icon name="logout" size={18} color={colors.brandSecondary} />
                       <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Leave</Text>
@@ -1242,8 +1242,8 @@ export default function CharacterListScreen() {
                 {serverError && <Text style={[styles.serverError, { color: colors.error, fontFamily: fonts.body }]}>{serverError}</Text>}
                 {!party.connected && <>
                   <View style={[styles.serverJoinDivider, { borderTopColor: colors.divider }]} />
-                  <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Join a Local Party</Text>
-                  <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Enter the room code shown on the host device while connected to the same Wi-Fi.</Text>
+                  <Text style={[styles.gmSectionTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>                  Join a Party</Text>
+                                    <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Enter the room code the GM shared with you.</Text>
                   <View style={styles.serverJoinRow}>
                     <TextInput
                       testID="join-lan-code"
@@ -1261,7 +1261,7 @@ export default function CharacterListScreen() {
                     </Pressable>
                   </View>
                 </>}
-                {party.connected && <Text style={[styles.serverJoined, { color: colors.success, fontFamily: fonts.displayBold }]}>{party.role === "host" ? "Hosting locally" : "Connected locally"}</Text>}
+                {party.connected && <Text style={[styles.serverJoined, { color: colors.success, fontFamily: fonts.displayBold }]}>{party.reconnecting ? "Reconnecting…" : party.role === "host" ? "Hosting" : "Connected"}</Text>}
               </View>
               </ScrollView>
             )}
@@ -1585,7 +1585,7 @@ export default function CharacterListScreen() {
               <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedSharedHero?.name || "Shared Hero"}</Text>
               <Pressable testID="shared-hero-close" onPress={() => setSelectedSharedHeroId(null)} hitSlop={8}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
             </View>
-            <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>READ ONLY · LIVE LAN VIEW</Text>
+            <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>READ ONLY · LIVE PARTY VIEW</Text>
             <ScrollView contentContainerStyle={styles.sharedHeroBody}>
               <Text style={[styles.sharedHeroClass, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedSharedHero?.className || "Hero"} · Level {selectedSharedHero?.level || "1"}</Text>
               <Text style={[styles.sharedHeroHp, { color: colors.brandSecondary, fontFamily: fonts.displayBold }]}>HP {selectedSharedHero?.hp} / {selectedSharedHero?.maxHp}</Text>
@@ -1595,7 +1595,7 @@ export default function CharacterListScreen() {
                   <Text style={[styles.sharedStatValue, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>{stat.value}</Text>
                 </View>
               ))}
-              <Text style={[styles.sharedHeroNote, { color: colors.muted, fontFamily: fonts.body }]}>This view updates from the LAN room. Editing is disabled for shared heroes.</Text>
+              <Text style={[styles.sharedHeroNote, { color: colors.muted, fontFamily: fonts.body }]}>This view updates live from the owner's hero sheet. Editing is disabled for shared heroes.</Text>
             </ScrollView>
           </View>
         </View>
