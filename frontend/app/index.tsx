@@ -959,7 +959,7 @@ export default function CharacterListScreen() {
               <Icon name="chevron-right" size={26} color={colors.muted} />
             </Pressable>
             <View style={[styles.rowActions, { borderTopColor: colors.borderStrong }]}>
-              {party.role === "client" && joinedRoom && item.kind !== "monster" && (
+              {party.role !== "idle" && joinedRoom && item.kind !== "monster" && (
                 <Pressable
                   testID={`character-row-${item.id}-party`}
                   onPress={() => partyManager.toggleCharacterForParty(item.id)}

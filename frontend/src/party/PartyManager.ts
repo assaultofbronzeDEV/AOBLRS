@@ -210,7 +210,7 @@ class PartyManager {
   }
 
   toggleCharacterForParty(characterId: string): void {
-    if (this.state.role !== "client") return;
+    if (this.state.role === "idle") return;
     const character = this.myCharacters.find((item) => item.id === characterId && item.kind !== "monster");
     if (!character) return;
     const selected = new Set(this.state.selectedCharacterIds);
@@ -249,7 +249,7 @@ class PartyManager {
       ...initialState,
       role,
       connecting: true,
-      selectedCharacterIds: role === "host" ? this.heroesOnly(this.myCharacters).map((c) => c.id) : [],
+      selectedCharacterIds: [],
     });
     return true;
   }
@@ -276,12 +276,9 @@ class PartyManager {
         role: stored.role,
         connecting: true,
         roomCode: stored.code,
-        selectedCharacterIds:
-          stored.role === "host"
-            ? this.heroesOnly(this.myCharacters).map((c) => c.id)
-            : Array.isArray(stored.selectedCharacterIds)
-              ? stored.selectedCharacterIds.filter((id) => typeof id === "string")
-              : [],
+        selectedCharacterIds: Array.isArray(stored.selectedCharacterIds)
+          ? stored.selectedCharacterIds.filter((id) => typeof id === "string")
+          : [],
       });
       this.connect();
     } catch {
@@ -491,7 +488,6 @@ class PartyManager {
 
   private shareableHeroes(): Character[] {
     const heroes = this.heroesOnly(this.myCharacters);
-    if (this.state.role === "host") return heroes.map((c) => this.withPartyPortrait(c));
     const selected = new Set(this.state.selectedCharacterIds);
     return heroes.filter((c) => selected.has(c.id)).map((c) => this.withPartyPortrait(c));
   }
