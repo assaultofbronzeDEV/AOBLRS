@@ -622,13 +622,52 @@ export default function CharacterListScreen() {
   };
 
   const openCombatantSheet = (combatant: Character) => {
-    setGmToolsOpen(false);
     if (!characters.some((hero) => hero.id === combatant.id) && sharedHeroes.some((hero) => hero.id === combatant.id)) {
       setSelectedSharedHeroId(combatant.id);
       return;
     }
+    setGmToolsOpen(false);
     router.push(`/character/${combatant.id}?age=${activeAge}`);
   };
+
+  const renderSharedHeroModal = (visible: boolean) => (
+      <Modal transparent visible={visible && selectedSharedHero != null} animationType="slide" onRequestClose={() => setSelectedSharedHeroId(null)}>
+        <View style={styles.helpBackdrop}>
+          <View style={[styles.sharedHeroCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
+            <View style={styles.helpHeader}>
+              <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold, flex: 1, textAlign: "center", paddingLeft: 22 }]}>{selectedSharedHero?.name || "Shared Hero"}</Text>
+              <Pressable testID="shared-hero-close" onPress={() => setSelectedSharedHeroId(null)} hitSlop={8}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
+            </View>
+            <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>READ ONLY · LIVE PARTY VIEW</Text>
+            <ScrollView contentContainerStyle={styles.sharedHeroBody}>
+              {selectedSharedHero?.portraitUri ? (
+                <Image
+                  testID="shared-hero-portrait"
+                  source={{ uri: selectedSharedHero.portraitUri }}
+                  style={[styles.sharedHeroPortrait, { borderColor: colors.borderStrong }]}
+                  resizeMode="cover"
+                />
+              ) : null}
+              <Text style={[styles.sharedHeroClass, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedSharedHero?.className || "Hero"} · Level {selectedSharedHero?.level || "1"}</Text>
+              <Text style={[styles.sharedHeroHp, { color: colors.brandSecondary, fontFamily: fonts.displayBold }]}>HP {selectedSharedHero?.hp} / {selectedSharedHero?.maxHp}</Text>
+              {selectedSharedHero?.backstory?.trim() ? (
+                <View style={styles.sharedBackstory}>
+                  <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>BACKSTORY</Text>
+                  <Text selectable style={[styles.sharedBackstoryText, { color: colors.onSurface, fontFamily: fonts.body }]}>{selectedSharedHero.backstory}</Text>
+                </View>
+              ) : null}
+              {selectedSharedHero?.stats.map((stat) => (
+                <View key={stat.key} style={[styles.sharedStatRow, { borderColor: colors.borderStrong }]}>
+                  <Text style={[styles.sharedStatName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{stat.name}</Text>
+                  <Text style={[styles.sharedStatValue, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>{stat.value}</Text>
+                </View>
+              ))}
+              <Text style={[styles.sharedHeroNote, { color: colors.muted, fontFamily: fonts.body }]}>This view updates live from the owner's hero sheet. Editing is disabled for shared heroes.</Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+  );
 
   const closeHeaderPanel = () => {
     setHelpOpen(false);
@@ -1593,46 +1632,12 @@ export default function CharacterListScreen() {
             </ScrollView>
           </View>
           </KeyboardAvoidingView>
+          {renderSharedHeroModal(gmToolsOpen)}
         </View>
       </Modal>
       <DiceRollModal request={gmRoll} onClose={() => setGmRoll(null)} />
 
-      <Modal transparent visible={selectedSharedHero != null} animationType="slide" onRequestClose={() => setSelectedSharedHeroId(null)}>
-        <View style={styles.helpBackdrop}>
-          <View style={[styles.sharedHeroCard, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}>
-            <View style={styles.helpHeader}>
-              <Text style={[styles.helpTitle, { color: colors.onSurface, fontFamily: fonts.displayBold, flex: 1, textAlign: "center", paddingLeft: 22 }]}>{selectedSharedHero?.name || "Shared Hero"}</Text>
-              <Pressable testID="shared-hero-close" onPress={() => setSelectedSharedHeroId(null)} hitSlop={8}><Icon name="close" size={22} color={colors.onSurface} /></Pressable>
-            </View>
-            <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>READ ONLY · LIVE PARTY VIEW</Text>
-            <ScrollView contentContainerStyle={styles.sharedHeroBody}>
-              {selectedSharedHero?.portraitUri ? (
-                <Image
-                  testID="shared-hero-portrait"
-                  source={{ uri: selectedSharedHero.portraitUri }}
-                  style={[styles.sharedHeroPortrait, { borderColor: colors.borderStrong }]}
-                  resizeMode="cover"
-                />
-              ) : null}
-              <Text style={[styles.sharedHeroClass, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{selectedSharedHero?.className || "Hero"} · Level {selectedSharedHero?.level || "1"}</Text>
-              <Text style={[styles.sharedHeroHp, { color: colors.brandSecondary, fontFamily: fonts.displayBold }]}>HP {selectedSharedHero?.hp} / {selectedSharedHero?.maxHp}</Text>
-              {selectedSharedHero?.backstory?.trim() ? (
-                <View style={styles.sharedBackstory}>
-                  <Text style={[styles.sharedHeroReadOnly, { color: colors.muted, fontFamily: fonts.displayBold }]}>BACKSTORY</Text>
-                  <Text selectable style={[styles.sharedBackstoryText, { color: colors.onSurface, fontFamily: fonts.body }]}>{selectedSharedHero.backstory}</Text>
-                </View>
-              ) : null}
-              {selectedSharedHero?.stats.map((stat) => (
-                <View key={stat.key} style={[styles.sharedStatRow, { borderColor: colors.borderStrong }]}>
-                  <Text style={[styles.sharedStatName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{stat.name}</Text>
-                  <Text style={[styles.sharedStatValue, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>{stat.value}</Text>
-                </View>
-              ))}
-              <Text style={[styles.sharedHeroNote, { color: colors.muted, fontFamily: fonts.body }]}>This view updates live from the owner's hero sheet. Editing is disabled for shared heroes.</Text>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      {renderSharedHeroModal(!gmToolsOpen)}
 
       <ExportSheetModal
         visible={exportTarget != null}
