@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useKeyboardBottomSpace } from "@/src/utils/useKeyboardBottomSpace";
 import {
   View,
   Text,
@@ -366,6 +367,8 @@ function rollHistoryTimestamp(iso: string): string {
 export default function CharacterListScreen() {
   const { colors, mode } = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardSpace = useKeyboardBottomSpace(320);
+  const partyScrollRef = useRef<ScrollView>(null);
   const router = useRouter();
   const { panel, returnTo, age } = useLocalSearchParams<{ panel?: "help" | "lore" | "gm"; returnTo?: string; age?: string }>();
   const party = usePartyState();
@@ -1224,8 +1227,9 @@ export default function CharacterListScreen() {
             )}
             {helpMode === "help" && helpTab === "party" && (
               <ScrollView
+                ref={partyScrollRef}
                 style={styles.partyScroll}
-                contentContainerStyle={[styles.partyScrollContent, { paddingBottom: insets.bottom + 280 }]}
+                contentContainerStyle={[styles.partyScrollContent, { paddingBottom: insets.bottom + 280 + keyboardSpace }]}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="interactive"
               >
@@ -1263,6 +1267,7 @@ export default function CharacterListScreen() {
                       testID="join-lan-code"
                       value={joinCode}
                       onChangeText={(value) => setJoinCode(value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase())}
+                      onFocus={() => setTimeout(() => partyScrollRef.current?.scrollToEnd({ animated: true }), 300)}
                       placeholder="ABC123"
                       placeholderTextColor={colors.muted}
                       autoCapitalize="characters"
