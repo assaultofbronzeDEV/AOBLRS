@@ -455,6 +455,8 @@ export default function CharacterListScreen() {
   const [gmLootExportOpen, setGmLootExportOpen] = useState(false);
   const [gmLootShopOpen, setGmLootShopOpen] = useState(false);
   const ageCatalog = getAgeCatalog(activeAge);
+  const { width: winWidth, height: winHeight } = useWindowDimensions();
+  const gmLandscape = winWidth > winHeight;
 
   useEffect(() => {
     if (panel === "help") {
@@ -859,6 +861,272 @@ export default function CharacterListScreen() {
     setJoinedRoom(null);
     setSharedHeroes([]);
   };
+
+  const renderGmSections = (show: string[]) => (
+    <>
+              {show.includes("dice") && (
+              <GmSection title="Quick Dice Roller" icon="dice-d20">
+              <View style={styles.gmFieldRow}>
+                <Text style={[styles.gmLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>Roll</Text>
+                <TextInput
+                  testID="gm-roll-input"
+                  value={gmNotation}
+                  onChangeText={setGmNotation}
+                  placeholder="1d20"
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  disableFullscreenUI
+                  style={[styles.gmInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.body }]}
+                />
+              </View>
+              <View style={styles.gmFieldRow}>
+                <Text style={[styles.gmLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>Damage</Text>
+                <TextInput
+                  testID="gm-damage-input"
+                  value={gmDamage}
+                  onChangeText={setGmDamage}
+                  placeholder="Optional, e.g. 1d8+2"
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  disableFullscreenUI
+                  style={[styles.gmInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.body }]}
+                />
+              </View>
+              <Pressable testID="gm-roll-button" onPress={() => quickRoll(gmNotation)} style={[styles.gmPrimaryBtn, { backgroundColor: colors.brandPrimary, borderColor: colors.borderStrong }]}> 
+                <Icon name="dice-d20" size={18} color={colors.onBrandPrimary} />
+                <Text style={[styles.gmButtonText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>Roll Dice</Text>
+              </Pressable>
+              {!!gmDamage.trim() && (
+                <Pressable testID="gm-damage-button" onPress={() => quickRoll(gmDamage)} style={[styles.gmSecondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}> 
+                  <Icon name="sword-cross" size={17} color={colors.brandSecondary} />
+                  <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Roll Damage</Text>
+                </Pressable>
+              )}
+
+              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Weapon rolls from your character sheets:</Text>
+              <View style={styles.gmWeaponList}>
+                {characters.flatMap((character) => character.weapons.map((weapon) => ({ character, weapon }))).map(({ character, weapon }) => (
+                  <Pressable
+                    key={`${character.id}-${weapon.id}`}
+                    testID={`gm-weapon-${weapon.id}`}
+                    onPress={() => { setGmNotation("1d20"); setGmDamage(weapon.damageRoll); }}
+                    style={[styles.gmWeaponBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}
+                  >
+                    <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{weapon.name || "Unnamed weapon"}</Text>
+                    <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{character.name || "Unnamed"} · {weapon.damageRoll}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              </GmSection>
+              )}
+
+              {show.includes("loot") && (
+              <GmSection title="Loot" icon="treasure-chest">
+              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>
+                Roll a random haul from every storefront category, then export it for your players to import.
+              </Text>
+              <Pressable testID="gm-loot-generate" onPress={generateGmLoot} style={[styles.gmPrimaryBtn, { backgroundColor: colors.brandPrimary, borderColor: colors.borderStrong }]}>
+                <Icon name="dice-multiple" size={18} color={colors.onBrandPrimary} />
+                <Text style={[styles.gmButtonText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>Generate Loot Bundle</Text>
+              </Pressable>
+              <Pressable testID="gm-loot-add" onPress={() => setGmLootShopOpen(true)} style={[styles.gmSecondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
+                <Icon name="plus-box-outline" size={17} color={colors.brandPrimary} />
+                <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Add Items to Loot</Text>
+              </Pressable>
+              {gmLootBundle && (
+                <>
+                  <View style={styles.gmWeaponList}>
+                    {gmLootBundle.items.map((item, index) => (
+                      <View key={`${item.name}-${index}`} style={[styles.gmWeaponBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+                        <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{item.name}</Text>
+                        {item.notes ? <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{item.notes}</Text> : null}
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={[styles.gmLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>Coin</Text>
+                  <View style={styles.gmCoinRow}>
+                    {([
+                      ["gold", "G"],
+                      ["silver", "S"],
+                      ["bronze", "B"],
+                    ] as const).map(([key, short]) => (
+                      <View key={key} style={styles.gmCoinField}>
+                        <Text style={[styles.gmCoinLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>{short}</Text>
+                        <TextInput
+                          testID={`gm-loot-coin-${key}`}
+                          value={String(gmLootBundle.currency[key])}
+                          onChangeText={(value) => {
+                            const n = Math.max(0, parseInt(value.replace(/\D/g, ""), 10) || 0);
+                            setGmLootBundle((prev) => (prev ? { ...prev, currency: { ...prev.currency, [key]: n } } : prev));
+                          }}
+                          keyboardType="number-pad"
+                          disableFullscreenUI
+                          style={[styles.gmCoinInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.displayBold }]}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                  <Pressable testID="gm-loot-export" onPress={() => setGmLootExportOpen(true)} style={[styles.gmSecondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
+                    <Icon name="file-export-outline" size={17} color={colors.brandSecondary} />
+                    <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Export Loot Bundle</Text>
+                  </Pressable>
+                </>
+              )}
+              </GmSection>
+              )}
+
+              {show.includes("initiative") && (
+              <GmSection
+                title="Initiative"
+                icon="sword-cross"
+                right={
+                <Pressable testID="gm-next-turn" onPress={nextTurn} style={[styles.nextTurnBtn, { backgroundColor: colors.success, borderColor: colors.borderStrong }]}>
+                  <Icon name="skip-next" size={16} color={colors.onSuccess} />
+                  <Text style={[styles.gmButtonText, { color: colors.onSuccess, fontFamily: fonts.displayBold }]}>Next Turn</Text>
+                </Pressable>
+                }
+              >
+              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Higher numbers act first. Tap an enemy to open its sheet.</Text>
+              {initiativeRows.length > 0 && (
+              <View testID="gm-initiative-tracker" style={[styles.initiativeTracker, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+              {initiativeRows.map((entry, index) => (
+                <View key={entry.id} style={[styles.initiativeRow, { borderColor: index === turnIndex ? colors.success : colors.borderStrong, backgroundColor: index === turnIndex ? "rgba(46,111,64,0.14)" : colors.surfaceSecondary }]}>
+                  <Pressable testID={`gm-initiative-open-${entry.id}`} onPress={() => openCombatantSheet(entry.combatant)} style={styles.initiativeName}>
+                    <Icon name={entry.combatant.kind === "monster" ? "spider" : "shield-sword"} size={17} color={index === turnIndex ? colors.success : colors.brandPrimary} />
+                    <Text numberOfLines={1} style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{entry.combatant.name || "Unnamed combatant"}</Text>
+                  </Pressable>
+                  <TextInput testID={`gm-initiative-order-${entry.id}`} value={entry.order} onChangeText={(value) => updateInitiativeOrder(entry.id, value.replace(/\D/g, ""))} keyboardType="number-pad" style={[styles.initiativeInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.displayBold }]} />
+                  <Pressable testID={`gm-remove-initiative-${entry.id}`} onPress={() => removeFromInitiative(entry.id)} hitSlop={6}><Icon name="close" size={18} color={colors.brandSecondary} /></Pressable>
+                </View>
+              ))}
+              </View>
+              )}
+              <View style={[styles.availableCombatantsHeader, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+                <Pressable
+                  testID="gm-party-toggle"
+                  onPress={() => setPartyCombatantsCollapsed((collapsed) => !collapsed)}
+                  style={styles.availableCombatantsToggle}
+                >
+                  <Icon name="wifi" size={17} color={colors.success} />
+                  <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Party</Text>
+                  <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{sharedHeroes.length}</Text>
+                  <Icon name={partyCombatantsCollapsed ? "chevron-down" : "chevron-up"} size={20} color={colors.onSurface} />
+                </Pressable>
+                <Pressable
+                  testID="gm-add-all-party"
+                  onPress={() => addAllToInitiative(sharedHeroes)}
+                  style={[styles.quickAddButton, { borderColor: colors.borderStrong, backgroundColor: colors.brandPrimary }]}
+                >
+                  <Icon name="plus-box-multiple-outline" size={16} color={colors.onBrandPrimary} />
+                  <Text style={[styles.quickAddText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>Add all</Text>
+                </Pressable>
+              </View>
+              {!partyCombatantsCollapsed && sharedHeroes.map((combatant) => (
+                <Pressable key={combatant.id} testID={`gm-add-party-${combatant.id}`} onPress={() => addToInitiative(combatant)} style={[styles.addInitiativeBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+                  <Icon name="shield-sword" size={16} color={colors.success} />
+                  <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{combatant.name || "Unnamed party member"}</Text>
+                  <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>Party member</Text>
+                </Pressable>
+              ))}
+              <View style={[styles.availableCombatantsHeader, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+                <Pressable
+                  testID="gm-available-combatants-toggle"
+                  onPress={() => setAvailableCombatantsCollapsed((collapsed) => !collapsed)}
+                  style={styles.availableCombatantsToggle}
+                >
+                  <Icon name="account-multiple-outline" size={17} color={colors.brandPrimary} />
+                  <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Available Combatants</Text>
+                  <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{availableCombatants.length}</Text>
+                  <Icon name={availableCombatantsCollapsed ? "chevron-down" : "chevron-up"} size={20} color={colors.onSurface} />
+                </Pressable>
+                <Pressable
+                  testID="gm-add-all-combatants"
+                  onPress={() => addAllToInitiative(availableCombatants)}
+                  style={[styles.quickAddButton, { borderColor: colors.borderStrong, backgroundColor: colors.brandPrimary }]}
+                >
+                  <Icon name="plus-box-multiple-outline" size={16} color={colors.onBrandPrimary} />
+                  <Text style={[styles.quickAddText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>Add all</Text>
+                </Pressable>
+              </View>
+              {!availableCombatantsCollapsed && availableCombatants.map((combatant) => (
+                <Pressable key={combatant.id} testID={`gm-add-combatant-${combatant.id}`} onPress={() => addToInitiative(combatant)} style={[styles.addInitiativeBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+                  <Icon name={combatant.kind === "monster" ? "spider" : "shield-sword"} size={16} color={colors.brandPrimary} />
+                  <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{combatant.name || "Unnamed combatant"}</Text>
+                  <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{combatant.kind === "monster" ? "Enemy" : "Hero"}</Text>
+                </Pressable>
+              ))}
+              </GmSection>
+              )}
+
+              {show.includes("history") && (
+              <GmSection title="Party Roll History" icon="history">
+              {partyRollHistory.length === 0 ? (
+                <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>No party rolls recorded yet.</Text>
+              ) : (
+                partyRollGroups.map((group) => (
+                  <View key={group.key} style={styles.gmHistoryGroup}>
+                    <View style={styles.gmHistoryGroupToggle}>
+                      <Pressable
+                        onPress={() => setCollapsedRollHistoryGroups((current) => ({ ...current, [group.key]: !current[group.key] }))}
+                        style={styles.gmHistoryGroupToggleMain}
+                      >
+                        <Text numberOfLines={1} style={[styles.gmHistoryDate, { color: colors.muted, fontFamily: fonts.displayBold }]}>
+                          {(groupLabels[group.key] || rollHistoryTimestamp(group.timestamp))} ({group.entries.length})
+                        </Text>
+                        <Icon name={collapsedRollHistoryGroups[group.key] ? "chevron-down" : "chevron-up"} size={18} color={colors.muted} />
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setRenamingGroupKey((current) => (current === group.key ? null : group.key))}
+                        hitSlop={8}
+                      >
+                        <Icon name="pencil-outline" size={15} color={colors.muted} />
+                      </Pressable>
+                    </View>
+                    {renamingGroupKey === group.key && (
+                      <TextInput
+                        value={groupLabels[group.key] ?? ""}
+                        onChangeText={(name) => setGroupLabels((current) => ({ ...current, [group.key]: name }))}
+                        onSubmitEditing={() => setRenamingGroupKey(null)}
+                        onBlur={() => setRenamingGroupKey(null)}
+                        placeholder={rollHistoryTimestamp(group.timestamp)}
+                        placeholderTextColor={colors.muted}
+                        disableFullscreenUI
+                        style={[styles.gmHistoryGroupNameInput, { borderColor: colors.divider, color: colors.onSurface, fontFamily: fonts.body }]}
+                      />
+                    )}
+                    {!collapsedRollHistoryGroups[group.key] && group.entries.map((entry) => (
+                      <View key={`${entry.characterId}-${entry.id}`} style={[styles.gmHistoryRow, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
+                        <View style={styles.gmHistoryTopRow}>
+                          <View style={styles.gmHistoryDetails}>
+                            <Text numberOfLines={1} style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{entry.label}</Text>
+                            <Text numberOfLines={1} style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{entry.characterName}</Text>
+                          </View>
+                          <Text style={[styles.gmHistoryResult, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
+                            {entry.effect ? `${entry.effect.type === "healing" ? "HEAL" : "DMG"} ${entry.effect.total}` : entry.rolled != null ? `d20 ${entry.rolled}` : "Roll"}
+                          </Text>
+                          <Text style={[styles.gmHistoryTime, { color: colors.muted, fontFamily: fonts.body }]}>{rollHistoryTime(entry.at)}</Text>
+                        </View>
+                        <TextInput
+                          value={rollNotes[`${entry.characterId}:${entry.id}`] ?? ""}
+                          onChangeText={(description) => setRollNotes((current) => ({ ...current, [`${entry.characterId}:${entry.id}`]: description }))}
+                          onBlur={() => partyManager.updateRollNotes(rollNotes)}
+                          placeholder="Add a note about this roll"
+                          placeholderTextColor={colors.muted}
+                          multiline
+                          disableFullscreenUI
+                          style={[styles.gmHistoryNote, { borderColor: colors.divider, color: colors.onSurface, fontFamily: fonts.body }]}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                ))
+              )}
+              </GmSection>
+              )}
+    </>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface, paddingTop: insets.top }]}>
@@ -1424,261 +1692,20 @@ export default function CharacterListScreen() {
               </Pressable>
             </View>
 
-            <ScrollView contentContainerStyle={[styles.gmBody, { paddingBottom: insets.bottom + 24 + keyboardSpace }]} keyboardShouldPersistTaps="handled">
-              <GmSection title="Quick Dice Roller" icon="dice-d20">
-              <View style={styles.gmFieldRow}>
-                <Text style={[styles.gmLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>Roll</Text>
-                <TextInput
-                  testID="gm-roll-input"
-                  value={gmNotation}
-                  onChangeText={setGmNotation}
-                  placeholder="1d20"
-                  placeholderTextColor={colors.muted}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  disableFullscreenUI
-                  style={[styles.gmInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.body }]}
-                />
+            {gmLandscape ? (
+              <View style={styles.gmColumns}>
+                <ScrollView style={styles.gmColumn} contentContainerStyle={[styles.gmBody, { paddingBottom: insets.bottom + 24 + keyboardSpace }]} keyboardShouldPersistTaps="handled">
+                  {renderGmSections(["dice", "loot"])}
+                </ScrollView>
+                <ScrollView style={styles.gmColumn} contentContainerStyle={[styles.gmBody, { paddingBottom: insets.bottom + 24 + keyboardSpace }]} keyboardShouldPersistTaps="handled">
+                  {renderGmSections(["initiative", "history"])}
+                </ScrollView>
               </View>
-              <View style={styles.gmFieldRow}>
-                <Text style={[styles.gmLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>Damage</Text>
-                <TextInput
-                  testID="gm-damage-input"
-                  value={gmDamage}
-                  onChangeText={setGmDamage}
-                  placeholder="Optional, e.g. 1d8+2"
-                  placeholderTextColor={colors.muted}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  disableFullscreenUI
-                  style={[styles.gmInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.body }]}
-                />
-              </View>
-              <Pressable testID="gm-roll-button" onPress={() => quickRoll(gmNotation)} style={[styles.gmPrimaryBtn, { backgroundColor: colors.brandPrimary, borderColor: colors.borderStrong }]}> 
-                <Icon name="dice-d20" size={18} color={colors.onBrandPrimary} />
-                <Text style={[styles.gmButtonText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>Roll Dice</Text>
-              </Pressable>
-              {!!gmDamage.trim() && (
-                <Pressable testID="gm-damage-button" onPress={() => quickRoll(gmDamage)} style={[styles.gmSecondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}> 
-                  <Icon name="sword-cross" size={17} color={colors.brandSecondary} />
-                  <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Roll Damage</Text>
-                </Pressable>
-              )}
-
-              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Weapon rolls from your character sheets:</Text>
-              <View style={styles.gmWeaponList}>
-                {characters.flatMap((character) => character.weapons.map((weapon) => ({ character, weapon }))).map(({ character, weapon }) => (
-                  <Pressable
-                    key={`${character.id}-${weapon.id}`}
-                    testID={`gm-weapon-${weapon.id}`}
-                    onPress={() => { setGmNotation("1d20"); setGmDamage(weapon.damageRoll); }}
-                    style={[styles.gmWeaponBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}
-                  >
-                    <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{weapon.name || "Unnamed weapon"}</Text>
-                    <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{character.name || "Unnamed"} · {weapon.damageRoll}</Text>
-                  </Pressable>
-                ))}
-              </View>
-              </GmSection>
-
-              <GmSection title="Loot" icon="treasure-chest">
-              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>
-                Roll a random haul from every storefront category, then export it for your players to import.
-              </Text>
-              <Pressable testID="gm-loot-generate" onPress={generateGmLoot} style={[styles.gmPrimaryBtn, { backgroundColor: colors.brandPrimary, borderColor: colors.borderStrong }]}>
-                <Icon name="dice-multiple" size={18} color={colors.onBrandPrimary} />
-                <Text style={[styles.gmButtonText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>Generate Loot Bundle</Text>
-              </Pressable>
-              <Pressable testID="gm-loot-add" onPress={() => setGmLootShopOpen(true)} style={[styles.gmSecondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
-                <Icon name="plus-box-outline" size={17} color={colors.brandPrimary} />
-                <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Add Items to Loot</Text>
-              </Pressable>
-              {gmLootBundle && (
-                <>
-                  <View style={styles.gmWeaponList}>
-                    {gmLootBundle.items.map((item, index) => (
-                      <View key={`${item.name}-${index}`} style={[styles.gmWeaponBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
-                        <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{item.name}</Text>
-                        {item.notes ? <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{item.notes}</Text> : null}
-                      </View>
-                    ))}
-                  </View>
-                  <Text style={[styles.gmLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>Coin</Text>
-                  <View style={styles.gmCoinRow}>
-                    {([
-                      ["gold", "G"],
-                      ["silver", "S"],
-                      ["bronze", "B"],
-                    ] as const).map(([key, short]) => (
-                      <View key={key} style={styles.gmCoinField}>
-                        <Text style={[styles.gmCoinLabel, { color: colors.muted, fontFamily: fonts.displayBold }]}>{short}</Text>
-                        <TextInput
-                          testID={`gm-loot-coin-${key}`}
-                          value={String(gmLootBundle.currency[key])}
-                          onChangeText={(value) => {
-                            const n = Math.max(0, parseInt(value.replace(/\D/g, ""), 10) || 0);
-                            setGmLootBundle((prev) => (prev ? { ...prev, currency: { ...prev.currency, [key]: n } } : prev));
-                          }}
-                          keyboardType="number-pad"
-                          disableFullscreenUI
-                          style={[styles.gmCoinInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.displayBold }]}
-                        />
-                      </View>
-                    ))}
-                  </View>
-                  <Pressable testID="gm-loot-export" onPress={() => setGmLootExportOpen(true)} style={[styles.gmSecondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderStrong }]}>
-                    <Icon name="file-export-outline" size={17} color={colors.brandSecondary} />
-                    <Text style={[styles.gmButtonText, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Export Loot Bundle</Text>
-                  </Pressable>
-                </>
-              )}
-              </GmSection>
-
-              <GmSection
-                title="Initiative"
-                icon="sword-cross"
-                right={
-                <Pressable testID="gm-next-turn" onPress={nextTurn} style={[styles.nextTurnBtn, { backgroundColor: colors.success, borderColor: colors.borderStrong }]}>
-                  <Icon name="skip-next" size={16} color={colors.onSuccess} />
-                  <Text style={[styles.gmButtonText, { color: colors.onSuccess, fontFamily: fonts.displayBold }]}>Next Turn</Text>
-                </Pressable>
-                }
-              >
-              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Higher numbers act first. Tap an enemy to open its sheet.</Text>
-              {initiativeRows.length > 0 && (
-              <View testID="gm-initiative-tracker" style={[styles.initiativeTracker, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
-              {initiativeRows.map((entry, index) => (
-                <View key={entry.id} style={[styles.initiativeRow, { borderColor: index === turnIndex ? colors.success : colors.borderStrong, backgroundColor: index === turnIndex ? "rgba(46,111,64,0.14)" : colors.surfaceSecondary }]}>
-                  <Pressable testID={`gm-initiative-open-${entry.id}`} onPress={() => openCombatantSheet(entry.combatant)} style={styles.initiativeName}>
-                    <Icon name={entry.combatant.kind === "monster" ? "spider" : "shield-sword"} size={17} color={index === turnIndex ? colors.success : colors.brandPrimary} />
-                    <Text numberOfLines={1} style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{entry.combatant.name || "Unnamed combatant"}</Text>
-                  </Pressable>
-                  <TextInput testID={`gm-initiative-order-${entry.id}`} value={entry.order} onChangeText={(value) => updateInitiativeOrder(entry.id, value.replace(/\D/g, ""))} keyboardType="number-pad" style={[styles.initiativeInput, { color: colors.onSurface, borderColor: colors.borderStrong, fontFamily: fonts.displayBold }]} />
-                  <Pressable testID={`gm-remove-initiative-${entry.id}`} onPress={() => removeFromInitiative(entry.id)} hitSlop={6}><Icon name="close" size={18} color={colors.brandSecondary} /></Pressable>
-                </View>
-              ))}
-              </View>
-              )}
-              <View style={[styles.availableCombatantsHeader, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
-                <Pressable
-                  testID="gm-party-toggle"
-                  onPress={() => setPartyCombatantsCollapsed((collapsed) => !collapsed)}
-                  style={styles.availableCombatantsToggle}
-                >
-                  <Icon name="wifi" size={17} color={colors.success} />
-                  <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Party</Text>
-                  <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{sharedHeroes.length}</Text>
-                  <Icon name={partyCombatantsCollapsed ? "chevron-down" : "chevron-up"} size={20} color={colors.onSurface} />
-                </Pressable>
-                <Pressable
-                  testID="gm-add-all-party"
-                  onPress={() => addAllToInitiative(sharedHeroes)}
-                  style={[styles.quickAddButton, { borderColor: colors.borderStrong, backgroundColor: colors.brandPrimary }]}
-                >
-                  <Icon name="plus-box-multiple-outline" size={16} color={colors.onBrandPrimary} />
-                  <Text style={[styles.quickAddText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>Add all</Text>
-                </Pressable>
-              </View>
-              {!partyCombatantsCollapsed && sharedHeroes.map((combatant) => (
-                <Pressable key={combatant.id} testID={`gm-add-party-${combatant.id}`} onPress={() => addToInitiative(combatant)} style={[styles.addInitiativeBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
-                  <Icon name="shield-sword" size={16} color={colors.success} />
-                  <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{combatant.name || "Unnamed party member"}</Text>
-                  <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>Party member</Text>
-                </Pressable>
-              ))}
-              <View style={[styles.availableCombatantsHeader, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
-                <Pressable
-                  testID="gm-available-combatants-toggle"
-                  onPress={() => setAvailableCombatantsCollapsed((collapsed) => !collapsed)}
-                  style={styles.availableCombatantsToggle}
-                >
-                  <Icon name="account-multiple-outline" size={17} color={colors.brandPrimary} />
-                  <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>Available Combatants</Text>
-                  <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{availableCombatants.length}</Text>
-                  <Icon name={availableCombatantsCollapsed ? "chevron-down" : "chevron-up"} size={20} color={colors.onSurface} />
-                </Pressable>
-                <Pressable
-                  testID="gm-add-all-combatants"
-                  onPress={() => addAllToInitiative(availableCombatants)}
-                  style={[styles.quickAddButton, { borderColor: colors.borderStrong, backgroundColor: colors.brandPrimary }]}
-                >
-                  <Icon name="plus-box-multiple-outline" size={16} color={colors.onBrandPrimary} />
-                  <Text style={[styles.quickAddText, { color: colors.onBrandPrimary, fontFamily: fonts.displayBold }]}>Add all</Text>
-                </Pressable>
-              </View>
-              {!availableCombatantsCollapsed && availableCombatants.map((combatant) => (
-                <Pressable key={combatant.id} testID={`gm-add-combatant-${combatant.id}`} onPress={() => addToInitiative(combatant)} style={[styles.addInitiativeBtn, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
-                  <Icon name={combatant.kind === "monster" ? "spider" : "shield-sword"} size={16} color={colors.brandPrimary} />
-                  <Text style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{combatant.name || "Unnamed combatant"}</Text>
-                  <Text style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{combatant.kind === "monster" ? "Enemy" : "Hero"}</Text>
-                </Pressable>
-              ))}
-              </GmSection>
-
-              <GmSection title="Party Roll History" icon="history">
-              {partyRollHistory.length === 0 ? (
-                <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>No party rolls recorded yet.</Text>
-              ) : (
-                partyRollGroups.map((group) => (
-                  <View key={group.key} style={styles.gmHistoryGroup}>
-                    <View style={styles.gmHistoryGroupToggle}>
-                      <Pressable
-                        onPress={() => setCollapsedRollHistoryGroups((current) => ({ ...current, [group.key]: !current[group.key] }))}
-                        style={styles.gmHistoryGroupToggleMain}
-                      >
-                        <Text numberOfLines={1} style={[styles.gmHistoryDate, { color: colors.muted, fontFamily: fonts.displayBold }]}>
-                          {(groupLabels[group.key] || rollHistoryTimestamp(group.timestamp))} ({group.entries.length})
-                        </Text>
-                        <Icon name={collapsedRollHistoryGroups[group.key] ? "chevron-down" : "chevron-up"} size={18} color={colors.muted} />
-                      </Pressable>
-                      <Pressable
-                        onPress={() => setRenamingGroupKey((current) => (current === group.key ? null : group.key))}
-                        hitSlop={8}
-                      >
-                        <Icon name="pencil-outline" size={15} color={colors.muted} />
-                      </Pressable>
-                    </View>
-                    {renamingGroupKey === group.key && (
-                      <TextInput
-                        value={groupLabels[group.key] ?? ""}
-                        onChangeText={(name) => setGroupLabels((current) => ({ ...current, [group.key]: name }))}
-                        onSubmitEditing={() => setRenamingGroupKey(null)}
-                        onBlur={() => setRenamingGroupKey(null)}
-                        placeholder={rollHistoryTimestamp(group.timestamp)}
-                        placeholderTextColor={colors.muted}
-                        disableFullscreenUI
-                        style={[styles.gmHistoryGroupNameInput, { borderColor: colors.divider, color: colors.onSurface, fontFamily: fonts.body }]}
-                      />
-                    )}
-                    {!collapsedRollHistoryGroups[group.key] && group.entries.map((entry) => (
-                      <View key={`${entry.characterId}-${entry.id}`} style={[styles.gmHistoryRow, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
-                        <View style={styles.gmHistoryTopRow}>
-                          <View style={styles.gmHistoryDetails}>
-                            <Text numberOfLines={1} style={[styles.gmWeaponName, { color: colors.onSurface, fontFamily: fonts.displayBold }]}>{entry.label}</Text>
-                            <Text numberOfLines={1} style={[styles.gmWeaponMeta, { color: colors.muted, fontFamily: fonts.body }]}>{entry.characterName}</Text>
-                          </View>
-                          <Text style={[styles.gmHistoryResult, { color: colors.brandPrimary, fontFamily: fonts.displayBold }]}>
-                            {entry.effect ? `${entry.effect.type === "healing" ? "HEAL" : "DMG"} ${entry.effect.total}` : entry.rolled != null ? `d20 ${entry.rolled}` : "Roll"}
-                          </Text>
-                          <Text style={[styles.gmHistoryTime, { color: colors.muted, fontFamily: fonts.body }]}>{rollHistoryTime(entry.at)}</Text>
-                        </View>
-                        <TextInput
-                          value={rollNotes[`${entry.characterId}:${entry.id}`] ?? ""}
-                          onChangeText={(description) => setRollNotes((current) => ({ ...current, [`${entry.characterId}:${entry.id}`]: description }))}
-                          onBlur={() => partyManager.updateRollNotes(rollNotes)}
-                          placeholder="Add a note about this roll"
-                          placeholderTextColor={colors.muted}
-                          multiline
-                          disableFullscreenUI
-                          style={[styles.gmHistoryNote, { borderColor: colors.divider, color: colors.onSurface, fontFamily: fonts.body }]}
-                        />
-                      </View>
-                    ))}
-                  </View>
-                ))
-              )}
-              </GmSection>
-            </ScrollView>
+            ) : (
+              <ScrollView contentContainerStyle={[styles.gmBody, { paddingBottom: insets.bottom + 24 + keyboardSpace }]} keyboardShouldPersistTaps="handled">
+                {renderGmSections(["dice", "loot", "initiative", "history"])}
+              </ScrollView>
+            )}
           </View>
           </KeyboardAvoidingView>
           {renderSharedHeroModal(gmToolsOpen)}
@@ -2067,6 +2094,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   gmBody: { paddingBottom: 24, gap: 14 },
+  gmColumns: { flex: 1, flexDirection: "row", gap: 14 },
+  gmColumn: { flex: 1, minWidth: 0 },
   sharedHeroesWrap: { width: "100%" },
   gmBox: {},
   initiativeTracker: { borderWidth: 2, borderRadius: 6, padding: 8, gap: 8 },
