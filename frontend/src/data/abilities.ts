@@ -212,6 +212,14 @@ export const ABILITY_PRESETS: AbilityPreset[] = [
 
   // ── Once Per Rest (powerful — 1d10 minimum) ───────────────
   {
+    id: "runic-spellcraft",
+    name: "Runic Spellcraft",
+    description: "Once per Long Rest, forge a permanent spell by placing Intent, Behaviour, and Power runes on the Spell Wheel. One to four runes create a once-per-turn spell; five to eight create a once-per-rest spell.",
+    category: "Once Per Rest",
+    effectType: "none",
+    tag: "Runic magic",
+  },
+  {
     id: "brew-potion",
     name: "Brew Potion",
     description: "Choose a potion to brew. Costs ingredients and requires an available formula level.",

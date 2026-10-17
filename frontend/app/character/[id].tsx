@@ -43,6 +43,7 @@ import StatCard from "@/src/components/StatCard";
 import FlatStatCard, { abbreviateStat } from "@/src/components/FlatStatCard";
 import LabeledField from "@/src/components/LabeledField";
 import AbilityCard from "@/src/components/AbilityCard";
+import RunicSpellcraftModal from "@/src/components/RunicSpellcraftModal";
 import CustomSectionCard from "@/src/components/CustomSectionCard";
 import DiceRollModal, { RollRequest } from "@/src/components/DiceRollModal";
 import ArmourCard from "@/src/components/ArmourCard";
@@ -137,6 +138,7 @@ export default function CharacterSheetScreen() {
   const [pendingPotionRoll, setPendingPotionRoll] = useState(false);
   const [pendingPotionAbilityId, setPendingPotionAbilityId] = useState<string | null>(null);
   const [pendingLongRest, setPendingLongRest] = useState(false);
+  const [runicSpellcraftOpen, setRunicSpellcraftOpen] = useState(false);
   const [shoppingOpen, setShoppingOpen] = useState(false);
   const [lootOpen, setLootOpen] = useState(false);
   const [infoMessage, setInfoMessage] = useState<{ icon: string; title: string; body: string } | null>(null);
@@ -385,6 +387,13 @@ export default function CharacterSheetScreen() {
       setHeroPointsWarning("Already used. Take a Long Rest to refresh this ability.");
       return;
     }
+    if (
+      (ability.id === "runic-spellcraft" || ability.title.trim().toLowerCase() === "runic spellcraft") &&
+      char.kind === "hero"
+    ) {
+      setRunicSpellcraftOpen(true);
+      return;
+    }
     if (isHero && ability.used) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       setHeroPointsWarning("Already used. Take a Long Rest to refresh this ability.");
@@ -416,7 +425,7 @@ export default function CharacterSheetScreen() {
         : undefined;
 
     if (target == null && !effect) {
-      if (!isHero && !char.oncePerTurn.some((a) => a.id === ability.id)) return;
+      if (!isHero && !isOncePerRest && !char.oncePerTurn.some((a) => a.id === ability.id)) return;
       if (isHero) update({ heroPoints: Math.max(0, char.heroPoints - 1) });
       if (isHero) {
         update({
@@ -424,10 +433,16 @@ export default function CharacterSheetScreen() {
             a.id === ability.id ? { ...a, used: true } : a,
           ),
         });
+      } else if (isOncePerRest) {
+        update({
+          oncePerRest: char.oncePerRest.map((a) =>
+            a.id === ability.id ? { ...a, used: true } : a,
+          ),
+        });
       } else {
         update({
           oncePerTurn: char.oncePerTurn.map((a) =>
-            a.id === ability.id ? { ...a, used: true } : a,
+            a.id === ability.id ? { ...a, used: false } : a,
           ),
         });
       }
@@ -464,6 +479,31 @@ export default function CharacterSheetScreen() {
     });
     if (rollMode !== "normal") setRollMode("normal");
     if (boostPending) setBoostPending(false);
+  };
+
+  const forgeRunicSpell = (spell: Ability) => {
+    if (!char || !spell.runicSpell) return;
+    const spellcraft = char.oncePerRest.find(
+      (ability) => ability.id === "runic-spellcraft" || ability.title.trim().toLowerCase() === "runic spellcraft",
+    );
+    if (!spellcraft || spellcraft.used) {
+      setRunicSpellcraftOpen(false);
+      setHeroPointsWarning("Runic Spellcraft is unavailable. Take a Long Rest to refresh it.");
+      return;
+    }
+
+    const oncePerRest = char.oncePerRest.map((ability) =>
+      ability.id === spellcraft.id ? { ...ability, used: true } : ability,
+    );
+    const oncePerTurn = [...char.oncePerTurn];
+    if (spell.runicSpell.frequency === "oncePerTurn") {
+      oncePerTurn.push(spell);
+    } else {
+      oncePerRest.push(spell);
+    }
+    update({ oncePerTurn, oncePerRest });
+    setRunicSpellcraftOpen(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   const addCustomSection = () => {
@@ -1772,6 +1812,12 @@ export default function CharacterSheetScreen() {
           }
         }}
       />
+      {runicSpellcraftOpen ? (
+        <RunicSpellcraftModal
+          onClose={() => setRunicSpellcraftOpen(false)}
+          onCreate={forgeRunicSpell}
+        />
+      ) : null}
 
       <Modal
         transparent

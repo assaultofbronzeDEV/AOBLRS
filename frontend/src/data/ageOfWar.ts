@@ -35,6 +35,7 @@ export const AGE_OF_WAR_ITEMS: ItemPreset[] = [
 ];
 
 export const AGE_OF_WAR_ABILITIES: AbilityPreset[] = [
+  { id: "runic-spellcraft", name: "Runic Spellcraft", description: "Once per Long Rest, forge a permanent spell by placing Intent, Behaviour, and Power runes on the Spell Wheel. One to four runes create a once-per-turn spell; five to eight create a once-per-rest spell.", category: "Once Per Rest", effectType: "none", tag: "Runic magic" },
   { id: "power-surge", name: "Power Surge", description: "Overload a nearby conduit and release a violent arc of energy.", category: "Starter Spells", effectType: "damage", effectRoll: "1d8+1d6", linkedStat: INT_MAIN, tag: "War magic" },
   { id: "hex-round", name: "Hex Round", description: "Mark a target with a vicious curse; the next hit tears deeper.", category: "Class Specials", effectType: "damage", effectRoll: "1d6+2", linkedStat: DEX_RANGED, tag: "Dark magic" },
   { id: "blood-ward", name: "Blood Ward", description: "Spend vitality to turn a killing blow aside.", category: "Once Per Rest", effectType: "healing", effectRoll: "1d10+1d6", linkedStat: INT_MAIN, tag: "Dark magic" },

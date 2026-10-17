@@ -32,6 +32,13 @@ export type Ability = {
   effectRoll: string;
   effectType: EffectType;
   used?: boolean;
+  runicSpell?: {
+    intent: string;
+    behaviours: { rune: string; position: number }[];
+    powers: { rune: string; position: number }[];
+    runeCount: number;
+    frequency: "oncePerTurn" | "oncePerRest";
+  };
 };
 
 export type CustomSection = {
@@ -303,17 +310,24 @@ export const migrateCharacter = (raw: any): Character => {
     effectRoll: a?.effectRoll ?? "",
     effectType: a?.effectType ?? "none",
     used: !!a?.used,
+    runicSpell: a?.runicSpell,
   });
   const oncePerTurn = Array.isArray(raw.oncePerTurn)
     ? raw.oncePerTurn.map(migratedAbility)
     : typeof raw.oncePerTurn === "string" && raw.oncePerTurn.trim()
       ? [{ ...createEmptyAbility(), description: raw.oncePerTurn }]
       : [];
-  const oncePerRest = Array.isArray(raw.oncePerRest)
+  const migratedOncePerRest: Ability[] = Array.isArray(raw.oncePerRest)
     ? raw.oncePerRest.map(migratedAbility)
     : typeof raw.oncePerRest === "string" && raw.oncePerRest.trim()
       ? [{ ...createEmptyAbility(), description: raw.oncePerRest }]
       : [];
+  const wasLegacyAutoGrant = raw.runicSpellcraftGranted === true;
+  const oncePerRest = migratedOncePerRest.filter(
+    (ability) =>
+      !wasLegacyAutoGrant ||
+      (ability.id !== "runic-spellcraft" && ability.title.trim().toLowerCase() !== "runic spellcraft"),
+  );
   const heroAbilities = Array.isArray(raw.heroAbilities)
     ? raw.heroAbilities.map(migratedAbility)
     : typeof raw.heroAbility === "string" && raw.heroAbility.trim()
