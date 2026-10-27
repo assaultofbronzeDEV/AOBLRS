@@ -1225,7 +1225,7 @@ export default function CharacterSheetScreen() {
                 ]}
               >
                 {char.portraitUri ? (
-                  <Image source={{ uri: char.portraitUri }} style={styles.portraitImg} />
+                  <Image source={{ uri: char.portraitUri }} style={styles.portraitImg} resizeMode="cover" />
                 ) : (
                   <View style={styles.portraitPlaceholder}>
                     <Icon name="account-plus" size={40} color={colors.brandPrimary} />

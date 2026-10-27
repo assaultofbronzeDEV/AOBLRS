@@ -2060,7 +2060,7 @@ const styles = StyleSheet.create({
   sharedHeroCard: { width: "100%", maxHeight: "86%", borderTopWidth: 3, padding: 16 },
   sharedHeroReadOnly: { fontSize: 11, letterSpacing: 1.2, textAlign: "center" },
   sharedHeroBody: { paddingVertical: 18, gap: 10, alignItems: "center", width: "100%", maxWidth: 560, alignSelf: "center" },
-  sharedHeroPortrait: { width: 150, height: 184, borderWidth: 2.5, alignSelf: "center" },
+  sharedHeroPortrait: { width: 150, height: 258, borderWidth: 2.5, alignSelf: "center" },
   sharedBackstory: { gap: 6, marginTop: 8, alignItems: "center" },
   sharedBackstoryText: { fontSize: 14, lineHeight: 20, textAlign: "center" },
   sharedHeroClass: { fontSize: 17, textAlign: "center" },
