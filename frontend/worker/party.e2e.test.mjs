@@ -253,8 +253,12 @@ test("a player can resume with their peer id and secret", async () => {
   await gm.waitForState((s) => s.sharedHeroes.length === 1);
 
   const { you, secret } = alice.welcome;
+  const stateCount = gm.inbox.filter((m) => m.t === "PARTY_STATE").length;
   alice.close();
-  await gm.waitForState((s) => s.sharedHeroes.length === 0);
+  await gm.waitFor((m) => m.t === "PLAYER_LEFT" && m.peerId === you.id);
+  await gm.waitFor((m) => m.t === "PARTY_STATE" && gm.inbox.filter((message) => message.t === "PARTY_STATE").length > stateCount);
+  const statesAfterDisconnect = gm.inbox.filter((m) => m.t === "PARTY_STATE");
+  assert.equal(statesAfterDisconnect[statesAfterDisconnect.length - 1].sharedHeroes[0].id, "a1");
 
   const again = await joinPlayer(room.code, "Alice", { peerId: you.id, secret });
   assert.equal(again.welcome.you.id, you.id);

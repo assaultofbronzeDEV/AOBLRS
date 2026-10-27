@@ -111,7 +111,7 @@ Combat typically begins with the enemies' first attack unless the players perfor
 
 INITIATIVE
 
-Initiative decides who acts when during combat. At the start of a fight, everyone rolls a d20 to figure out turn order. Players, enemies, and NPCs act from the highest roll to the lowest. If the enemy attacked first, its initiative is 20; if it was sneaked upon, its initiative is 0. For identical creatures such as a pack of drones or guards, the GM rolls once for the entire group and they act on the same turn.
+Initiative decides who acts when during combat. At the start of a fight, everyone rolls a d20 to figure out turn order. Players, enemies, and NPCs act from the lowest roll to the highest. If the enemy attacked first, its initiative is 0; if it was sneaked upon, its initiative is 20. For identical creatures such as a pack of drones or guards, the GM rolls once for the entire group and they act on the same turn.
 
 During combat, players may take one action, such as a once-per-turn or once-per-rest ability, move, and take a bonus action such as drinking a potion, pressing a button, or pulling a lever. These can be performed in any order. Some targets have stronger armour or defensive abilities at higher levels to balance a higher-level party's improved ATK checks.
 
@@ -632,7 +632,7 @@ export default function CharacterListScreen() {
   const initiativeRows = initiative
     .map((entry) => ({ ...entry, combatant: allCombatants.find((character) => character.id === entry.id) }))
     .filter((entry): entry is typeof entry & { combatant: Character } => entry.combatant != null)
-    .sort((a, b) => Number(b.order) - Number(a.order));
+    .sort((a, b) => Number(a.order) - Number(b.order));
 
   const addToInitiative = (combatant: Character) => {
     if (initiative.some((entry) => entry.id === combatant.id)) return;
@@ -977,7 +977,7 @@ export default function CharacterListScreen() {
 
               {show.includes("initiative") && (
               <GmSection title="Initiative" icon="sword-cross">
-              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Higher numbers act first. Tap an enemy to open its sheet.</Text>
+              <Text style={[styles.gmHint, { color: colors.muted, fontFamily: fonts.body }]}>Lower numbers act first. Tap an enemy to open its sheet.</Text>
               {initiativeRows.length > 0 && (
               <View testID="gm-initiative-tracker" style={[styles.initiativeTracker, { borderColor: colors.borderStrong, backgroundColor: colors.surfaceSecondary }]}>
               <Pressable testID="gm-next-turn" onPress={nextTurn} style={[styles.nextTurnBtn, { backgroundColor: colors.success, borderColor: colors.borderStrong }]}>
@@ -2060,7 +2060,7 @@ const styles = StyleSheet.create({
   sharedHeroCard: { width: "100%", maxHeight: "86%", borderTopWidth: 3, padding: 16 },
   sharedHeroReadOnly: { fontSize: 11, letterSpacing: 1.2, textAlign: "center" },
   sharedHeroBody: { paddingVertical: 18, gap: 10, alignItems: "center", width: "100%", maxWidth: 560, alignSelf: "center" },
-  sharedHeroPortrait: { width: 160, height: 160, borderWidth: 2, alignSelf: "center" },
+  sharedHeroPortrait: { width: 150, height: 184, borderWidth: 2.5, alignSelf: "center" },
   sharedBackstory: { gap: 6, marginTop: 8, alignItems: "center" },
   sharedBackstoryText: { fontSize: 14, lineHeight: 20, textAlign: "center" },
   sharedHeroClass: { fontSize: 17, textAlign: "center" },

@@ -1298,6 +1298,7 @@ export default function CharacterSheetScreen() {
               </View>
               <View style={isWideScreen ? styles.combatCardSplit : styles.combatCardStacked}>
                 <QuickDiceRoller
+                  initiativeBonus={valueForRef(char.stats, { kind: "main", statKey: "DEX" }) ?? 0}
                   onRoll={(notation, label) => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     setRoll({ label, standaloneRoll: notation });

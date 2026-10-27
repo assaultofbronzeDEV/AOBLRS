@@ -35,9 +35,9 @@ interface Env {
 
 const GM_ID = "gm";
 const HELLO_TIMEOUT_MS = 10_000;
-const PLAYER_GRACE_MS = 60_000;
+const PLAYER_GRACE_MS = 30 * 60_000;
 const GM_ABSENT_END_MS = 30 * 60_000;
-const EMPTY_ROOM_TTL_MS = 10 * 60_000;
+const EMPTY_ROOM_TTL_MS = PLAYER_GRACE_MS;
 const SWEEP_INTERVAL_MS = 5_000;
 const MAX_NOTE_ENTRIES = 200;
 const MAX_NOTE_KEY_CHARS = 100;
@@ -372,7 +372,7 @@ export class PartyRoom extends DurableObject<Env> {
   }
 
   private sharedHeroes(): Character[] {
-    return [...this.peers.values()].filter((p) => p.socket).flatMap((p) => p.heroes);
+    return [...this.peers.values()].flatMap((p) => p.heroes);
   }
 
   private connectedCount(): number {
@@ -430,6 +430,7 @@ export class PartyRoom extends DurableObject<Env> {
 
   private sweep(): void {
     const now = Date.now();
+    let removedPlayer = false;
     for (const peer of [...this.peers.values()]) {
       if (peer.socket && now - peer.lastSeen > PARTY_HEARTBEAT_TIMEOUT_MS) {
         const stale = peer.socket;
@@ -443,9 +444,13 @@ export class PartyRoom extends DurableObject<Env> {
           void this.destroyRoom("Party ended: the GM disconnected.");
           return;
         }
-        if (peer.role === "player" && away > PLAYER_GRACE_MS) this.peers.delete(peer.id);
+        if (peer.role === "player" && away > PLAYER_GRACE_MS) {
+          this.peers.delete(peer.id);
+          removedPlayer = true;
+        }
       }
     }
+    if (removedPlayer) this.broadcastState();
     if (this.peers.size === 0 && this.sweeper) {
       clearInterval(this.sweeper);
       this.sweeper = null;
